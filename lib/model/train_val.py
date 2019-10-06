@@ -244,6 +244,12 @@ class SolverWrapper(object):
 
     def train_model(self, max_iters):
         # Build data layers for both training and validation set
+        #TODO: Add these to config file
+        sum_size = 128
+        epoch_size = 7000
+        update_weights = False
+        batch_size = 16
+
         self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes)
         self.data_layer_val = RoIDataLayer(
             self.valroidb, self.imdb.num_classes, random=True)       
@@ -263,27 +269,27 @@ class SolverWrapper(object):
         iter = last_snapshot_iter + 1
         last_summary_time = time.time()
         # Make sure the lists are not empty
+        #Append step sizes (in this case epoch) to list
         stepsizes.append(max_iters)
         stepsizes.reverse()
+        #print(stepsizes)
         next_stepsize = stepsizes.pop()
-
+        #print(stepsizes)
+        #Switch to train mode
         self.net.train()
         self.net.to(self.net._device)
         loss_cumsum = 0
-        batch_loss_cumsum = 0
-        update_weights = False
         while iter < max_iters + 1:
             # Learning rate
-            if iter % 16 == 0 and iter != 0:
+            if iter % batch_size == 0 and iter != 0:
                 update_weights = True
             else:
                 update_weights = False
-            if iter % 100 == 0:
-                print('iteration {:d}'.format(iter))
             if iter == next_stepsize + 1:
                 # Add snapshot here before reducing the learning rate
                 self.snapshot(iter)
                 #change learning rate every step size
+                print('Reducing learning rate')
                 lr *= cfg.TRAIN.GAMMA
                 scale_lr(self.optimizer, cfg.TRAIN.GAMMA)
                 next_stepsize = stepsizes.pop()
@@ -291,22 +297,20 @@ class SolverWrapper(object):
             utils.timer.timer.tic()
             # Get training data, one batch at a time
             blobs = self.data_layer.forward()
-            #print(max(blobs['data']))
-            #print(min(blobs['gt_boxes']))
             now = time.time()
 
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
-            sum_size = 128
             if iter % sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, update_weights, summary_size=sum_size)
+                  self.net.train_step_with_summary(blobs, self.optimizer, sum_size, update_weights)
                 loss_cumsum += total_loss
-                batch_loss_cumsum += batch_loss_cumsum
                 for _sum in summary:
+                    #print('summary')
+                    #print(_sum)
                     self.writer.add_summary(_sum, float(iter))
-                # Also check the summary on the validation set
+                # Also check the summary on the validation set (single image)
                 blobs_val = self.data_layer_val.forward()
                 summary_val = self.net.get_summary(blobs_val, sum_size)
                 #Need to add AP calculation here
@@ -328,18 +332,17 @@ class SolverWrapper(object):
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
                   self.net.train_step(blobs, self.optimizer,update_weights)
                 loss_cumsum += total_loss
-                batch_loss_cumsum += total_loss
             utils.timer.timer.toc()
 
             # Display training information
             if (iter % cfg.TRAIN.DISPLAY) == 0:
-                print('iter: %d / %d, total batch loss: %.6f\n >>> rpn_loss_cls: %.6f\n '
-                      '>>> rpn_loss_box: %.6f\n >>> loss_cls: %.6f\n >>> loss_box: %.6f\n >>> lr: %f' % \
-                      (iter, max_iters, batch_loss_cumsum, rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, lr))
+                self.net.print_cumulative_loss(iter-(iter%16),iter, max_iters, lr)
                 print('speed: {:.3f}s / iter'.format(
                     utils.timer.timer.average_time()))
-            if iter % 7000 == 0:
-                print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(7000)))
+            if iter % epoch_size == 0:
+                print('----------------------------------------------------')
+                print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(epoch_size)))
+                print('----------------------------------------------------')
                 loss_cumsum = 0
                 # for k in utils.timer.timer._average_time.keys():
                 #   print(k, utils.timer.timer.average_time(k))
@@ -354,8 +357,6 @@ class SolverWrapper(object):
                 # Remove the old snapshots if there are too many
                 if len(np_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
                     self.remove_snapshot(np_paths, ss_paths)
-            if iter % 16 == 0 and iter != 0:
-                batch_loss_cumsum = 0
             iter += 1
 
         if last_snapshot_iter != iter - 1:

@@ -22,19 +22,19 @@ __C.TRAIN = edict()
 __C.TRAIN.LEARNING_RATE = 0.001
 
 # Momentum
-__C.TRAIN.MOMENTUM = 0.9
+__C.TRAIN.MOMENTUM = 0.7
 
 # Weight decay, for regularization
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.2
+__C.TRAIN.GAMMA = 0.5
 
 # Step size for reducing the learning rate, currently only support one step
-__C.TRAIN.STEPSIZE = [7000]
+__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
 
 # Iteration intervals for showing the loss during training, on command line interface
-__C.TRAIN.DISPLAY = 100
+__C.TRAIN.DISPLAY = 200
 
 # Whether to double the learning rate for bias
 __C.TRAIN.DOUBLE_BIAS = False

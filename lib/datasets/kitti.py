@@ -71,7 +71,7 @@ class KittiDataset(Dataset):
 
         # TODO: filter images without detection annotations
         if training_mode:
-            TEST_TRAIN = 'evaluation/'
+            TEST_TRAIN = 'testing/'
         else:
             TEST_TRAIN = 'testing/'
         self.root_path = root + TEST_TRAIN

@@ -112,7 +112,7 @@ if __name__ == '__main__':
         #args.weight = os.path.join(args.imdb_root_dir, 'weights/res101_faster_rcnn_iter_110000.pth')
         #args.weight = os.path.join(args.imdb_root_dir, 'weights', 'vgg16-397923af.pth')
         args.imdbval_name = 'evaluation'
-        args.max_iters = 300000
+        args.max_iters = 400000
     print('Called with args:')
     print(args)
 

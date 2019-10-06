@@ -197,10 +197,10 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test'):
             .format(i + 1, num_images, _t['im_detect'].average_time(),
                 _t['misc'].average_time()))
         
-        fig, ax = plt.subplots(1)
-        ax.imshow(im)
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
-        if('draw' in mode or 'test' in mode or 'exp' in mode):
+        if('draw' in mode or 'exp' in mode):
+            fig, ax = plt.subplots(1)
+            ax.imshow(im)
             for j in range(1,imdb.num_classes):
                 #j is detection index
                 dets = all_boxes[j][i]
