@@ -100,7 +100,7 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.imdb_name = 'Kitti'
-        args.weights_file = 'weights/res101_faster_rcnn_iter_265000.pth'
+        args.weights_file = 'weights/res101_faster_rcnn_iter_210001.pth'
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/Thesis/data/Kitti/'
     print('Called with args:')

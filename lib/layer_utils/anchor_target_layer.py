@@ -60,7 +60,7 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes_dc, dtype=np.float))
 
-    overlaps_dc_idx = np.argwhere(overlaps_dc > 0.5)
+    overlaps_dc_idx = np.argwhere(overlaps_dc > cfg.TRAIN.DC_THRESH)
     if cfg.TRAIN.IGNORE_DC:
         labels[overlaps_dc_idx[:, 0]] = -1
     #overlaps: (N, K) overlap between boxes and query_boxes
