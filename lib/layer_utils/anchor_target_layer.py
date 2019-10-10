@@ -17,7 +17,7 @@ from model.bbox_transform import bbox_transform
 import torch
 
 #From generated anchor boxes, select subset that have a large overlap with GT_Boxes
-def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride,
+def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_stride,
                         all_anchors, num_anchors):
     """Same as the anchor target layer in original Fast/er RCNN """
     A = num_anchors
@@ -56,6 +56,13 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride,
     overlaps = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes, dtype=np.float))
+    overlaps_dc = bbox_overlaps(
+        np.ascontiguousarray(anchors, dtype=np.float),
+        np.ascontiguousarray(gt_boxes_dc, dtype=np.float))
+
+    overlaps_dc_idx = np.argwhere(overlaps_dc > 0.5)
+    if cfg.TRAIN.IGNORE_DC:
+        labels[overlaps_dc_idx[:, 0]] = -1
     #overlaps: (N, K) overlap between boxes and query_boxes
     argmax_overlaps = overlaps.argmax(axis=1)
     #grab subset of 2D array to only get [:,max_overlap_index] 
@@ -82,11 +89,11 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride,
     if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
         # assign bg labels last so that negative labels can clobber positives
         labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
-
     # subsample positive labels if we have too many
     num_fg = int(cfg.TRAIN.RPN_FG_FRACTION * cfg.TRAIN.RPN_BATCHSIZE)
     fg_inds = np.where(labels == 1)[0]
     #TODO: Really, randomly select indices to disable? Why not worst ones? At least dont do this for the argmax..
+    #If too many foreground entries
     if len(fg_inds) > num_fg:
         disable_inds = npr.choice(
             fg_inds, size=(len(fg_inds) - num_fg), replace=False)
@@ -103,8 +110,8 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, im_info, _feat_stride,
     #Find target bounding boxes
     bbox_targets = np.zeros((len(inds_inside), 4), dtype=np.float32)
     bbox_targets = _compute_targets(anchors, gt_boxes[argmax_overlaps, :])
-    print('GT BOXES')
-    print(bbox_targets.shape)
+    #print('GT BOXES')
+    #print(bbox_targets.shape)
     bbox_inside_weights = np.zeros((len(inds_inside), 4), dtype=np.float32)
     # only the positive ones have regression targets
     bbox_inside_weights[labels == 1, :] = np.array(

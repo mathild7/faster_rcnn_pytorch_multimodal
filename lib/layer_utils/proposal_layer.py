@@ -29,13 +29,13 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, im_info, cfg_key, _feat_stride,
     nms_thresh = cfg[cfg_key].RPN_NMS_THRESH
 
     # Get the scores and bounding boxes
-    scores = rpn_cls_prob[:, :, :, num_anchors:]
-    rpn_bbox_pred = rpn_bbox_pred.view((-1, 4))
+    scores = rpn_cls_prob[:, :, :, num_anchors:] #Start at back half of anchor/score list
+    rpn_bbox_pred = rpn_bbox_pred.view((-1, 4)) #rpn_bbox_pred are adjustment factors to existing anchors
     scores = scores.contiguous().view(-1, 1)
     proposals = bbox_transform_inv(anchors, rpn_bbox_pred)
-    proposals = clip_boxes(proposals, im_info[:2])
+    proposals = clip_boxes(proposals, im_info[:2]) #Make sure they are within bounds
 
-    # Pick the top region proposals
+    # Pick the top 'pre_nms_topN' # of region proposals
     scores, order = scores.view(-1).sort(descending=True)
     if pre_nms_topN > 0:
         order = order[:pre_nms_topN]
@@ -44,7 +44,6 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, im_info, cfg_key, _feat_stride,
 
     # Non-maximal suppression
     keep = nms(proposals, scores.squeeze(1), nms_thresh)
-
     # Pick th top region proposals after NMS
     if post_nms_topN > 0:
         keep = keep[:post_nms_topN]

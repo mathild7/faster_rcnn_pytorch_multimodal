@@ -18,6 +18,7 @@ import scipy.sparse
 import pickle
 import subprocess
 import uuid
+import traceback
 from .kitti_eval import kitti_eval
 from model.config import cfg
 
@@ -94,6 +95,8 @@ class kitti_imdb(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
+        #for line in traceback.format_stack():
+        #    print(line.strip())
         cache_file = os.path.join(self.cache_path, self.name + '_' + self._mode + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
@@ -117,8 +120,10 @@ class kitti_imdb(imdb):
        return self._classes[idx]
 
     def rpn_roidb(self):
-        if int(self._year) == 2007 or self._mode_sub_folder != 'testing':
+        if self._mode_sub_folder != 'testing':
+            #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
             gt_roidb = self.gt_roidb()
+            print('got here')
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
             roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
         else:
@@ -141,19 +146,22 @@ class kitti_imdb(imdb):
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
         """
+        #print('loading kitti anno')
         filename = os.path.join(self._data_path, self._mode_sub_folder, 'label_2', index + '.txt')
         label_lines = open(filename, 'r').readlines()
         objects = []
         num_objs = len(label_lines)
 
-        boxes = np.zeros((num_objs, 4), dtype=np.uint16)
+        boxes      = np.zeros((num_objs, 4), dtype=np.uint16)
+        boxes_dc   = np.zeros((num_objs, 4), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
-        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
+        overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
-        seg_areas = np.zeros((num_objs), dtype=np.float32)
+        seg_areas  = np.zeros((num_objs), dtype=np.float32)
 
         # Load object bounding boxes into a data frame.
         ix = 0
+        ix_dc = 0
         populated_idx = []
         for line in label_lines:
             label_arr = line.split(' ')
@@ -170,14 +178,21 @@ class kitti_imdb(imdb):
                 cls = self._class_to_ind[label_arr[0].strip()]
                 boxes[ix, :] = [x1, y1, x2, y2]
                 gt_classes[ix] = cls
+                #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
                 ix = ix + 1
+            if('dontcare' in label_arr[0].lower().strip()):
+                #print(line)
+                boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
+                ix_dc = ix_dc + 1
+                
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'boxes': boxes[0:ix],
+            'boxes_dc' : boxes_dc[0:ix_dc],
             'gt_classes': gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
             'flipped': False,

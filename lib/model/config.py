@@ -76,7 +76,7 @@ __C.TRAIN.FG_FRACTION = 0.25
 
 # Overlap threshold for a ROI to be considered foreground (if >= FG_THRESH)
 __C.TRAIN.FG_THRESH = 0.5
-
+__C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
 __C.TRAIN.BG_THRESH_HI = 0.5
@@ -159,6 +159,8 @@ __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 # For COCO, setting USE_ALL_GT to False will exclude boxes that are flagged as ''iscrowd''
 __C.TRAIN.USE_ALL_GT = True
 
+#Whether or not to ignore dont care areas when training
+__C.TRAIN.IGNORE_DC = True
 #
 # Testing options
 #

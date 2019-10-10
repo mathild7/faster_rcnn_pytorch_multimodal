@@ -36,23 +36,19 @@ def get_minibatch(roidb, num_classes):
     assert len(roidb) == 1, "Single batch only"
 
     # gt boxes: (x1, y1, x2, y2, cls)
-    if cfg.TRAIN.USE_ALL_GT:
-        # Include all ground truth boxes
-        gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
-    else:
-        # For the COCO ground truth boxes, exclude the ones that are ''iscrowd''
-        gt_inds = np.where(
-            roidb[0]['gt_classes'] !=
-            0 & np.all(roidb[0]['gt_overlaps'].toarray() > -1.0, axis=1))[0]
-    #print('straight from roidb')
-    #print(roidb[0]['boxes'])
-    #print(roidb[0]['gt_classes'])
-    #print(roidb[0]['boxes'])
-    #print(gt_inds)
+    gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
+    dc_len  = roidb[0]['boxes_dc'].shape[0]
+
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :] * im_scales[0]
     gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
     blobs['gt_boxes'] = gt_boxes
+    gt_boxes_dc = np.empty((dc_len, 5), dtype=np.float32)
+    if cfg.TRAIN.IGNORE_DC:
+        gt_ind_dc = np.arange(dc_len)
+        gt_boxes_dc[:, 0:4] = roidb[0]['boxes_dc'][gt_ind_dc, :] * im_scales[0]
+        gt_boxes_dc[:, 4] = np.zeros(dc_len)
+    blobs['gt_boxes_dc'] = gt_boxes_dc
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     #print('gt boxes')

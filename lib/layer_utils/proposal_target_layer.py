@@ -17,7 +17,7 @@ from utils.bbox import bbox_overlaps
 import torch
 
 
-def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, _num_classes):
+def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, gt_boxes_dc, _num_classes):
     """
   Assign object detection proposals to ground-truth targets. Produces proposal
   classification labels and bounding-box regression targets.
@@ -43,7 +43,7 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, _num_classes):
     # Sample rois with classification labels and bounding box regression
     # targets
     labels, rois, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
-        all_rois, all_scores, gt_boxes, fg_rois_per_image, rois_per_image,
+        all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
         _num_classes)
 
     rois = rois.view(-1, 5)
@@ -101,41 +101,49 @@ def _compute_targets(ex_rois, gt_rois, labels):
     return torch.cat([labels.unsqueeze(1), targets], 1)
 
 
-def _sample_rois(all_rois, all_scores, gt_boxes, fg_rois_per_image,
+def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
                  rois_per_image, num_classes):
     """Generate a random sample of RoIs comprising foreground and background
-  examples.
+  examples. This will provide the 'best-case scenario' for the proposal layer to act as a target 
   """
     # overlaps: (rois x gt_boxes)
     #print('gt boxes')
     #print(gt_boxes)
-    overlaps = bbox_overlaps(all_rois[:, 1:5].data, gt_boxes[:, :4].data)
-    max_overlaps, gt_assignment = overlaps.max(1)
-    labels = gt_boxes[gt_assignment, [4]]
-
+    max_overlaps_dc = torch.tensor([])
+    dc_filtered_rois = all_rois
+    dc_filtered_scores = all_scores
+    if(cfg.TRAIN.IGNORE_DC and list(gt_boxes_dc.size())[0] > 0):
+        overlaps_dc = bbox_overlaps(all_rois[:, 1:5].data, gt_boxes_dc[:, :4].data)  #NxK Output N= num roi's k = num gt entries on image
+        max_overlaps_dc, _ = overlaps_dc.max(1)  #Returns max value of all input elements along dimension and their index
+        dc_inds = (max_overlaps_dc < cfg.TRAIN.DC_THRESH).nonzero().view(-1)
+        dc_filtered_rois = all_rois[dc_inds, :]
+        dc_filtered_scores = all_scores[dc_inds, :]
+    overlaps = bbox_overlaps(dc_filtered_rois[:, 1:5].data, gt_boxes[:, :4].data) #NxK Output N= num roi's k = num gt entries on image
+    max_overlaps, gt_assignment = overlaps.max(1) #Returns max value of all input elements along dimension and their index
+    labels = gt_boxes[gt_assignment, [4]] #Contains which gt box each overlap is assigned to and the class it belongs to as well
     # Select foreground RoIs as those with >= FG_THRESH overlap
     fg_inds = (max_overlaps >= cfg.TRAIN.FG_THRESH).nonzero().view(-1)
     # Guard against the case when an image has fewer than fg_rois_per_image
     # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
     bg_inds = ((max_overlaps < cfg.TRAIN.BG_THRESH_HI) + (
-        max_overlaps >= cfg.TRAIN.BG_THRESH_LO) == 2).nonzero().view(-1)
-
+        max_overlaps >= cfg.TRAIN.BG_THRESH_LO) == 2).nonzero().view(-1) #.nonzero() returns all elements that are non zero in array
+    #Remove all indices that cover dc areas
     # Small modification to the original version where we ensure a fixed number of regions are sampled
-    if fg_inds.numel() > 0 and bg_inds.numel() > 0:
+    if fg_inds.numel() > 0 and bg_inds.numel() > 0: #numel() returns number of elements in tensor
         fg_rois_per_image = min(fg_rois_per_image, fg_inds.numel())
-        fg_inds = fg_inds[torch.from_numpy(
+        fg_inds = fg_inds[torch.from_numpy( #Randomize order, trim out extras if need be
             npr.choice(
                 np.arange(0, fg_inds.numel()),
                 size=int(fg_rois_per_image),
                 replace=False)).long().to(gt_boxes.device)]
         bg_rois_per_image = rois_per_image - fg_rois_per_image
-        to_replace = bg_inds.numel() < bg_rois_per_image
+        to_replace = bg_inds.numel() < bg_rois_per_image #Multiple entries of the same bg inds if too small
         bg_inds = bg_inds[torch.from_numpy(
             npr.choice(
                 np.arange(0, bg_inds.numel()),
                 size=int(bg_rois_per_image),
                 replace=to_replace)).long().to(gt_boxes.device)]
-    elif fg_inds.numel() > 0:
+    elif fg_inds.numel() > 0: #Only foreground ROI's were generated
         to_replace = fg_inds.numel() < rois_per_image
         fg_inds = fg_inds[torch.from_numpy(
             npr.choice(
@@ -143,7 +151,7 @@ def _sample_rois(all_rois, all_scores, gt_boxes, fg_rois_per_image,
                 size=int(rois_per_image),
                 replace=to_replace)).long().to(gt_boxes.device)]
         fg_rois_per_image = rois_per_image
-    elif bg_inds.numel() > 0:
+    elif bg_inds.numel() > 0: #Only background ROI's were generated
         to_replace = bg_inds.numel() < rois_per_image
         bg_inds = bg_inds[torch.from_numpy(
             npr.choice(
@@ -157,17 +165,13 @@ def _sample_rois(all_rois, all_scores, gt_boxes, fg_rois_per_image,
         pdb.set_trace()
 
     # The indices that we're selecting (both fg and bg)
-    #print('fg inds')
-    #print(fg_inds)
-    #print('bg inds')
-    #print(bg_inds)
     keep_inds = torch.cat([fg_inds, bg_inds], 0)
     # Select sampled values from various arrays:
     labels = labels[keep_inds].contiguous()
     # Clamp labels for the background RoIs to 0
     labels[int(fg_rois_per_image):] = 0
-    rois = all_rois[keep_inds].contiguous()
-    roi_scores = all_scores[keep_inds].contiguous()
+    rois = dc_filtered_rois[keep_inds].contiguous()
+    roi_scores = dc_filtered_scores[keep_inds].contiguous()
 
     bbox_target_data = _compute_targets(
         rois[:, 1:5].data, gt_boxes[gt_assignment[keep_inds]][:, :4].data,
