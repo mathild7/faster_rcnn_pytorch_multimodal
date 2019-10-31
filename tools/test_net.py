@@ -102,7 +102,7 @@ if __name__ == '__main__':
         args.imdb_name = 'Kitti'
         args.weights_file = 'weights/res101_faster_rcnn_iter_210001.pth'
         args.out_dir = 'output/'
-        args.imdb_root_dir = '/home/mat/Thesis/data/Kitti/'
+        args.imdb_root_dir = '/home/mat/thesis/data/Kitti/'
     print('Called with args:')
     print(args)
     if args.cfg_file is not None:
@@ -156,4 +156,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
 
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='eval',thresh=0.1)
+    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='draw',thresh=0.1)

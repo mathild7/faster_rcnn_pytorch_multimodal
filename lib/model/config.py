@@ -264,7 +264,7 @@ __C.RNG_SEED = 3
 __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 
 # Data directory
-__C.DATA_DIR = osp.abspath(osp.join('/home/mat','Thesis', 'data'))
+__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'

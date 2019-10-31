@@ -43,16 +43,12 @@ class SolverWrapper(object):
                  network,
                  imdb,
                  roidb,
-                 valimdb,
-                 valroidb,
                  output_dir,
                  tbdir,
                  pretrained_model=None):
         self.net = network
         self.imdb = imdb
         self.roidb = roidb
-        self.valimdb = valimdb
-        self.valroidb = valroidb
         self.output_dir = output_dir
         self.tbdir = tbdir
         # Simply put '_val' at the end to save the summaries from the validation set
@@ -250,9 +246,9 @@ class SolverWrapper(object):
         update_weights = False
         batch_size = 16
 
-        self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes)
+        self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
         self.data_layer_val = RoIDataLayer(
-            self.valroidb, self.imdb.num_classes, random=True)       
+            self.roidb, self.imdb.num_classes, 'val', random=True)       
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -366,19 +362,6 @@ class SolverWrapper(object):
         self.valwriter.close()
 
 
-def get_training_validation_roidb(imdb):
-    """Returns a roidb (Region of Interest database) for use in training."""
-    if cfg.TRAIN.USE_FLIPPED:
-        print('Appending horizontally-flipped training examples...')
-        imdb.append_flipped_images()
-        print('done')
-
-    print('Preparing training data... ')
-    rdl_roidb.prepare_roidb(imdb)
-    print('done')
-
-    return imdb.roidb
-
 
 def filter_roidb(roidb):
     """Remove roidb entries that have no usable RoIs."""
@@ -407,22 +390,17 @@ def filter_roidb(roidb):
 def train_net(network,
               imdb,
               roidb,
-              valimdb,
-              valroidb,
               output_dir,
               tb_dir,
               pretrained_model=None,
               max_iters=40000):
     """Train a Faster R-CNN network."""
     roidb = filter_roidb(roidb)
-    valroidb = filter_roidb(valroidb)
 
     sw = SolverWrapper(
         network,
         imdb,
         roidb,
-        valimdb,
-        valroidb,
         output_dir,
         tb_dir,
         pretrained_model=pretrained_model)

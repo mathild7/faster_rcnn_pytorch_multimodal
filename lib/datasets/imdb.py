@@ -30,7 +30,6 @@ class imdb(object):
         self._image_index = []
         self._obj_proposer = 'gt'
         self._roidb = None
-        self._roidb_handler = self.default_roidb
         # Use this dict for storing dataset specific config options
         self.config = {}
 
@@ -51,18 +50,6 @@ class imdb(object):
         return self._image_index
 
     @property
-    def roidb_handler(self):
-        return self._roidb_handler
-
-    @roidb_handler.setter
-    def roidb_handler(self, val):
-        self._roidb_handler = val
-
-    def set_proposal_method(self, method):
-        method = eval('self.' + method + '_roidb')
-        self.roidb_handler = method
-
-    @property
     def roidb(self):
         # A roidb is a list of dictionaries, each with the following keys:
         #   boxes
@@ -71,7 +58,7 @@ class imdb(object):
         #   flipped
         if self._roidb is not None:
             return self._roidb
-        self._roidb = self.roidb_handler()
+        self._roidb = self.gt_roidb()
         return self._roidb
 
     @property
@@ -109,17 +96,18 @@ class imdb(object):
         ]
 
     def append_flipped_images(self):
-        num_images = self.num_images
-        widths = self._get_widths()
+        num_images = self._num_train_images
         for i in range(num_images):
             boxes = self.roidb[i]['boxes'].copy()
             boxes_dc = self.roidb[i]['boxes_dc'].copy()
+            img_token = self.roidb[i]['img_index']
             oldx1 = boxes[:, 0].copy()
             oldx2 = boxes[:, 2].copy()
-            boxes[:, 0] = widths[i] - oldx2 - 1
-            boxes[:, 2] = widths[i] - oldx1 - 1
+            boxes[:, 0] = self._imwidth - oldx2 - 1
+            boxes[:, 2] = self._imwidth - oldx1 - 1
             assert (boxes[:, 2] >= boxes[:, 0]).all()
             entry = {
+                'img_index': img_token,
                 'boxes': boxes,
                 'boxes_dc' : boxes_dc,
                 'gt_overlaps': self.roidb[i]['gt_overlaps'],
@@ -128,7 +116,7 @@ class imdb(object):
             }
             #Calls self.gt_roidb through a handler.
             self.roidb.append(entry)
-        self._image_index = self._image_index * 2
+        self._num_train_images = self._num_train_images * 2
 
     def evaluate_recall(self,
                         candidate_boxes=None,

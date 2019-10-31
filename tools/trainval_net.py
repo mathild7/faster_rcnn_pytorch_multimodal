@@ -8,16 +8,18 @@ from __future__ import division
 from __future__ import print_function
 
 import _init_paths
-from model.train_val import get_training_validation_roidb, train_net
+from model.train_val import train_net
 from model.config import cfg, cfg_from_file, cfg_from_list, get_output_dir, get_output_tb_dir
 from datasets.factory import get_imdb
 from datasets.kitti_imdb import kitti_imdb
+from datasets.nuscenes_imdb import nuscenes_imdb
 import datasets.imdb
 import argparse
 import pprint
 import numpy as np
 import sys
 import os
+import roi_data_layer.roidb as rdl_roidb
 
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
@@ -81,22 +83,39 @@ def parse_args(manual_mode=False):
     return args
 
 
-def combined_roidb(mode):
+def get_training_validation_roidb(imdb,draw_and_save=False):
+    print('Preparing ROIs per image... ')
+    rdl_roidb.prepare_roidb(imdb)
+    print('done')
+    if(draw_and_save):
+        print('drawing and saving images')
+        imdb.draw_and_save()
+    """Returns a roidb (Region of Interest database) for use in training."""
+    if cfg.TRAIN.USE_FLIPPED:
+        print('Appending horizontally-flipped training examples...')
+        imdb.append_flipped_images()
+        print('done')
+    return imdb.roidb
+
+def combined_roidb(mode,dataset,draw_and_save=False):
     """
   Combine multiple roidbs
   """
 
-    def get_roidb(mode):
+    if(dataset == 'kitti'):
         imdb = kitti_imdb(mode)
-        print('Loaded dataset `{:s}` for training'.format(imdb.name))
-        #Use gt_roidb located in kitti_imdb.py
-        imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
-        print('Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD))
-        print('mode {:s}'.format(mode))
-        roidb = get_training_validation_roidb(imdb)
-        return roidb
-    roidb = get_roidb(mode)
-    imdb = kitti_imdb(mode)
+    elif(dataset == 'nuscenes'):
+        imdb = nuscenes_imdb(mode)
+    else:
+        print('Requested dataset is not available')
+        return
+    print('Loaded dataset `{:s}` for training'.format(imdb.name))
+    #Use gt_roidb located in kitti_imdb.py
+    #imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
+    print('Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD))
+    print('mode {:s}'.format(mode))
+    roidb = get_training_validation_roidb(imdb,draw_and_save)
+
     return imdb, roidb
 
 
@@ -105,9 +124,9 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'
-        args.imdb_name = 'Kitti'
+        args.imdb_name = 'nuscenes'
         args.out_dir = 'output/'
-        args.imdb_root_dir = '/home/mat/Thesis/data/Kitti/'
+        args.imdb_root_dir = '/home/mat/thesis/data/nuscenes/'
         args.weight = os.path.join(args.imdb_root_dir, 'weights', 'resnet101-caffe.pth')
         #args.weight = os.path.join(args.imdb_root_dir, 'weights/res101_faster_rcnn_iter_110000.pth')
         #args.weight = os.path.join(args.imdb_root_dir, 'weights', 'vgg16-397923af.pth')
@@ -115,7 +134,7 @@ if __name__ == '__main__':
         args.max_iters = 400000
     print('Called with args:')
     print(args)
-
+    draw_and_save = False
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
@@ -127,7 +146,7 @@ if __name__ == '__main__':
     np.random.seed(cfg.RNG_SEED)
 
     # train set
-    imdb, roidb = combined_roidb('train')
+    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save)
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
 
@@ -146,9 +165,6 @@ if __name__ == '__main__':
     print(args.imdbval_name)
     print('imdb')
     print(args.imdb_name)
-    valimdb, valroidb = combined_roidb('eval')
-    #print(len(valroidb))
-    print('{:d} validation roidb entries'.format(len(valroidb)))
     cfg.TRAIN.USE_FLIPPED = orgflip
 
     # load network
@@ -168,8 +184,6 @@ if __name__ == '__main__':
         net,
         imdb,
         roidb,
-        valimdb,
-        valroidb,
         output_dir,
         tb_dir,
         pretrained_model=args.weight,

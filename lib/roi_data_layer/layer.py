@@ -20,7 +20,7 @@ import time
 
 class RoIDataLayer(object):
     """Fast R-CNN data layer used for training."""
-
+    #TODO: Handle validation and training seperately.
     def __init__(self, roidb, num_classes, random=False):
         """Set the roidb to be used by this layer during training."""
         self._roidb = roidb
