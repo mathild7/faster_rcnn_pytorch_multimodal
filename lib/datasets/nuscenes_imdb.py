@@ -42,7 +42,6 @@ class nuscenes_imdb(imdb):
         self._devkit_path = self._get_default_path()
         self._data_path = self._devkit_path
         self._mode = mode
-        self._num_train_images = 0
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
         cache_file = os.path.join(cfg.DATA_DIR, 'cache', self.name + '_dataset.pkl')
         if os.path.exists(cache_file):
@@ -80,15 +79,14 @@ class nuscenes_imdb(imdb):
         #print(self._train_scenes)
         for rec in self._nusc.sample_data:
             if(rec['channel'] == 'CAM_FRONT' and rec['is_key_frame'] == True):
-                rec_tmp = rec
+                rec_tmp = rec.copy()
                 #Reverse lookup, getting the overall sample from the picture sample token, to get the scene information.
                 rec_tmp['scene_name'] = self._nusc.get('scene',self._nusc.get('sample',rec['sample_token'])['scene_token'])['name']
                 rec_tmp['anns'] = self._nusc.get('sample', rec['sample_token'])['anns']
                 if(rec_tmp['scene_name'] in self._train_scenes):
-                    self._train_image_index.append(rec)
-                    self._num_train_images += 1
+                    self._train_image_index.append(rec_tmp)
                 elif(rec_tmp['scene_name'] in self._val_scenes):
-                    self._val_image_index.append(rec)
+                    self._val_image_index.append(rec_tmp)
         #Get global image info
         if(mode == 'train'):
             self._imwidth  = self._train_image_index[0]['width']
@@ -99,18 +97,24 @@ class nuscenes_imdb(imdb):
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
 
-    def image_path_at(self, i):
+    def image_path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
     """
-        return self.image_path_from_index(self._image_index[i])
+        if(mode == 'train'):
+            return self.image_path_from_index(self._train_image_index[i])
+        elif(mode == 'val'):
+            return self.image_path_from_index(self._val_image_index[i])
+        elif(mode == 'test'):
+            return self.image_path_from_index(self._test_image_index[i])
+        else:
+            return None
 
     def image_path_from_index(self, index):
         """
     Construct an image path from the image's "index" identifier.
     """
-        image_path = os.path.join(self._data_path, self._mode_sub_folder, self._image_sub_dir,
-                                  index + '.png')
+        image_path = os.path.join(self._data_path, index['imagefile'])
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -121,7 +125,7 @@ class nuscenes_imdb(imdb):
     """
         return os.path.join(cfg.DATA_DIR, 'nuscenes')
 
-    def gt_roidb(self):
+    def gt_roidb(self,mode):
         """
     Return the database of ground-truth regions of interest.
 
@@ -129,7 +133,7 @@ class nuscenes_imdb(imdb):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self.cache_path, self.name + '_' + self._mode + '_gt_roidb.pkl')
+        cache_file = os.path.join(self.cache_path, self.name + '_' + mode + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -139,44 +143,67 @@ class nuscenes_imdb(imdb):
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
             return roidb
 
-        gt_roidb = [
-            self._load_nuscenes_annotation(img) for img in self._train_image_index
-        ]
+        image_index = None
+        sub_total   = 0
+        if(mode == 'train'):
+            image_index = self._train_image_index
+        elif(mode == 'val'):
+            image_index = self._val_image_index
+        gt_roidb = []
+        for img in self._train_image_index:
+            roi = self._load_nuscenes_annotation(img)
+            if(roi is None):
+                sub_total += 1
+            else:
+                gt_roidb.append(roi)
         with open(cache_file, 'wb') as fid:
             pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
-
         return gt_roidb
+
     def draw_and_save(self):
         datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
         out_file = os.path.join(cfg.DATA_DIR, 'nuscenes','samples','cam_front_drawn')
-        for i, img in enumerate(self._train_image_index):
-            if(i%50==0):
-                img_token = img['token']
-                for roi in self.roidb:
-                    if(roi['img_index'] == img_token and roi['boxes'].shape[0] != 0):
-                        source_img = Image.open(datapath + '/' + img['filename'])
-                        draw = ImageDraw.Draw(source_img)
-                        for roi_box in roi['boxes']:
-                            draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])])
-                        print('Saving file at location {}'.format(out_file+'/'+img['filename'].replace('samples/CAM_FRONT/','')))
-                        source_img.save(out_file + '/' + img['filename'].replace('samples/CAM_FRONT/',''),'JPEG')    
+        for i, roi in enumerate(self.roidb):
+            if(i%25 == 0):
+                img_token = roi['img_index']
+                if(roi['img_index'] == img_token and roi['boxes'].shape[0] != 0 and roi['boxes_dc'].shape[0] != 0 and roi['flipped'] is True):
+                    source_img = Image.open(roi['imagefile'])
+                    source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
+                    draw = ImageDraw.Draw(source_img)
+                    for roi_box in roi['boxes']:
+                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
+                    for roi_box in roi['boxes_dc']:
+                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
+                    print('Saving file at location {}'.format(roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/')))
+                    source_img.save(roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/'),'JPEG')    
+
+    def draw_and_save_eval(self,blob,dets,iter):
+        datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
+        out_file = blob['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_eval/iter_{}_'.format(iter))
+        source_img = Image.open(blob['imagefile'])
+        draw = ImageDraw.Draw(source_img)
+        for class_dets in dets:
+            for det in class_dets:
+                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,det[4]*255,0))
+        print('Saving file at location {}'.format(out_file))
+        source_img.save(out_file,'JPEG')    
+
 
     def get_class(self,idx):
        return self._classes[idx]
-
+    #UNUSED
     def rpn_roidb(self):
         if self._mode_sub_folder != 'testing':
             #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
             gt_roidb = self.gt_roidb()
-            print('got here')
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
             roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
         else:
             roidb = self._load_rpn_roidb(None)
 
         return roidb
-
+    #UNUSED
     def _load_rpn_roidb(self, gt_roidb):
         filename = self.config['rpn_file']
         print('loading {}'.format(filename))
@@ -207,7 +234,7 @@ class nuscenes_imdb(imdb):
         # Keep only corners that fall within the image.
 
         polygon_from_2d_box = MultiPoint(corner_coords).convex_hull
-        img_canvas = box(0, 0, self._imwidth, self._imheight)
+        img_canvas = box(0, 0, self._imwidth-1, self._imheight-1)
 
         if polygon_from_2d_box.intersects(img_canvas):
             img_intersection = polygon_from_2d_box.intersection(img_canvas)
@@ -229,7 +256,7 @@ class nuscenes_imdb(imdb):
         format.
         """
         #print('loading nuscenes anno')
-        #filename = os.path.join(self._data_path, self._mode_sub_folder, 'label_2', index + '.txt')
+        filename = os.path.join(self._data_path, img['filename'])
         #print(img)
         anno_token_list = img['anns']
         annos = []
@@ -241,6 +268,7 @@ class nuscenes_imdb(imdb):
         boxes      = np.zeros((num_objs, 4), dtype=np.uint16)
         boxes_dc   = np.zeros((num_objs, 4), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
+        ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
@@ -261,7 +289,13 @@ class nuscenes_imdb(imdb):
                 x2 = box_coords[2]
                 y2 = box_coords[3]
             #Multiple types of pedestrians, accept all.
-            if('human.pedestrian' in anno['category_name']):
+            if('human.pedestrian.adult' in anno['category_name']):
+                anno_cat = 'human.pedestrian'
+            elif('human.pedestrian.child' in anno['category_name']):
+                anno_cat = 'human.pedestrian'
+            elif('human.pedestrian.construction_worker' in anno['category_name']):
+                anno_cat = 'human.pedestrian'
+            elif('human.pedestrian.police_officer' in anno['category_name']):
                 anno_cat = 'human.pedestrian'
             else:
                 anno_cat = anno['category_name']
@@ -282,35 +316,78 @@ class nuscenes_imdb(imdb):
                 boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
                 ix_dc = ix_dc + 1
                 
+        if(ix == 0):
+            print('removing element {}'.format(img['token']))
+            return None
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
-            'img_index' : img['token'],
+            'img_index': img['token'],
+            'imagefile': filename,
+            'ignore': ignore[0:ix],
+            'det': ignore[0:ix].copy(),
             'boxes': boxes[0:ix],
-            'boxes_dc' : boxes_dc[0:ix_dc],
+            'boxes_dc': boxes_dc[0:ix_dc],
             'gt_classes': gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
             'flipped': False,
             'seg_areas': seg_areas[0:ix]
         }
 
-    def _get_nuscenes_results_file_template(self):
+    def append_flipped_images(self,mode):
+        if(mode == 'train'):
+            num_images = len(self._roidb)
+        elif(mode == 'val'):
+            num_images = len(self._val_roidb)
+        for i in range(num_images):
+            boxes = self.roidb[i]['boxes'].copy()
+            boxes_dc = self.roidb[i]['boxes_dc'].copy()
+            img_token = self.roidb[i]['img_index']
+            filepath  = self.roidb[i]['imagefile']
+            oldx1 = boxes[:, 0].copy()
+            oldx2 = boxes[:, 2].copy()
+            boxes[:, 0] = self._imwidth - oldx2 - 1
+            boxes[:, 2] = self._imwidth - oldx1 - 1
+            oldx1_dc = boxes_dc[:, 0].copy()
+            oldx2_dc = boxes_dc[:, 2].copy()
+            boxes_dc[:, 0] = self._imwidth - oldx2_dc - 1
+            boxes_dc[:, 2] = self._imwidth - oldx1_dc - 1
+            assert (boxes[:, 2] >= boxes[:, 0]).all()
+            assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
+            entry = {
+                'img_index': img_token,
+                'imagefile': filepath,
+                'boxes': boxes,
+                'boxes_dc' : boxes_dc,
+                'gt_classes': self.roidb[i]['gt_classes'],
+                'gt_overlaps': self.roidb[i]['gt_overlaps'],
+                'flipped': True
+            }
+            #Calls self.gt_roidb through a handler.
+            self.roidb.append(entry)
+
+    def _get_nuscenes_results_file_template(self, mode):
         # data/nuscenes/results/<comp_id>_test_aeroplane.txt
-        filename = self._get_comp_id(
-        ) + '_det_' + self._mode_sub_folder + '_{:s}.txt'
+        filename = '_det_' + mode + '_{:s}.txt'
         path = os.path.join(self._devkit_path, 'results', filename)
         return path
 
-    def _write_nuscenes_results_file(self, all_boxes):
+    def _write_nuscenes_results_file(self, all_boxes, mode):
+        if(mode == 'val'):
+            img_idx = self._val_image_index
+        elif(mode == 'train'):
+            img_idx = self._train_image_index
+        elif(mode == 'test'):
+            img_idx = self._test_image_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
             print('Writing {} nuscenes results file'.format(cls))
-            filename = self._get_nuscenes_results_file_template().format(cls)
+            filename = self._get_nuscenes_results_file_template(mode).format(cls)
             with open(filename, 'wt') as f:
                 #f.write('test')
-                for im_ind, index in enumerate(self.image_index):
+                for im_ind, img in enumerate(img_idx):
                     dets = all_boxes[cls_ind][im_ind]
                     #print('index: ' + index)
                     #print(dets)
@@ -319,38 +396,42 @@ class nuscenes_imdb(imdb):
                     # expects 1-based indices
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
-                                index, dets[k, -1], dets[k, 0],
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                                im_ind, img['token'], dets[k, -1], dets[k, 0],
                                 dets[k, 1], dets[k, 2],
                                 dets[k, 3]))
 
-    def _do_python_eval(self, output_dir='output'):
-        #annopath is for labels and only labelled images
-        annopath = os.path.join(self._devkit_path, self._mode_sub_folder, 'label_2')
-        print(annopath)
+    def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files
         #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
-        cachedir = os.path.join(self._devkit_path, 'annotations_cache')
+        if(mode == 'train'):
+            imageset = self._train_image_index
+        elif(mode == 'val'):
+            imageset = self._val_image_index
+        elif(mode == 'test'):
+            imageset = self._test_image_index
+        cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
         for i, cls in enumerate(self._classes):
-            if cls == 'dontcare'  or cls == '__background__':
+            if cls == 'dontcare' or cls == '__background__':
                 continue
             if 'Car' in cls:
                 ovt = 0.7
             else:
                 ovt = 0.5
             #nuscenes/results/comp_X_testing_class.txt
-            detfile = self._get_nuscenes_results_file_template().format(cls)
+            detfile = self._get_nuscenes_results_file_template(mode).format(cls)
             #Run nuscenes evaluation metrics on each image
             rec, prec, ap = nuscenes_eval(
                 detfile,
-                annopath,
-                self._image_index,
+                self,
+                imageset,
                 cls,
                 cachedir,
+                mode,
                 ovthresh=ovt)
             aps[i-1,:] = ap
             #Tell user of AP
@@ -386,12 +467,10 @@ class nuscenes_imdb(imdb):
         print(('Running:\n{}'.format(cmd)))
         status = subprocess.call(cmd, shell=True)
 
-    def evaluate_detections(self, all_boxes, output_dir):
+    def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
         self._write_nuscenes_results_file(all_boxes)
-        self._do_python_eval(output_dir)
-        if self.config['matlab_eval']:
-            self._do_matlab_eval(output_dir)
+        self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':

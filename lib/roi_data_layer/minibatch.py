@@ -29,6 +29,9 @@ def get_minibatch(roidb, num_classes):
 
     # Get the input image blob, formatted for caffe
     im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
+    #print('got image {}'.format(roidb[0]['imagefile']))
+    #print('token {}'.format(roidb[0]['img_index']))
+    #print('is it flipped?: {}'.format(roidb[0]['flipped']))
     #Contains actual image
     blobs = {'data': im_blob}
 
@@ -38,8 +41,9 @@ def get_minibatch(roidb, num_classes):
     # gt boxes: (x1, y1, x2, y2, cls)
     gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
     dc_len  = roidb[0]['boxes_dc'].shape[0]
-
+    blobs['imagefile'] = roidb[0]['imagefile']
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
+    #print('scaling gt boxes by {}'.format(im_scales[0]))
     gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :] * im_scales[0]
     gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
     blobs['gt_boxes'] = gt_boxes
@@ -52,7 +56,7 @@ def get_minibatch(roidb, num_classes):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     #print('gt boxes')
-    assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(roidb[0]['image'])
+    assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(roidb[0]['imagefile'])
     return blobs
 
 
@@ -64,17 +68,12 @@ def _get_image_blob(roidb, scale_inds):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        im = cv2.imread(roidb[i]['image'])
-        #print(roidb[i]['image'])
-        #if('000318' in roidb[i]['image']):
+        im = cv2.imread(roidb[i]['imagefile'])
+        #print(roidb[i]['imagefile'])
+        #if('000318' in roidb[i]['imagefile']):
         #    print('--------------------------')
         #    print('minibatch images')
         #    print('--------------------------')
-        #print(im)
-        #print('input image shape')
-        #print(im.shape)
-        #plt.imshow(im)
-        #plt.show()
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]
@@ -82,10 +81,6 @@ def _get_image_blob(roidb, scale_inds):
                                         cfg.TRAIN.MAX_SIZE)
         im_scales.append(im_scale)
         processed_ims.append(im)
-        #plt.imshow(im)
-        #plt.show()
-        #print('reshaped image shape')
-        #print(im.shape)
     # Create a blob to hold the input images
     blob = im_list_to_blob(processed_ims)
 

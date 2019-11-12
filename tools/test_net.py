@@ -156,4 +156,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
 
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='draw',thresh=0.1)
+    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='draw',thresh=0.1,draw_det=False,eval_det=True)

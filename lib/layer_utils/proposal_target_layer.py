@@ -73,6 +73,7 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
     bbox_targets = clss.new_zeros(clss.numel(), 4 * num_classes)
     bbox_inside_weights = clss.new_zeros(bbox_targets.shape)
     inds = (clss > 0).nonzero().view(-1)
+    #numel -> number of elements
     if inds.numel() > 0:
         clss = clss[inds].contiguous().view(-1, 1)
         dim1_inds = inds.unsqueeze(1).expand(inds.size(0), 4)
@@ -84,7 +85,7 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
 
     return bbox_targets, bbox_inside_weights
 
-
+#ex_rois are pre-computed proposal ROI's to be compared against the GT_ROI's
 def _compute_targets(ex_rois, gt_rois, labels):
     """Compute bounding-box regression targets for an image."""
     # Inputs are tensor

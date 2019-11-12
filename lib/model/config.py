@@ -31,8 +31,10 @@ __C.TRAIN.WEIGHT_DECAY = 0.0001
 __C.TRAIN.GAMMA = 0.5
 
 # Step size for reducing the learning rate, currently only support one step
-__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
-
+#KITTI ~7,000 images in train set
+#__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
+#NUSCENES ~50,000 images in train set
+__C.TRAIN.STEPSIZE = [100000, 400000, 800000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -48,10 +50,6 @@ __C.TRAIN.BIAS_DECAY = False
 # Whether to add ground truth boxes to the pool when sampling regions
 __C.TRAIN.USE_GT = False
 
-# Whether to use aspect-ratio grouping of training images, introduced merely for saving
-# GPU memory
-__C.TRAIN.ASPECT_GROUPING = False
-
 # The number of snapshots kept, older ones are deleted to save space
 __C.TRAIN.SNAPSHOT_KEPT = 3
 
@@ -60,10 +58,15 @@ __C.TRAIN.SUMMARY_INTERVAL = 15
 
 # Scale to use during training (can list multiple scales)
 # The scale is the pixel size of an image's shortest side
-__C.TRAIN.SCALES = (384,)
-
+#KITTI
+#__C.TRAIN.SCALES = (384,)
+#NUSCENES
+__C.TRAIN.SCALES  = (900,)
 # Max pixel size of the longest side of a scaled input image
-__C.TRAIN.MAX_SIZE = 1280
+#KITTI
+#__C.TRAIN.MAX_SIZE = 1280
+#NUSCENES
+__C.TRAIN.MAX_SIZE  = 800
 
 # Images to use per minibatch
 __C.TRAIN.IMS_PER_BATCH = 1
@@ -93,7 +96,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 5000
+__C.TRAIN.SNAPSHOT_ITERS = 10000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -168,11 +171,15 @@ __C.TEST = edict()
 
 # Scale to use during testing (can NOT list multiple scales)
 # The scale is the pixel size of an image's shortest side
-__C.TEST.SCALES = (384,)
-
+#KITTI
+#__C.TEST.SCALES = (384,)
+#NUSCENES
+__C.TEST.SCALES  = (900,)
 # Max pixel size of the longest side of a scaled input image
-__C.TEST.MAX_SIZE = 1280
-
+#KITTI
+#__C.TEST.MAX_SIZE = 1280
+#NUSCENES
+__C.TEST.MAX_SIZE  = 800
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3

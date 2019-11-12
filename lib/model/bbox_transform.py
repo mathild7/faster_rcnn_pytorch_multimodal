@@ -32,6 +32,7 @@ def bbox_transform(ex_rois, gt_rois):
     return targets
 
 
+#Box defines original ROI and then is adjusted by the regression deltas
 def bbox_transform_inv(boxes, deltas):
     # Input should be both tensor or both Variable and on the same device
     if len(boxes) == 0:

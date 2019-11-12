@@ -30,6 +30,7 @@ class imdb(object):
         self._image_index = []
         self._obj_proposer = 'gt'
         self._roidb = None
+        self._val_roidb = None
         # Use this dict for storing dataset specific config options
         self.config = {}
 
@@ -58,8 +59,20 @@ class imdb(object):
         #   flipped
         if self._roidb is not None:
             return self._roidb
-        self._roidb = self.gt_roidb()
+        self._roidb = self.gt_roidb('train')
         return self._roidb
+
+    @property
+    def val_roidb(self):
+        # A roidb is a list of dictionaries, each with the following keys:
+        #   boxes
+        #   gt_overlaps
+        #   gt_classes
+        #   flipped
+        if self._val_roidb is not None:
+            return self._val_roidb
+        self._val_roidb = self.gt_roidb('val')
+        return self._val_roidb
 
     @property
     def cache_path(self):
@@ -231,7 +244,6 @@ class imdb(object):
         roidb = []
         for i in range(self.num_images):
             boxes = box_list[i]
-            print(boxes)
             num_boxes = boxes.shape[0]
             overlaps = np.zeros((num_boxes, self.num_classes),
                                 dtype=np.float32)

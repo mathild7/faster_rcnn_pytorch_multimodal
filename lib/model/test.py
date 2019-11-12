@@ -104,11 +104,11 @@ def im_detect(net, im):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
 
-    _, scores, bbox_pred, rois = net.test_image(blobs['data'],
+    _, probs, bbox_pred, rois = net.test_image(blobs['data'],
                                                 blobs['im_info'])
 
     boxes = rois[:, 1:5] / im_scales[0]
-    scores = np.reshape(scores, [scores.shape[0], -1])
+    probs = np.reshape(probs, [probs.shape[0], -1])
     bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
     if cfg.TEST.BBOX_REG:
         # Apply bounding-box regression deltas
@@ -118,9 +118,9 @@ def im_detect(net, im):
         pred_boxes = _clip_boxes(pred_boxes, im.shape)
     else:
         # Simply repeat the boxes, once for each class
-        pred_boxes = np.tile(boxes, (1, scores.shape[1]))
+        pred_boxes = np.tile(boxes, (1, probs.shape[1]))
 
-    return scores, pred_boxes
+    return probs, pred_boxes
 
 def score_to_color_dict(score):
     color = 'black'
@@ -142,10 +142,10 @@ def score_to_color_dict(score):
         color = 'red'
     return color
 
-def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test'):
+def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_det=False,eval_det=False):
     np.random.seed(cfg.RNG_SEED)
     """Test a Fast R-CNN network on an image database."""
-    num_images = len(imdb.image_index)
+    num_images = len(imdb._test_image_index)
     # all detections are collected into:
     #  all_boxes[cls][image] = N x 5 array of detections in
     #  (x1, y1, x2, y2, score)
@@ -159,7 +159,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test'):
 
     #for i in range(10):
     for i in range(num_images):
-        im = cv2.imread(imdb.image_path_at(i))
+        im = cv2.imread(imdb.image_path_at(i,'test'))
 
         _t['im_detect'].tic()
         scores, boxes = im_detect(net, im)
@@ -198,37 +198,12 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test'):
                 _t['misc'].average_time()))
         
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
-        if('draw' in mode or 'exp' in mode):
-            fig, ax = plt.subplots(1)
-            ax.imshow(im)
-            for j in range(1,imdb.num_classes):
-                #j is detection index
-                dets = all_boxes[j][i]
-                for k in range(dets.shape[0]):
-                    if(dets[k][4] > 0.20):
-                        #Left
-                        x1 = dets[k][0]
-                        #Top
-                        y1 = dets[k][1]
-                        #Right
-                        x2 = dets[k][2]
-                        #Bottom
-                        y2 = dets[k][3]
-                        #Score
-                        local_score = dets[k][4]
-                        im_width = x2 - x1
-                        im_height = y2 - y1
-                        rect = patches.Rectangle((x1, y1), im_width, im_height, linewidth=1, edgecolor=score_to_color_dict(local_score), facecolor='none')
-                        ax.add_patch(rect)
-            plt.show()
+        if(draw_det):
+            imdb.draw_and_save_eval(i,all_boxes,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
-    if('eval' in mode):
+    if(eval_det):
         print('Evaluating detections')
-        imdb.evaluate_detections(all_boxes, output_dir)
-    elif('draw' in mode):
-        print('Evaluating detections')
-        imdb.evaluate_detections(all_boxes, output_dir)
-        print('Drawing boxes over images')
+        imdb.evaluate_detections(all_boxes, output_dir,'val')

@@ -21,9 +21,10 @@ import time
 class RoIDataLayer(object):
     """Fast R-CNN data layer used for training."""
     #TODO: Handle validation and training seperately.
-    def __init__(self, roidb, num_classes, random=False):
+    def __init__(self, roidb, num_classes, mode, random=False):
         """Set the roidb to be used by this layer during training."""
         self._roidb = roidb
+        self._mode  = mode
         self._num_classes = num_classes
         # Also set a random flag
         self._random = random
@@ -39,21 +40,7 @@ class RoIDataLayer(object):
             millis = int(round(time.time() * 1000)) % 4294967295
             np.random.seed(millis)
 
-        if cfg.TRAIN.ASPECT_GROUPING:
-            widths = np.array([r['width'] for r in self._roidb])
-            heights = np.array([r['height'] for r in self._roidb])
-            horz = (widths >= heights)
-            vert = np.logical_not(horz)
-            horz_inds = np.where(horz)[0]
-            vert_inds = np.where(vert)[0]
-            inds = np.hstack((np.random.permutation(horz_inds),
-                              np.random.permutation(vert_inds)))
-            inds = np.reshape(inds, (-1, 2))
-            row_perm = np.random.permutation(np.arange(inds.shape[0]))
-            inds = np.reshape(inds[row_perm, :], (-1, ))
-            self._perm = inds
-        else:
-            self._perm = np.random.permutation(np.arange(len(self._roidb)))
+        self._perm = np.random.permutation(np.arange(len(self._roidb)))
         # Restore the random state
         if self._random:
             np.random.set_state(st0)

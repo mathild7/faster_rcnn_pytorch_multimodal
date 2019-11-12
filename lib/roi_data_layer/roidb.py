@@ -14,29 +14,43 @@ from model.config import cfg
 import PIL
 
 
-def prepare_roidb(imdb):
+def prepare_roidb(mode,imdb):
     """Enrich the imdb's roidb by adding some derived quantities that
   are useful for training. This function precomputes the maximum
   overlap, taken over ground-truth boxes, between each ROI and
   each ground-truth box. The class with maximum overlap is also
   recorded.
   """
-    roidb = imdb.roidb
-    if not (imdb.name.startswith('coco')):
+    if(mode == 'train'):
+        roidb = imdb.roidb
+        idx = len(imdb.roidb)
+    elif(mode == 'test'):
+        roidb = imdb.test_roidb
+        idx = imdb._num_test_images
+    elif(mode == 'val'):
+        roidb = imdb.val_roidb
+        idx = len(imdb.val_roidb)
+    if(imdb.name == 'kitti'):
         sizes = [
             PIL.Image.open(imdb.image_path_at(i)).size
             for i in range(imdb.num_images)
         ]
+    elif(imdb.name == 'nuscenes'):
+        #Bad practice, oh well.
+        #sizes = np.empty([img_idx,2])
+        sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
+        #sizes[:][1] = np.full(img_idx,imdb._imheight)
     #Loop thru all images
-    print('index size {:d}'.format(len(imdb.image_index)))
-    for i in range(len(imdb.image_index)):
+    print('index size {:d}'.format(idx))
+    for i in range(idx):
         #Store image path
-        roidb[i]['image'] = imdb.image_path_at(i)
-        #print('Preparing ROI\'s for image {:s} '.format(roidb[i]['image']))
-        if not (imdb.name.startswith('coco')):
-            #store weidth and height of entire image (why?)
-            roidb[i]['width'] = sizes[i][0]
-            roidb[i]['height'] = sizes[i][1]
+        if(imdb.name == 'kitti'):
+            roidb[i]['imagefile'] = imdb.image_path_at(i)
+
+        #print('Preparing ROI\'s for image {:s} '.format(roidb[i]['imagefile']))
+        #store weidth and height of entire image (why?)
+        roidb[i]['width'] = sizes[i][0]
+        roidb[i]['height'] = sizes[i][1]
         # need gt_overlaps as a dense array for argmax
         gt_overlaps = roidb[i]['gt_overlaps'].toarray()
         # max overlap with gt over classes (columns)

@@ -8,7 +8,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorboardX as tb
-
+from model.bbox_transform import bbox_transform_inv, clip_boxes
 from model.config import cfg
 import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
@@ -20,13 +20,47 @@ except ImportError:
 
 import torch
 import torch.optim as optim
-
+from torchvision.ops import nms
 import numpy as np
 import os
 import sys
 import glob
 import time
 
+def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes):
+    print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
+    rois = rois[:, 1:5] / imscale
+    #Deleting extra dim
+    cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
+    bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
+    pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
+    # x1 >= 0
+    pred_boxes[:, 0::4] = np.maximum(pred_boxes[:, 0::4], 0)
+    # y1 >= 0
+    pred_boxes[:, 1::4] = np.maximum(pred_boxes[:, 1::4], 0)
+    # x2 < imwidth
+    pred_boxes[:, 2::4] = np.minimum(pred_boxes[:, 2::4], imwidth - 1)
+    # y2 < imheight
+    pred_boxes[:, 3::4] = np.minimum(pred_boxes[:, 3::4], imheight - 1)
+    all_boxes = []
+    # skip j = 0, because it's the background class
+    for i,score in enumerate(cls_score):
+        for cls_s in score:
+            if(cls_s > 0.1 or cls_s < 0.0):
+                print('score for entry {} is {}'.format(i,cls_s))
+    for j in range(1, num_classes):
+        inds = np.where(cls_score[:, j] > 0.1)[0]
+        cls_scores = cls_score[inds, j]
+        cls_boxes = pred_boxes[inds, j * 4:(j + 1) * 4]
+        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
+            .astype(np.float32, copy=False)
+        keep = nms(
+            torch.from_numpy(cls_boxes), torch.from_numpy(cls_scores),
+            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
+        cls_dets = cls_dets[keep, :]
+        all_boxes.append(cls_dets)
+
+    return all_boxes
 
 def scale_lr(optimizer, scale):
     """Scale the learning rate of the optimizer"""
@@ -43,12 +77,14 @@ class SolverWrapper(object):
                  network,
                  imdb,
                  roidb,
+                 val_roidb,
                  output_dir,
                  tbdir,
                  pretrained_model=None):
         self.net = network
         self.imdb = imdb
         self.roidb = roidb
+        self.val_roidb = val_roidb
         self.output_dir = output_dir
         self.tbdir = tbdir
         # Simply put '_val' at the end to save the summaries from the validation set
@@ -242,13 +278,13 @@ class SolverWrapper(object):
         # Build data layers for both training and validation set
         #TODO: Add these to config file
         sum_size = 128
-        epoch_size = 7000
+        val_sum_size = 1000
+        epoch_size = 50000
         update_weights = False
         batch_size = 16
 
         self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
-        self.data_layer_val = RoIDataLayer(
-            self.roidb, self.imdb.num_classes, 'val', random=True)       
+        self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)       
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -276,6 +312,7 @@ class SolverWrapper(object):
         self.net.to(self.net._device)
         loss_cumsum = 0
         while iter < max_iters + 1:
+            #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % batch_size == 0 and iter != 0:
                 update_weights = True
@@ -296,7 +333,7 @@ class SolverWrapper(object):
             now = time.time()
 
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
-            if iter % sum_size == 0:
+            if iter % val_sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
@@ -308,10 +345,24 @@ class SolverWrapper(object):
                     self.writer.add_summary(_sum, float(iter))
                 # Also check the summary on the validation set (single image)
                 blobs_val = self.data_layer_val.forward()
-                summary_val = self.net.get_summary(blobs_val, sum_size)
+                summary_val, rois_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, sum_size)
+                #im info 0 -> H 1 -> W 2 -> scale
+                bbox_pred_val = compute_bbox(rois_val,bbox_pred_val,cls_prob_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes)
+                self.imdb.draw_and_save_eval(blobs_val,bbox_pred_val,iter)
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
+                last_summary_time = now
+            elif iter % sum_size == 0:
+                #print('performing summary at iteration: {:d}'.format(iter))
+                # Compute the graph with summary
+                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
+                  self.net.train_step_with_summary(blobs, self.optimizer, sum_size, update_weights)
+                loss_cumsum += total_loss
+                for _sum in summary:
+                    #print('summary')
+                    #print(_sum)
+                    self.writer.add_summary(_sum, float(iter))
                 last_summary_time = now
             else:
                 # Compute the graph without summary
@@ -369,6 +420,9 @@ def filter_roidb(roidb):
         # Valid images have:
         #   (1) At least one foreground RoI OR
         #   (2) At least one background RoI
+        if('max_overlaps' not in entry):
+            print('about to fail')
+            print(entry)
         overlaps = entry['max_overlaps']
         # find boxes with sufficient overlap
         fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
@@ -389,18 +443,19 @@ def filter_roidb(roidb):
 
 def train_net(network,
               imdb,
-              roidb,
               output_dir,
               tb_dir,
               pretrained_model=None,
               max_iters=40000):
     """Train a Faster R-CNN network."""
-    roidb = filter_roidb(roidb)
-
+    roidb = filter_roidb(imdb.roidb)
+    val_roidb = filter_roidb(imdb.val_roidb)
+    #TODO: merge with train_val as one entire object
     sw = SolverWrapper(
         network,
         imdb,
         roidb,
+        val_roidb,
         output_dir,
         tb_dir,
         pretrained_model=pretrained_model)

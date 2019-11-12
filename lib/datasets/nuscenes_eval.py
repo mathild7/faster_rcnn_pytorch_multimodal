@@ -101,12 +101,13 @@ def nuscenes_ap(rec, prec):
     ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
 
-
 def nuscenes_eval(detpath,
              annopath,
+             imdb,
              imageset,
              classname,
              cachedir,
+             mode,
              image_dir='label_2',
              ovthresh=0.5):
     #Min overlap is 0.7 for cars, 0.5 for ped/bike
@@ -137,22 +138,27 @@ def nuscenes_eval(detpath,
     # first load gt
     if not os.path.isdir(cachedir):
         os.mkdir(cachedir)
-    cachefile = os.path.join(cachedir, '%s_annots.pkl' % image_dir)
+    cachefile = os.path.join(cachedir, '{}_{}_annots.pkl'.format(mode,classname))
     # read list of images
     imagenames = imageset
-    idx_names = []
-    for image in imageset:
-        idx_names.append(image)
     if not os.path.isfile(cachefile):
         # load annotations
-        recs = {}
-        for i, idx_name in enumerate(idx_names):
-            recs[idx_name] = parse_rec(annopath + '/' + idx_names[i] + '.txt')
+        class_recs = {}
+        for i, img in enumerate(imageset):
+            #Load annotations for image, cut any elements not in classname
+            tmp_rec = imdb._load_nuscenes_annotation(img)
+            gt_class_idx = np.where(tmp_rec['gt_classes'] == classname)
+            tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
+            tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+            tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
+            tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
+            tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+            class_recs.append(tmp_rec)
             #Only print every hundredth annotation?
             if i % 10 == 0:
                 #print(recs[idx_name])
                 print('Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(idx_names)))
+                    i + 1, len(imageset)))
         # save
         print('Saving cached annotations to {:s}'.format(cachefile))
         with open(cachefile, 'wb') as f:
@@ -162,42 +168,11 @@ def nuscenes_eval(detpath,
         print('loading cached annotations from {:s}'.format(cachefile))
         with open(cachefile, 'rb') as f:
             try:
-                recs = pickle.load(f)
+                class_recs = pickle.load(f)
             except:
-                recs = pickle.load(f, encoding='bytes')
+                class_recs = pickle.load(f, encoding='bytes')
 
-    # extract gt objects for this class
-    class_recs = {}
-    for idx_name in idx_names:
-        #print('index: {:s}'.format(idx_name))
-        #print(recs[idx_name])
-        R = [obj for obj in recs[idx_name] if obj['name'] == classname]
-        R_dc = [obj for obj in recs[idx_name] if obj['name'] == 'DontCare']
-        bbox = np.array([x['bbox'] for x in R])
-        bbox_dc = np.array([x['bbox'] for x in R_dc])
-        #if use_diff:
-        #    difficult = np.array([False for x in R]).astype(np.bool)
-        #else:
-        occ   = np.array([x['occluded'] for x in R])
-        trunc = np.array([x['truncated'] for x in R])
-        det = [False] * len(R)
-        ignore = [True] * len(R)
-        diff_e = [False] * len(R)
-        diff_m = [False] * len(R)
-        diff_h = [False] * len(R)
-        #npos = npos + sum(~difficult)
-        class_recs[idx_name] = {
-            'bbox': bbox,
-            'bbox_dc': bbox_dc,
-            'occlusion': occ,
-            'truncated': trunc,
-            'hit': det,
-            #dont ignore any ROIs for now
-            'easy': diff_e,
-            'medium': diff_m,
-            'hard': diff_h,
-            'ignore': ignore
-        }
+    #----------------------------------------------------
     ovthresh_dc = 0.5
     # read dets
     detfile = detpath.format(classname)
@@ -207,13 +182,15 @@ def nuscenes_eval(detpath,
         lines = f.readlines()
 
     splitlines = [x.strip().split(' ') for x in lines]
-    image_ids = [x[0] for x in splitlines]
-    confidence = np.array([float(x[1]) for x in splitlines])
+    #Many entries have the same idx & token
+    image_idx = [x[0] for x in splitlines]
+    image_tokens = [x[1] for x in splitlines]
+    confidence = np.array([float(x[2]) for x in splitlines])
     #All detections for specific class
-    BB = np.array([[float(z) for z in x[2:]] for x in splitlines])
+    BB = np.array([[float(z) for z in x[3:]] for x in splitlines])
 
     #Repeated for X detections along every image presented
-    idx = len(image_ids)
+    idx = len(image_idx)
     #3 types, easy medium hard
     tp = np.zeros((idx, 3))
     fp = np.zeros((idx, 3))
@@ -223,13 +200,21 @@ def nuscenes_eval(detpath,
         sorted_ind = np.argsort(-confidence)
         sorted_scores = np.sort(-confidence)
         BB = BB[sorted_ind, :]
-        image_ids = [image_ids[x] for x in sorted_ind]
+        image_idx_sorted = [image_idx[x] for x in sorted_ind]
+        image_tokens_sorted = [image_tokens[x] for x in sorted_ind]
         #print(image_ids)
 
         # go down dets and mark true positives and false positives
-        for d in range(idx):
+        for d,token in zip(image_idx_sorted,image_tokens_sorted):
             #R is a subset of detections for a specific class
-            R = class_recs[image_ids[d]]
+
+            #Need to find associated GT image ID alongside its detection id 'd'
+            R = {}
+            for rec in class_recs:
+                if(rec['token'] == token):
+                    R.append(rec)
+            #Deprecated
+            #R = class_recs[image_ids[d]]
             bb = BB[d, :].astype(float)
             ovmax = -np.inf
             cat = []
@@ -242,18 +227,8 @@ def nuscenes_eval(detpath,
             for i, BBGT_elem in enumerate(BBGT):
                 BBGT_height = BBGT_elem[3] - BBGT_elem[1]
                 if(R['ignore'][i] is True):
-                    if(R['occlusion'][i].astype(int) <= 2 and R['truncated'][i].astype(float) <= 0.5 and (BBGT_height) >= 25):
-                        R['hard'][i] = True
-                        R['ignore'][i] = False
-                        npos[d, 2] += 1
-                    if(R['occlusion'][i].astype(int) <= 1 and R['truncated'][i].astype(float) <= 0.3 and (BBGT_height) >= 25):
-                        R['medium'][i] = True
-                        R['ignore'][i] = False
-                        npos[d, 1] += 1
-                    if(R['occlusion'][i].astype(int) <= 0 and R['truncated'][i].astype(float) <= 0.15 and (BBGT_height) >= 40):
-                        R['easy'][i] = True
-                        R['ignore'][i] = False
-                        npos[d, 0] += 1
+                    R['ignore'][i] = False
+                    npos[d, 0] += 1
             ovmax_dc = 0
             if BBGT_dc.size > 0:
                 ixmin_dc = np.maximum(BBGT_dc[:, 0], bb[0])
@@ -300,29 +275,14 @@ def nuscenes_eval(detpath,
                 #ignore if not contained within easy, medium, hard
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
-                        if(R['easy'][jmax] is True):
-                            tp[d][0] += 1
-                        if(R['medium'][jmax] is True):
-                            tp[d][1] += 1
-                        if(R['hard'][jmax] is True):
-                            tp[d][2] += 1
+                        tp[d][0] += 1
                         R['hit'][jmax] = True
                     else:
                         #If it already exists, cant double classify on same spot.
-                        if(R['easy'][jmax] and bb[3] - bb[1] >= 25):
-                            fp[d][0] += 1
-                        if(R['medium'][jmax] and bb[3] - bb[1] >= 25):
-                            fp[d][1] += 1
-                        if(R['hard'][jmax] and bb[3] - bb[1] >= 25):
-                            fp[d][2] += 1
+                        fp[d][0] += 1
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
-                if(R['easy'][jmax] is True and bb[3] - bb[1] >= 25):
-                    fp[d][0] += 1
-                if(R['medium'][jmax] is True and bb[3] - bb[1] >= 25):
-                    fp[d][1] += 1
-                if(R['hard'][jmax] is True and bb[3] - bb[1] >= 25):
-                    fp[d][2] += 1
+                fp[d][0] += 1
 
     map = mrec = mprec = np.zeros(3)
     prec = []
@@ -332,7 +292,7 @@ def nuscenes_eval(detpath,
     #fn     = 1-fp
     #fn_sum = np.cumsum(fn, axis=0)
     npos_sum = np.sum(npos, axis=0)
-    for i in range(0,3):
+    for i in range(0):
         #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
         #recall
         #Per image per class AP

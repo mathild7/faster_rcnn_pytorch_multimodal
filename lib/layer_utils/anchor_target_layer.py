@@ -59,7 +59,6 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
     overlaps_dc = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes_dc, dtype=np.float))
-
     overlaps_dc_idx = np.argwhere(overlaps_dc > cfg.TRAIN.DC_THRESH)
     if cfg.TRAIN.IGNORE_DC:
         labels[overlaps_dc_idx[:, 0]] = -1
@@ -106,7 +105,6 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
         disable_inds = npr.choice(
             bg_inds, size=(len(bg_inds) - num_bg), replace=False)
         labels[disable_inds] = -1
-
     #Find target bounding boxes
     bbox_targets = np.zeros((len(inds_inside), 4), dtype=np.float32)
     bbox_targets = _compute_targets(anchors, gt_boxes[argmax_overlaps, :])

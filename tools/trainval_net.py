@@ -83,38 +83,47 @@ def parse_args(manual_mode=False):
     return args
 
 
-def get_training_validation_roidb(imdb,draw_and_save=False):
+def get_training_validation_roidb(mode,imdb,draw_and_save=False):
+    """Returns a roidb (Region of Interest database) for use in training."""
+    if(mode == 'train'):
+        roidb_dummy = imdb.roidb
+    elif(mode == 'val'):
+        roidb_dummy = imdb.val_roidb
+    if cfg.TRAIN.USE_FLIPPED and mode == 'train':
+        print('Appending horizontally-flipped training examples...')
+        imdb.append_flipped_images(mode)
+        print('done')
     print('Preparing ROIs per image... ')
-    rdl_roidb.prepare_roidb(imdb)
+    rdl_roidb.prepare_roidb(mode,imdb)
     print('done')
     if(draw_and_save):
         print('drawing and saving images')
         imdb.draw_and_save()
-    """Returns a roidb (Region of Interest database) for use in training."""
-    if cfg.TRAIN.USE_FLIPPED:
-        print('Appending horizontally-flipped training examples...')
-        imdb.append_flipped_images()
-        print('done')
-    return imdb.roidb
+    if(mode == 'train'):
+        return imdb.roidb
+    elif(mode == 'val'):
+        return imdb.val_roidb
+    else:
+        return None
 
-def combined_roidb(mode,dataset,draw_and_save=False):
+def combined_roidb(mode,dataset,draw_and_save=False,imdb=None):
     """
   Combine multiple roidbs
   """
-
-    if(dataset == 'kitti'):
-        imdb = kitti_imdb(mode)
-    elif(dataset == 'nuscenes'):
-        imdb = nuscenes_imdb(mode)
-    else:
-        print('Requested dataset is not available')
-        return
-    print('Loaded dataset `{:s}` for training'.format(imdb.name))
-    #Use gt_roidb located in kitti_imdb.py
-    #imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
-    print('Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD))
-    print('mode {:s}'.format(mode))
-    roidb = get_training_validation_roidb(imdb,draw_and_save)
+    if(mode == 'train'):
+        if(dataset == 'kitti'):
+            imdb = kitti_imdb(mode)
+        elif(dataset == 'nuscenes'):
+            imdb = nuscenes_imdb(mode)
+        else:
+            print('Requested dataset is not available')
+            return
+        print('Loaded dataset `{:s}` for training'.format(imdb.name))
+        #Use gt_roidb located in kitti_imdb.py
+        #imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
+        print('Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD))
+    print('getting ROIDB Ready for mode {:s}'.format(mode))
+    roidb = get_training_validation_roidb(mode,imdb,draw_and_save)
 
     return imdb, roidb
 
@@ -122,16 +131,15 @@ def combined_roidb(mode,dataset,draw_and_save=False):
 if __name__ == '__main__':
     manual_mode = True
     args = parse_args(manual_mode)
+    #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
         args.imdb_name = 'nuscenes'
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/nuscenes/'
-        args.weight = os.path.join(args.imdb_root_dir, 'weights', 'resnet101-caffe.pth')
-        #args.weight = os.path.join(args.imdb_root_dir, 'weights/res101_faster_rcnn_iter_110000.pth')
-        #args.weight = os.path.join(args.imdb_root_dir, 'weights', 'vgg16-397923af.pth')
-        args.imdbval_name = 'evaluation'
-        args.max_iters = 400000
+        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', 'resnet101-caffe.pth')
+        #args.imdbval_name = 'evaluation'
+        args.max_iters = 1000000
     print('Called with args:')
     print(args)
     draw_and_save = False
@@ -146,10 +154,11 @@ if __name__ == '__main__':
     np.random.seed(cfg.RNG_SEED)
 
     # train set
-    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save)
+    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None)
+    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb)
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
-
+    print('{:d} val roidb entries'.format(len(val_roidb)))
     # output directory where the models are saved
     output_dir = get_output_dir(imdb, args.tag)
     print('Output will be saved to `{:s}`'.format(output_dir))
@@ -161,8 +170,6 @@ if __name__ == '__main__':
     # also add the validation set, but with no flipping images
     orgflip = cfg.TRAIN.USE_FLIPPED
     cfg.TRAIN.USE_FLIPPED = False
-    print('val imdb')
-    print(args.imdbval_name)
     print('imdb')
     print(args.imdb_name)
     cfg.TRAIN.USE_FLIPPED = orgflip
@@ -183,7 +190,6 @@ if __name__ == '__main__':
     train_net(
         net,
         imdb,
-        roidb,
         output_dir,
         tb_dir,
         pretrained_model=args.weight,
