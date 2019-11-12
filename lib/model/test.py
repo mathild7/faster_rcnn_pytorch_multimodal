@@ -145,7 +145,10 @@ def score_to_color_dict(score):
 def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_det=False,eval_det=False):
     np.random.seed(cfg.RNG_SEED)
     """Test a Fast R-CNN network on an image database."""
-    num_images = len(imdb._test_image_index)
+    if(mode == 'test'):
+        num_images = len(imdb._test_image_index)
+    elif(mode == 'val'):
+        num_images = len(imdb._val_image_index)
     # all detections are collected into:
     #  all_boxes[cls][image] = N x 5 array of detections in
     #  (x1, y1, x2, y2, score)
@@ -159,7 +162,8 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_
 
     #for i in range(10):
     for i in range(num_images):
-        im = cv2.imread(imdb.image_path_at(i,'test'))
+        imfile = imdb.image_path_at(i,mode)
+        im = cv2.imread(imfile)
 
         _t['im_detect'].tic()
         scores, boxes = im_detect(net, im)
@@ -199,7 +203,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_
         
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
         if(draw_det):
-            imdb.draw_and_save_eval(i,all_boxes,mode)
+            imdb.draw_and_save_eval(imfile,all_boxes[:][i][:],i,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

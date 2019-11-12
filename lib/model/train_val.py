@@ -26,9 +26,9 @@ import os
 import sys
 import glob
 import time
-
-def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes):
-    print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
+#TODO: Could use original imwidth/imheight
+def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes,thresh=0.1):
+    #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
     rois = rois[:, 1:5] / imscale
     #Deleting extra dim
     cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
@@ -39,17 +39,17 @@ def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_cla
     # y1 >= 0
     pred_boxes[:, 1::4] = np.maximum(pred_boxes[:, 1::4], 0)
     # x2 < imwidth
-    pred_boxes[:, 2::4] = np.minimum(pred_boxes[:, 2::4], imwidth - 1)
-    # y2 < imheight
-    pred_boxes[:, 3::4] = np.minimum(pred_boxes[:, 3::4], imheight - 1)
+    pred_boxes[:, 2::4] = np.minimum(pred_boxes[:, 2::4], imwidth/imscale - 1)
+    # y2 < imheight 3::4 means start at 3 then jump every 4
+    pred_boxes[:, 3::4] = np.minimum(pred_boxes[:, 3::4], imheight/imscale - 1)
     all_boxes = []
     # skip j = 0, because it's the background class
-    for i,score in enumerate(cls_score):
-        for cls_s in score:
-            if(cls_s > 0.1 or cls_s < 0.0):
-                print('score for entry {} is {}'.format(i,cls_s))
+    #for i,score in enumerate(cls_score):
+    #    for j,cls_s in enumerate(score):
+    #        if((cls_s > thresh or cls_s < 0.0) and j > 0):
+                #print('score for entry {} and class {} is {}'.format(i,j,cls_s))
     for j in range(1, num_classes):
-        inds = np.where(cls_score[:, j] > 0.1)[0]
+        inds = np.where(cls_score[:, j] > thresh)[0]
         cls_scores = cls_score[inds, j]
         cls_boxes = pred_boxes[inds, j * 4:(j + 1) * 4]
         cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
@@ -80,6 +80,11 @@ class SolverWrapper(object):
                  val_roidb,
                  output_dir,
                  tbdir,
+                 sum_size,
+                 val_sum_size,
+                 epoch_size,
+                 batch_size,
+                 val_im_thresh,
                  pretrained_model=None):
         self.net = network
         self.imdb = imdb
@@ -87,6 +92,11 @@ class SolverWrapper(object):
         self.val_roidb = val_roidb
         self.output_dir = output_dir
         self.tbdir = tbdir
+        self.sum_size = sum_size
+        self.val_sum_size = val_sum_size
+        self.epoch_size = epoch_size
+        self.batch_size = batch_size
+        self.val_im_thresh = val_im_thresh
         # Simply put '_val' at the end to save the summaries from the validation set
         self.tbvaldir = tbdir + '_val'
         if not os.path.exists(self.tbvaldir):
@@ -276,13 +286,7 @@ class SolverWrapper(object):
 
     def train_model(self, max_iters):
         # Build data layers for both training and validation set
-        #TODO: Add these to config file
-        sum_size = 128
-        val_sum_size = 1000
-        epoch_size = 50000
         update_weights = False
-        batch_size = 16
-
         self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
         self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)       
         # Construct the computation graph
@@ -314,7 +318,7 @@ class SolverWrapper(object):
         while iter < max_iters + 1:
             #print('iteration # {}'.format(iter))
             # Learning rate
-            if iter % batch_size == 0 and iter != 0:
+            if iter % self.batch_size == 0 and iter != 0:
                 update_weights = True
             else:
                 update_weights = False
@@ -333,11 +337,11 @@ class SolverWrapper(object):
             now = time.time()
 
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
-            if iter % val_sum_size == 0:
+            if iter % self.val_sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, sum_size, update_weights)
+                  self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss
                 for _sum in summary:
                     #print('summary')
@@ -345,19 +349,19 @@ class SolverWrapper(object):
                     self.writer.add_summary(_sum, float(iter))
                 # Also check the summary on the validation set (single image)
                 blobs_val = self.data_layer_val.forward()
-                summary_val, rois_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, sum_size)
+                summary_val, rois_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, self.sum_size)
                 #im info 0 -> H 1 -> W 2 -> scale
-                bbox_pred_val = compute_bbox(rois_val,bbox_pred_val,cls_prob_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes)
-                self.imdb.draw_and_save_eval(blobs_val,bbox_pred_val,iter)
+                bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
+                self.imdb.draw_and_save_eval(blobs_val['imagefile'],bbox_pred_val,iter,'trainval')
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
                 last_summary_time = now
-            elif iter % sum_size == 0:
+            elif iter % self.sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, sum_size, update_weights)
+                  self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss
                 for _sum in summary:
                     #print('summary')
@@ -386,9 +390,9 @@ class SolverWrapper(object):
                 self.net.print_cumulative_loss(iter-(iter%16),iter, max_iters, lr)
                 print('speed: {:.3f}s / iter'.format(
                     utils.timer.timer.average_time()))
-            if iter % epoch_size == 0:
+            if iter % self.epoch_size == 0:
                 print('----------------------------------------------------')
-                print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(epoch_size)))
+                print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(self.epoch_size)))
                 print('----------------------------------------------------')
                 loss_cumsum = 0
                 # for k in utils.timer.timer._average_time.keys():
@@ -446,9 +450,14 @@ def train_net(network,
               output_dir,
               tb_dir,
               pretrained_model=None,
-              max_iters=40000):
+              max_iters=40000,
+              sum_size=128,
+              val_sum_size=1000,
+              batch_size=16,
+              val_im_thresh=0.1):
     """Train a Faster R-CNN network."""
     roidb = filter_roidb(imdb.roidb)
+    epoch_size = len(roidb)
     val_roidb = filter_roidb(imdb.val_roidb)
     #TODO: merge with train_val as one entire object
     sw = SolverWrapper(
@@ -458,6 +467,11 @@ def train_net(network,
         val_roidb,
         output_dir,
         tb_dir,
+        sum_size,
+        val_sum_size,
+        epoch_size,
+        batch_size,
+        val_im_thresh,
         pretrained_model=pretrained_model)
 
     print('Solving...')

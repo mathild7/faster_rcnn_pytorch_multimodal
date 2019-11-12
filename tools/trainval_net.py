@@ -193,4 +193,8 @@ if __name__ == '__main__':
         output_dir,
         tb_dir,
         pretrained_model=args.weight,
-        max_iters=args.max_iters)
+        max_iters=args.max_iters,
+        sum_size=128,
+        val_sum_size=1000,
+        batch_size=16,
+        val_im_thresh=0.1)

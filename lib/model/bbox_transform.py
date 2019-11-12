@@ -40,9 +40,10 @@ def bbox_transform_inv(boxes, deltas):
 
     widths = boxes[:, 2] - boxes[:, 0] + 1.0
     heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    #Re-centering top left hand corner
     ctr_x = boxes[:, 0] + 0.5 * widths
     ctr_y = boxes[:, 1] + 0.5 * heights
-
+    #16 elements for 4 classes
     dx = deltas[:, 0::4]
     dy = deltas[:, 1::4]
     dw = deltas[:, 2::4]

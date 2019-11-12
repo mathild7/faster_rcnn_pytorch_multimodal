@@ -74,6 +74,8 @@ class nuscenes_imdb(imdb):
         if(mode == 'train'):
             self._val_scenes = create_splits_scenes()['val']
             self._train_scenes = create_splits_scenes()['train']
+        elif(mode == 'val'):
+            self._val_scenes = create_splits_scenes()['val']
         else:
             self._test_scenes = create_splits_scenes()['test']
         #print(self._train_scenes)
@@ -87,11 +89,21 @@ class nuscenes_imdb(imdb):
                     self._train_image_index.append(rec_tmp)
                 elif(rec_tmp['scene_name'] in self._val_scenes):
                     self._val_image_index.append(rec_tmp)
+                elif(rec_tmp['scene_name'] in self._train_scenes):
+                    self._test_image_index.append(rec_tmp)
         #Get global image info
         if(mode == 'train'):
             self._imwidth  = self._train_image_index[0]['width']
             self._imheight = self._train_image_index[0]['height']
             self._imtype   = self._train_image_index[0]['fileformat']
+        elif(mode == 'val'):
+            self._imwidth  = self._val_image_index[0]['width']
+            self._imheight = self._val_image_index[0]['height']
+            self._imtype   = self._val_image_index[0]['fileformat']
+        elif(mode == 'test'):
+            self._imwidth  = self._test_image_index[0]['width']
+            self._imheight = self._test_image_index[0]['height']
+            self._imtype   = self._test_image_index[0]['fileformat']
         assert os.path.exists(self._devkit_path), \
             'nuscenes dataset path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), \
@@ -178,14 +190,15 @@ class nuscenes_imdb(imdb):
                     print('Saving file at location {}'.format(roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/')))
                     source_img.save(roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/'),'JPEG')    
 
-    def draw_and_save_eval(self,blob,dets,iter):
+    def draw_and_save_eval(self,imfile,dets,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
-        out_file = blob['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_eval/iter_{}_'.format(iter))
-        source_img = Image.open(blob['imagefile'])
+        out_file = imfile.replace('samples/CAM_FRONT/','samples/cam_front_{}/iter_{}_'.format(mode,iter))
+        source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
         for class_dets in dets:
+            #Set of detections, one for each class
             for det in class_dets:
-                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,det[4]*255,0))
+                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,'JPEG')    
 
@@ -367,9 +380,9 @@ class nuscenes_imdb(imdb):
             #Calls self.gt_roidb through a handler.
             self.roidb.append(entry)
 
-    def _get_nuscenes_results_file_template(self, mode):
+    def _get_nuscenes_results_file_template(self, mode,class_name):
         # data/nuscenes/results/<comp_id>_test_aeroplane.txt
-        filename = '_det_' + mode + '_{:s}.txt'
+        filename = '_det_' + mode + '_{:s}.txt'.format(class_name)
         path = os.path.join(self._devkit_path, 'results', filename)
         return path
 
@@ -384,7 +397,7 @@ class nuscenes_imdb(imdb):
             if cls == 'dontcare' or cls == '__background__':
                 continue
             print('Writing {} nuscenes results file'.format(cls))
-            filename = self._get_nuscenes_results_file_template(mode).format(cls)
+            filename = self._get_nuscenes_results_file_template(mode,cls)
             with open(filename, 'wt') as f:
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
@@ -423,7 +436,7 @@ class nuscenes_imdb(imdb):
             else:
                 ovt = 0.5
             #nuscenes/results/comp_X_testing_class.txt
-            detfile = self._get_nuscenes_results_file_template(mode).format(cls)
+            detfile = self._get_nuscenes_results_file_template(mode,cls)
             #Run nuscenes evaluation metrics on each image
             rec, prec, ap = nuscenes_eval(
                 detfile,
@@ -475,7 +488,7 @@ class nuscenes_imdb(imdb):
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_nuscenes_results_file_template().format(cls)
+                filename = self._get_nuscenes_results_file_template(mode,cls)
                 os.remove(filename)
 
     def competition_mode(self, on):

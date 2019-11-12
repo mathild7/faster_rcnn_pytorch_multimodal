@@ -21,6 +21,7 @@ from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
 from nets.mobilenet_v1 import mobilenetv1
 from datasets.kitti_imdb import kitti_imdb
+from datasets.nuscenes_imdb import nuscenes_imdb
 import torch
 
 def parse_args(manual_mode):
@@ -122,8 +123,10 @@ if __name__ == '__main__':
     #tag = args.tag
     #tag = tag if tag else 'default'
     #filename = tag + '/' + filename
-
-    imdb = kitti_imdb(mode='eval')
+    if(args.imdb_name == 'Kitti'):
+        imdb = kitti_imdb(mode='eval')
+    elif(dataset == 'nuscenes'):
+        imdb = nuscenes_imdb(mode='val')
 
     # load network
     if args.net == 'vgg16':
@@ -155,5 +158,5 @@ if __name__ == '__main__':
     if not torch.cuda.is_available():
         net._device = 'cpu'
     net.to(net._device)
-
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='draw',thresh=0.1,draw_det=False,eval_det=True)
+    #TODO: Fix stupid output directory bullshit
+    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.1,draw_det=False,eval_det=True)
