@@ -197,4 +197,4 @@ if __name__ == '__main__':
         sum_size=128,
         val_sum_size=1000,
         batch_size=16,
-        val_im_thresh=0.1)
+        val_im_thresh=0.3)

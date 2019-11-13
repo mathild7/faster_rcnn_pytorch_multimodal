@@ -142,7 +142,7 @@ def score_to_color_dict(score):
         color = 'red'
     return color
 
-def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_det=False,eval_det=False):
+def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw_det=False,eval_det=False):
     np.random.seed(cfg.RNG_SEED)
     """Test a Fast R-CNN network on an image database."""
     if(mode == 'test'):
@@ -203,7 +203,10 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0., mode='test',draw_
         
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
         if(draw_det):
-            imdb.draw_and_save_eval(imfile,all_boxes[:][i][:],i,mode)
+            image_boxes = []
+            for j in range(1, imdb.num_classes):
+                image_boxes.append(all_boxes[j][i][:])
+            imdb.draw_and_save_eval(imfile,image_boxes,i,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

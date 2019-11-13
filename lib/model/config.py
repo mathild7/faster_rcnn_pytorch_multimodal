@@ -34,7 +34,7 @@ __C.TRAIN.GAMMA = 0.5
 #KITTI ~7,000 images in train set
 #__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
 #NUSCENES ~50,000 images in train set
-__C.TRAIN.STEPSIZE = [100000, 400000, 800000]
+__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 

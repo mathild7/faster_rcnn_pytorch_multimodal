@@ -351,6 +351,7 @@ class SolverWrapper(object):
                 blobs_val = self.data_layer_val.forward()
                 summary_val, rois_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, self.sum_size)
                 #im info 0 -> H 1 -> W 2 -> scale
+                #Add ability to do compute_bbox on rois_val and pass to draw&save
                 bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
                 self.imdb.draw_and_save_eval(blobs_val['imagefile'],bbox_pred_val,iter,'trainval')
                 #Need to add AP calculation here

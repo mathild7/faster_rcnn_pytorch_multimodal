@@ -30,7 +30,7 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 from pyquaternion.quaternion import Quaternion
 class nuscenes_imdb(imdb):
-    def __init__(self, mode='test'):
+    def __init__(self, mode='test',limiter=0):
         name = 'nuscenes'
         imdb.__init__(self, name)
         self._train_scenes = []
@@ -91,6 +91,8 @@ class nuscenes_imdb(imdb):
                     self._val_image_index.append(rec_tmp)
                 elif(rec_tmp['scene_name'] in self._train_scenes):
                     self._test_image_index.append(rec_tmp)
+            if(limiter != 0 and (len(self._test_image_index) > limiter or len(self._train_image_index) > limiter or len(self._val_image_index) > limiter)):
+                break
         #Get global image info
         if(mode == 'train'):
             self._imwidth  = self._train_image_index[0]['width']
@@ -126,7 +128,7 @@ class nuscenes_imdb(imdb):
         """
     Construct an image path from the image's "index" identifier.
     """
-        image_path = os.path.join(self._data_path, index['imagefile'])
+        image_path = os.path.join(self._data_path, index['filename'])
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -137,7 +139,7 @@ class nuscenes_imdb(imdb):
     """
         return os.path.join(cfg.DATA_DIR, 'nuscenes')
 
-    def gt_roidb(self,mode):
+    def gt_roidb(self,mode='train'):
         """
     Return the database of ground-truth regions of interest.
 
@@ -162,7 +164,7 @@ class nuscenes_imdb(imdb):
         elif(mode == 'val'):
             image_index = self._val_image_index
         gt_roidb = []
-        for img in self._train_image_index:
+        for img in image_index:
             roi = self._load_nuscenes_annotation(img)
             if(roi is None):
                 sub_total += 1
@@ -263,7 +265,7 @@ class nuscenes_imdb(imdb):
             return None
 
     #Only care about foreground classes
-    def _load_nuscenes_annotation(self, img):
+    def _load_nuscenes_annotation(self, img, remove_without_gt=True):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
@@ -294,7 +296,7 @@ class nuscenes_imdb(imdb):
         populated_idx = []
         for anno in annos:
             box_coords = self._anno_to_2d_bbox(anno,cam_front,ego_pose,camera_intrinsic)
-            if(box_coords is None):
+            if(box_coords is None or int(anno['visibility_token']) <= 1):
                 continue
             else:
                 x1 = box_coords[0]
@@ -326,10 +328,11 @@ class nuscenes_imdb(imdb):
                 ix = ix + 1
             if(anno_cat == 'dontcare'):
                 #print(line)
+                ignore[ix] = True
                 boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
                 ix_dc = ix_dc + 1
                 
-        if(ix == 0):
+        if(ix == 0 and remove_without_gt == True):
             print('removing element {}'.format(img['token']))
             return None
 
@@ -340,6 +343,7 @@ class nuscenes_imdb(imdb):
             'imagefile': filename,
             'ignore': ignore[0:ix],
             'det': ignore[0:ix].copy(),
+            'hit': ignore[0:ix].copy(),
             'boxes': boxes[0:ix],
             'boxes_dc': boxes_dc[0:ix_dc],
             'gt_classes': gt_classes[0:ix],
@@ -382,7 +386,7 @@ class nuscenes_imdb(imdb):
 
     def _get_nuscenes_results_file_template(self, mode,class_name):
         # data/nuscenes/results/<comp_id>_test_aeroplane.txt
-        filename = '_det_' + mode + '_{:s}.txt'.format(class_name)
+        filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
         path = os.path.join(self._devkit_path, 'results', filename)
         return path
 
@@ -448,15 +452,10 @@ class nuscenes_imdb(imdb):
                 ovthresh=ovt)
             aps[i-1,:] = ap
             #Tell user of AP
-            print(('AP for {} = E {:.4f} M {:.4f} H {:.4f}'.format(cls,ap[0],ap[1],ap[2])))
+            print(('AP for {} = {:.4f}'.format(cls,ap)))
             with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
                 pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
-        print(('Mean AP = E {:.4f} M {:.4f} H {:.4f}'.format(np.mean(aps[:,0]),np.mean(aps[:,1]),np.mean(aps[:,2]))))
-        print('~~~~~~~~')
-        print('Results:')
-        for ap in aps:
-            print(('E {:.3f} M {:.3f} H {:.3f}'.format(ap[0],ap[1],ap[2])))
-        print(('Mean AP = E {:.4f} M {:.4f} H {:.4f}'.format(np.mean(aps[:,0]),np.mean(aps[:,1]),np.mean(aps[:,2]))))
+        print(('Mean AP = {:.4f} '.format(np.mean(aps[:]))))
         print('~~~~~~~~')
         print('')
         print('--------------------------------------------------------------')
@@ -482,7 +481,7 @@ class nuscenes_imdb(imdb):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_nuscenes_results_file(all_boxes)
+        self._write_nuscenes_results_file(all_boxes, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:

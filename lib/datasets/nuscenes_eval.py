@@ -102,14 +102,12 @@ def nuscenes_ap(rec, prec):
     return ap
 
 def nuscenes_eval(detpath,
-             annopath,
-             imdb,
-             imageset,
-             classname,
-             cachedir,
-             mode,
-             image_dir='label_2',
-             ovthresh=0.5):
+                imdb,
+                imageset,
+                classname,
+                cachedir,
+                mode,
+                ovthresh=0.5):
     #Min overlap is 0.7 for cars, 0.5 for ped/bike
     """rec, prec, ap = nuscenes_eval(detpath,
                               annopath,
@@ -141,36 +139,39 @@ def nuscenes_eval(detpath,
     cachefile = os.path.join(cachedir, '{}_{}_annots.pkl'.format(mode,classname))
     # read list of images
     imagenames = imageset
-    if not os.path.isfile(cachefile):
+    #if not os.path.isfile(cachefile):
         # load annotations
-        class_recs = {}
-        for i, img in enumerate(imageset):
-            #Load annotations for image, cut any elements not in classname
-            tmp_rec = imdb._load_nuscenes_annotation(img)
-            gt_class_idx = np.where(tmp_rec['gt_classes'] == classname)
-            tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
-            tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
-            tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
-            tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
-            tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
-            class_recs.append(tmp_rec)
-            #Only print every hundredth annotation?
-            if i % 10 == 0:
-                #print(recs[idx_name])
-                print('Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(imageset)))
+    class_recs = []
+    for i, img in enumerate(imageset):
+        #Load annotations for image, cut any elements not in classname
+        tmp_rec = imdb._load_nuscenes_annotation(img,remove_without_gt=False)
+        if(len(tmp_rec['gt_classes']) > 0):
+            gt_class_idx = np.where(tmp_rec['gt_classes'] == imdb._class_to_ind[classname])
+        else:
+            gt_class_idx = []
+        tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
+        tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+        tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
+        tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
+        tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+        class_recs.append(tmp_rec)
+        #Only print every hundredth annotation?
+        if i % 10 == 0:
+            #print(recs[idx_name])
+            print('Reading annotation for {:d}/{:d}'.format(
+                i + 1, len(imageset)))
         # save
-        print('Saving cached annotations to {:s}'.format(cachefile))
-        with open(cachefile, 'wb') as f:
-            pickle.dump(recs, f)
-    else:
+        #print('Saving cached annotations to {:s}'.format(cachefile))
+        #with open(cachefile, 'wb') as f:
+        #    pickle.dump(class_recs, f)
+    #else:
         # load
-        print('loading cached annotations from {:s}'.format(cachefile))
-        with open(cachefile, 'rb') as f:
-            try:
-                class_recs = pickle.load(f)
-            except:
-                class_recs = pickle.load(f, encoding='bytes')
+    #    print('loading cached annotations from {:s}'.format(cachefile))
+    #    with open(cachefile, 'rb') as f:
+    #        try:
+    #            class_recs = pickle.load(f)
+    #        except:
+    #            class_recs = pickle.load(f, encoding='bytes')
 
     #----------------------------------------------------
     ovthresh_dc = 0.5
@@ -183,7 +184,7 @@ def nuscenes_eval(detpath,
 
     splitlines = [x.strip().split(' ') for x in lines]
     #Many entries have the same idx & token
-    image_idx = [x[0] for x in splitlines]
+    image_idx = [x[0] for x in splitlines] #TODO: I dont like how this is along many images
     image_tokens = [x[1] for x in splitlines]
     confidence = np.array([float(x[2]) for x in splitlines])
     #All detections for specific class
@@ -192,43 +193,49 @@ def nuscenes_eval(detpath,
     #Repeated for X detections along every image presented
     idx = len(image_idx)
     #3 types, easy medium hard
-    tp = np.zeros((idx, 3))
-    fp = np.zeros((idx, 3))
-    npos = np.zeros((idx, 3))
+    tp = np.zeros((idx))
+    fp = np.zeros((idx))
+    fn = np.zeros((idx))
+    npos = np.zeros((len(class_recs)))
+    for i, rec in enumerate(class_recs):
+        for ignore_elem in rec['ignore']:
+            if(not ignore_elem):
+                npos[i] += 1
     if BB.shape[0] > 0:
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
         sorted_scores = np.sort(-confidence)
-        BB = BB[sorted_ind, :]
-        image_idx_sorted = [image_idx[x] for x in sorted_ind]
+        #BB = BB[sorted_ind, :]
+        image_idx_sorted = [int(image_idx[x]) for x in sorted_ind]
         image_tokens_sorted = [image_tokens[x] for x in sorted_ind]
         #print(image_ids)
 
         # go down dets and mark true positives and false positives
-        for d,token in zip(image_idx_sorted,image_tokens_sorted):
+        #Zip together sorted_ind with image tokens sorted. 
+        #sorted_ind -> Needed to know which detection we are selecting next
+        #image_tokens_sorted -> Needed to know which set of GT's are for the same image as the det
+        for d,token in zip(sorted_ind,image_tokens_sorted):
             #R is a subset of detections for a specific class
-
+            #print('doing det for image {}'.format(image_idx[d]))
             #Need to find associated GT image ID alongside its detection id 'd'
-            R = {}
+            #Only one such image, why appending?
+            R = None
             for rec in class_recs:
-                if(rec['token'] == token):
-                    R.append(rec)
+                if(rec['img_index'] == token):
+                    R = rec
             #Deprecated
             #R = class_recs[image_ids[d]]
             bb = BB[d, :].astype(float)
             ovmax = -np.inf
             cat = []
             #Multiple possible bounding boxes, perhaps for multi car detection
-            BBGT = R['bbox'].astype(float)
-            BBGT_dc = R['bbox_dc'].astype(float)
+            BBGT = R['boxes'].astype(float)
+            BBGT_dc = R['boxes_dc'].astype(float)
             jmax = 0
-            #Difficulty category
-            #HARD - occlusion level -> 3, max trunc -> 50% max BB-H -> 25px
-            for i, BBGT_elem in enumerate(BBGT):
-                BBGT_height = BBGT_elem[3] - BBGT_elem[1]
-                if(R['ignore'][i] is True):
-                    R['ignore'][i] = False
-                    npos[d, 0] += 1
+            #Preload all GT boxes and count number of true positive GT's
+            #Not sure why we're setting ignore to false here if it were true
+            #for i, BBGT_elem in enumerate(BBGT):
+            #    BBGT_height = BBGT_elem[3] - BBGT_elem[1]
             ovmax_dc = 0
             if BBGT_dc.size > 0:
                 ixmin_dc = np.maximum(BBGT_dc[:, 0], bb[0])
@@ -272,39 +279,43 @@ def nuscenes_eval(detpath,
                 ovmax_bbgt_height = BBGT[jmax, 3] - BBGT[jmax, 1]
             # Minimum IoU Threshold for a true positive
             if ovmax > ovthresh and ovmax_dc < ovthresh_dc:
+                #if ovmax > ovthresh:
                 #ignore if not contained within easy, medium, hard
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
-                        tp[d][0] += 1
+                        tp[d] += 1
                         R['hit'][jmax] = True
                     else:
                         #If it already exists, cant double classify on same spot.
-                        fp[d][0] += 1
+                        fp[d] += 1
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
-                fp[d][0] += 1
+                #elif(BBGT.size > 0)
+                fp[d] += 1
 
-    map = mrec = mprec = np.zeros(3)
-    prec = []
-    rec  = []
+    map = mrec = mprec = 0
+    prec = 0
+    rec  = 0
     fp_sum = np.cumsum(fp, axis=0)
     tp_sum = np.cumsum(tp, axis=0)
     #fn     = 1-fp
     #fn_sum = np.cumsum(fn, axis=0)
     npos_sum = np.sum(npos, axis=0)
-    for i in range(0):
-        #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
-        #recall
-        #Per image per class AP
-        rec = tp_sum[:, i] / npos_sum[i].astype(float)
-        prec = tp_sum[:, i] / np.maximum(tp_sum[:, i] + fp_sum[:, i], np.finfo(np.float64).eps)
-        #if(i == 2):
-        #    print(tp_sum[-1])
-        #    print(fp_sum[-1])
-        # avoid divide by zero in case the first detection matches a difficult
-        # ground truth precision
-        mprec[i] = np.average(prec)
-        mrec[i] = np.average(rec)
-        rec, prec = zip(*sorted(zip(rec, prec)))
-        map[i] = nuscenes_ap(rec, prec)
+    #Override to avoid NaN
+    if(npos_sum == 0):
+        npos_sum = 1
+    #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
+    #recall
+    #Per image per class AP
+    rec = tp_sum[:] / npos_sum.astype(float)
+    prec = tp_sum[:] / np.maximum(tp_sum[:] + fp_sum[:], np.finfo(np.float64).eps)
+    #if(i == 2):
+    #    print(tp_sum[-1])
+    #    print(fp_sum[-1])
+    # avoid divide by zero in case the first detection matches a difficult
+    # ground truth precision
+    mprec = np.average(prec)
+    mrec = np.average(rec)
+    rec, prec = zip(*sorted(zip(rec, prec)))
+    map = nuscenes_ap(rec, prec)
     return mrec, mprec, map
