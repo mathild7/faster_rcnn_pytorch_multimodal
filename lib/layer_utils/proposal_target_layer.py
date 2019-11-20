@@ -53,7 +53,7 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, gt_boxes_dc, _num_clas
     bbox_inside_weights = bbox_inside_weights.view(-1, _num_classes * 4)
     bbox_outside_weights = (bbox_inside_weights > 0).float()
 
-    return rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights
+    return labels, rois, roi_scores, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 
 def _get_bbox_regression_labels(bbox_target_data, num_classes):
@@ -132,6 +132,7 @@ def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
     # Small modification to the original version where we ensure a fixed number of regions are sampled
     if fg_inds.numel() > 0 and bg_inds.numel() > 0: #numel() returns number of elements in tensor
         fg_rois_per_image = min(fg_rois_per_image, fg_inds.numel())
+        #TODO: This is slow as fuck
         fg_inds = fg_inds[torch.from_numpy( #Randomize order, trim out extras if need be
             npr.choice(
                 np.arange(0, fg_inds.numel()),

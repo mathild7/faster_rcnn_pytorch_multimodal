@@ -59,8 +59,7 @@ def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_cla
             cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
         cls_dets = cls_dets[keep, :]
         all_boxes.append(cls_dets)
-
-    return all_boxes
+    return rois, all_boxes
 
 def scale_lr(optimizer, scale):
     """Scale the learning rate of the optimizer"""
@@ -349,11 +348,11 @@ class SolverWrapper(object):
                     self.writer.add_summary(_sum, float(iter))
                 # Also check the summary on the validation set (single image)
                 blobs_val = self.data_layer_val.forward()
-                summary_val, rois_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, self.sum_size)
+                summary_val, rois_val, roi_labels_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, self.sum_size)
                 #im info 0 -> H 1 -> W 2 -> scale
                 #Add ability to do compute_bbox on rois_val and pass to draw&save
-                bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
-                self.imdb.draw_and_save_eval(blobs_val['imagefile'],bbox_pred_val,iter,'trainval')
+                rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
+                self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,iter,'trainval')
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
@@ -457,15 +456,15 @@ def train_net(network,
               batch_size=16,
               val_im_thresh=0.1):
     """Train a Faster R-CNN network."""
-    roidb = filter_roidb(imdb.roidb)
-    epoch_size = len(roidb)
-    val_roidb = filter_roidb(imdb.val_roidb)
+    #roidb = filter_roidb(imdb.roidb)
+    epoch_size = len(imdb.roidb)
+    #val_roidb = filter_roidb(imdb.val_roidb)
     #TODO: merge with train_val as one entire object
     sw = SolverWrapper(
         network,
         imdb,
-        roidb,
-        val_roidb,
+        imdb.roidb,
+        imdb.val_roidb,
         output_dir,
         tb_dir,
         sum_size,

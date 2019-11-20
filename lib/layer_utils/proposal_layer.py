@@ -31,7 +31,7 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, im_info, cfg_key, _feat_stride,
     # Get the scores and bounding boxes
     scores = rpn_cls_prob[:, :, :, num_anchors:] #Start at back half of anchor/score list
     rpn_bbox_pred = rpn_bbox_pred.view((-1, 4)) #rpn_bbox_pred are adjustment factors to existing anchors
-    scores = scores.contiguous().view(-1, 1)
+    scores = scores.contiguous().view(-1, 1) #Collapse into a single vector
     proposals = bbox_transform_inv(anchors, rpn_bbox_pred)
     proposals = clip_boxes(proposals, im_info[:2]) #Make sure they are within bounds
 

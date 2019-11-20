@@ -99,9 +99,9 @@ if __name__ == '__main__':
     manual_mode = True
     args = parse_args(manual_mode)
     if(manual_mode):
-        args.net = 'res101'
+        args.net = 'res50'
         args.imdb_name = 'nuscenes'
-        args.weights_file = 'weights/res101_faster_rcnn_iter_240000.pth'
+        args.weights_file = 'weights/res50_faster_rcnn_iter_320000.pth'
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
     print('Called with args:')
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     if(args.imdb_name == 'Kitti'):
         imdb = kitti_imdb(mode='eval')
     elif(args.imdb_name == 'nuscenes'):
-        imdb = nuscenes_imdb(mode='val',limiter=100)
+        imdb = nuscenes_imdb(mode='val',limiter=1000)
 
     # load network
     if args.net == 'vgg16':
@@ -159,4 +159,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.5,draw_det=True,eval_det=True)
+    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.1,draw_det=True,eval_det=True)

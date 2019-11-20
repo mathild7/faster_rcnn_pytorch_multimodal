@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import json
 from datasets.imdb import imdb
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
@@ -24,21 +25,13 @@ import uuid
 from random import SystemRandom
 from shapely.geometry import MultiPoint, box
 import traceback
-from .nuscenes_eval import nuscenes_eval
+from .waymo_eval import waymo_eval
 from model.config import cfg
-from nuscenes.utils.geometry_utils import view_points
-from nuscenes.nuscenes import NuScenes
-from nuscenes.utils.splits import create_splits_scenes
-from pyquaternion.quaternion import Quaternion
-from nuscenes.utils.data_classes import LidarPointCloud
-from nuscenes.utils.geometry_utils import transform_matrix
-from nuscenes.eval.detection.utils import category_to_detection_name, quaternion_yaw
 
 
-
-class nuscenes_imdb(imdb):
+class waymo_imdb(imdb):
     def __init__(self, mode='test',limiter=0):
-        name = 'nuscenes'
+        name = 'waymo'
         imdb.__init__(self, name)
         self._train_scenes = []
         self._val_scenes = []
@@ -65,54 +58,20 @@ class nuscenes_imdb(imdb):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._val_scenes = create_splits_scenes()['val']
-        self._train_scenes = create_splits_scenes()['train']
-        self._test_scenes  = create_splits_scenes()['test']
-            #TODO: create custom scene list
-        #print(self._train_scenes)
-        for rec in self.nusc.sample_data:
-            if(rec['channel'] == 'CAM_FRONT' and rec['is_key_frame'] is True):
-                rec_tmp = rec.copy()
-                #Reverse lookup, getting the overall sample from the picture sample token, to get the scene information.
-                scene_name = self.nusc.get('scene',self.nusc.get('sample',rec['sample_token'])['scene_token'])['name']
-                desc = self.nusc.get('scene',self.nusc.get('sample',rec['sample_token'])['scene_token'])['description'].lower()
-                if(self._scene_sel and 'night' not in desc and 'rain' not in desc and 'cones' not in desc):
-                    sample = self.nusc.get('sample', rec['sample_token'])
-                    rec_tmp['anns'] = sample['anns']
-                    rec_tmp['lidar_token'] = sample['data']['LIDAR_TOP']
-                    if(scene_name in self._train_scenes):
-                        self._train_image_index.append(rec_tmp)
-                    elif(scene_name in self._val_scenes):
-                        self._val_image_index.append(rec_tmp)
-                    elif(scene_name in self._train_scenes):
-                        self._test_image_index.append(rec_tmp)
-        rand = SystemRandom()
-        #Get global image info
-        if(mode == 'train'):
-            img_index = self._train_image_index
-            rand.shuffle(self._val_image_index)
-        elif(mode == 'val'):
-            img_index = self._val_image_index
-        elif(mode == 'test'):
-            img_index = self._test_image_index
-        self._imwidth  = img_index[0]['width']
-        self._imheight = img_index[0]['height']
-        self._imtype   = img_index[0]['fileformat']
-        rand = SystemRandom()
-        rand.shuffle(img_index)
-        if(limiter != 0):
-            img_index = img_index[:limiter]
-        if(mode == 'train'):
-            self._train_image_index = img_index
-        elif(mode == 'val'):
-            self._val_image_index = img_index
-        elif(mode == 'test'):
-            self._test_image_index = img_index
-        assert os.path.exists(self._devkit_path), 'nuscenes dataset path does not exist: {}'.format(self._devkit_path)
-        #DEPRECATED
-        #assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)
 
-    @property
+        self._train_image_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
+        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'train','images'))
+
+        self._imwidth  = 1920
+        self._imheight = 1280
+        self._imtype   = 'JPEG'
+        rand = SystemRandom()
+        rand.shuffle(self._val_image_index)
+        rand.shuffle(self._train_image_index)
+
+        assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
+
+    """@property
     def nusc(self):
         if(self._nusc is None):
             cache_file = os.path.join(self._devkit_path, 'cache', self.name + '_dataset.pkl')
@@ -125,14 +84,14 @@ class nuscenes_imdb(imdb):
                         self._nusc = pickle.load(fid, encoding='bytes')
                 print('{} dataset loaded from {}'.format(self.name, cache_file))
             else:
-                self._nusc = NuScenes(version='v1.0-trainval', dataroot=self._devkit_path, verbose=True);
+                self._nusc = waymo(version='v1.0-trainval', dataroot=self._devkit_path, verbose=True);
                 print('{} dataset saved to {}'.format(self.name, cache_file))
                 with open(cache_file, 'wb') as fid:
                     pickle.dump(self._nusc, fid, pickle.HIGHEST_PROTOCOL)
             return self._nusc
         else:
             return self._nusc
-
+    """
     def image_path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
@@ -159,7 +118,7 @@ class nuscenes_imdb(imdb):
         """
     Return the default path where PASCAL VOC is expected to be installed.
     """
-        return os.path.join(cfg.DATA_DIR, 'nuscenes')
+        return os.path.join(cfg.DATA_DIR, 'waymo')
 
     def gt_roidb(self,mode='train'):
         """
@@ -178,7 +137,8 @@ class nuscenes_imdb(imdb):
                     roidb = pickle.load(fid, encoding='bytes')
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
             return roidb
-
+        labels_file = os.path.join(self._devkit_path, 'labels',mode,'labels.json')
+        labels = json.load(labels_file)
         image_index = None
         sub_total   = 0
         if(mode == 'train'):
@@ -187,19 +147,21 @@ class nuscenes_imdb(imdb):
             image_index = self._val_image_index
         gt_roidb = []
         for img in image_index:
-            roi = self._load_nuscenes_annotation(img)
-            if(roi is None):
-                sub_total += 1
-            else:
-                gt_roidb.append(roi)
+            for img_labels in labels:
+                if(img_labels['assoc_frame'] in img):
+                    roi = self._load_waymo_annotation(img,img_labels)
+                    if(roi is None):
+                        sub_total += 1
+                    else:
+                        gt_roidb.append(roi)
         with open(cache_file, 'wb') as fid:
             pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
     def draw_and_save(self,mode,image_token=None):
-        datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
-        out_file = os.path.join(cfg.DATA_DIR, 'nuscenes','samples','cam_front_drawn')
+        datapath = os.path.join(cfg.DATA_DIR, 'waymo')
+        out_file = os.path.join(cfg.DATA_DIR, 'waymo','samples','cam_front_drawn')
         if(mode == 'val'):
             roidb = self.val_roidb
         elif(mode == 'train'):
@@ -226,7 +188,7 @@ class nuscenes_imdb(imdb):
                     source_img.save(outfile,'JPEG')
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
+        datapath = os.path.join(cfg.DATA_DIR, 'waymo')
         out_file = imfile.replace('samples/CAM_FRONT/','samples/cam_front_{}/iter_{}_'.format(mode,iter))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
@@ -320,12 +282,12 @@ class nuscenes_imdb(imdb):
             return None, dists
 
     #Only care about foreground classes
-    def _load_nuscenes_annotation(self, img, remove_without_gt=True):
+    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
         """
-        #print('loading nuscenes anno for img {}'.format(img['filename']))
+        #print('loading waymo anno for img {}'.format(img['filename']))
         filename = os.path.join(self._devkit_path, img['filename'])
         lidar_data = self.nusc.get('sample_data', img['lidar_token'])
         pc_filename = os.path.join(self._devkit_path, lidar_data['filename'])
@@ -534,13 +496,13 @@ class nuscenes_imdb(imdb):
             #Calls self.gt_roidb through a handler.
             self.roidb.append(entry)
 
-    def _get_nuscenes_results_file_template(self, mode,class_name):
-        # data/nuscenes/results/<comp_id>_test_aeroplane.txt
+    def _get_waymo_results_file_template(self, mode,class_name):
+        # data/waymo/results/<comp_id>_test_aeroplane.txt
         filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
         path = os.path.join(self._devkit_path, 'results', filename)
         return path
 
-    def _write_nuscenes_results_file(self, all_boxes, mode):
+    def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
             img_idx = self._val_image_index
         elif(mode == 'train'):
@@ -550,8 +512,8 @@ class nuscenes_imdb(imdb):
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
-            print('Writing {} nuscenes results file'.format(cls))
-            filename = self._get_nuscenes_results_file_template(mode,cls)
+            print('Writing {} waymo results file'.format(cls))
+            filename = self._get_waymo_results_file_template(mode,cls)
             with open(filename, 'wt') as f:
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
@@ -589,10 +551,10 @@ class nuscenes_imdb(imdb):
                 ovt = 0.7
             else:
                 ovt = 0.5
-            #nuscenes/results/comp_X_testing_class.txt
-            detfile = self._get_nuscenes_results_file_template(mode,cls)
-            #Run nuscenes evaluation metrics on each image
-            rec, prec, ap = nuscenes_eval(
+            #waymo/results/comp_X_testing_class.txt
+            detfile = self._get_waymo_results_file_template(mode,cls)
+            #Run waymo evaluation metrics on each image
+            rec, prec, ap = waymo_eval(
                 detfile,
                 self,
                 imageset,
@@ -624,20 +586,20 @@ class nuscenes_imdb(imdb):
         cmd = 'cd {} && '.format(path)
         cmd += '{:s} -nodisplay -nodesktop '.format(cfg.MATLAB)
         cmd += '-r "dbstop if error; '
-        cmd += 'nuscenes_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
+        cmd += 'waymo_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
             .format(self._devkit_path, self._get_comp_id(), self._mode_sub_folder, output_dir)
         print(('Running:\n{}'.format(cmd)))
         status = subprocess.call(cmd, shell=True)
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_nuscenes_results_file(all_boxes, mode)
+        self._write_waymo_results_file(all_boxes, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_nuscenes_results_file_template(mode,cls)
+                filename = self._get_waymo_results_file_template(mode,cls)
                 os.remove(filename)
 
     def competition_mode(self, on):

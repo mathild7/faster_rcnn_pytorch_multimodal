@@ -98,7 +98,7 @@ def get_training_validation_roidb(mode,imdb,draw_and_save=False):
     print('done')
     if(draw_and_save):
         print('drawing and saving images')
-        imdb.draw_and_save()
+        imdb.draw_and_save(mode)
     if(mode == 'train'):
         return imdb.roidb
     elif(mode == 'val'):
@@ -106,7 +106,7 @@ def get_training_validation_roidb(mode,imdb,draw_and_save=False):
     else:
         return None
 
-def combined_roidb(mode,dataset,draw_and_save=False,imdb=None):
+def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
     """
   Combine multiple roidbs
   """
@@ -114,7 +114,7 @@ def combined_roidb(mode,dataset,draw_and_save=False,imdb=None):
         if(dataset == 'kitti'):
             imdb = kitti_imdb(mode)
         elif(dataset == 'nuscenes'):
-            imdb = nuscenes_imdb(mode)
+            imdb = nuscenes_imdb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return
@@ -133,16 +133,16 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
-        args.net = 'res101'
+        args.net = 'res50'
         args.imdb_name = 'nuscenes'
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/nuscenes/'
-        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', 'resnet101-caffe.pth')
+        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', 'resnet50-caffe.pth')
         #args.imdbval_name = 'evaluation'
         args.max_iters = 1000000
     print('Called with args:')
     print(args)
-    draw_and_save = False
+    draw_and_save = True
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
@@ -154,8 +154,10 @@ if __name__ == '__main__':
     np.random.seed(cfg.RNG_SEED)
 
     # train set
-    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None)
-    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb)
+    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0)
+    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0)
+    #TODO: Shuffle images
+
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
     print('{:d} val roidb entries'.format(len(val_roidb)))

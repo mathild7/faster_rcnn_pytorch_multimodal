@@ -56,11 +56,11 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
     overlaps = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes, dtype=np.float))
-    overlaps_dc = bbox_overlaps(
-        np.ascontiguousarray(anchors, dtype=np.float),
-        np.ascontiguousarray(gt_boxes_dc, dtype=np.float))
-    overlaps_dc_idx = np.argwhere(overlaps_dc > cfg.TRAIN.DC_THRESH)
     if cfg.TRAIN.IGNORE_DC:
+        overlaps_dc = bbox_overlaps(
+            np.ascontiguousarray(anchors, dtype=np.float),
+            np.ascontiguousarray(gt_boxes_dc, dtype=np.float))
+        overlaps_dc_idx = np.argwhere(overlaps_dc > cfg.TRAIN.DC_THRESH)
         labels[overlaps_dc_idx[:, 0]] = -1
     #overlaps: (N, K) overlap between boxes and query_boxes
     argmax_overlaps = overlaps.argmax(axis=1)

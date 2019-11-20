@@ -206,7 +206,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
             image_boxes = []
             for j in range(1, imdb.num_classes):
                 image_boxes.append(all_boxes[j][i][:])
-            imdb.draw_and_save_eval(imfile,image_boxes,i,mode)
+            imdb.draw_and_save_eval(imfile,[],[],image_boxes,i,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

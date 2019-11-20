@@ -68,7 +68,7 @@ def parse_rec(filename):
     return objects
 
 
-def nuscenes_ap(rec, prec):
+def waymo_ap(rec, prec):
     """ ap = voc_ap(rec, prec, [use_07_metric])
   Compute VOC AP given precision and recall.
   If use_07_metric is true, uses the
@@ -101,7 +101,7 @@ def nuscenes_ap(rec, prec):
     ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
 
-def nuscenes_eval(detpath,
+def waymo_eval(detpath,
                 imdb,
                 imageset,
                 classname,
@@ -109,7 +109,7 @@ def nuscenes_eval(detpath,
                 mode,
                 ovthresh=0.5):
     #Min overlap is 0.7 for cars, 0.5 for ped/bike
-    """rec, prec, ap = nuscenes_eval(detpath,
+    """rec, prec, ap = waymo_eval(detpath,
                               annopath,
                               imagesetfile,
                               classname,
@@ -144,7 +144,7 @@ def nuscenes_eval(detpath,
     class_recs = []
     for i, img in enumerate(imageset):
         #Load annotations for image, cut any elements not in classname
-        tmp_rec = imdb._load_nuscenes_annotation(img,remove_without_gt=False)
+        tmp_rec = imdb._load_waymo_annotation(img,remove_without_gt=False)
         if(len(tmp_rec['gt_classes']) > 0):
             gt_class_idx = np.where(tmp_rec['gt_classes'] == imdb._class_to_ind[classname])
         else:
@@ -318,5 +318,5 @@ def nuscenes_eval(detpath,
     mprec = np.average(prec)
     mrec = np.average(rec)
     rec, prec = zip(*sorted(zip(rec, prec)))
-    map = nuscenes_ap(rec, prec)
+    map = waymo_ap(rec, prec)
     return mrec, mprec, map

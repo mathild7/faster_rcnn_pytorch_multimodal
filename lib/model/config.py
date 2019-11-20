@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.0002
 
 # Momentum
 __C.TRAIN.MOMENTUM = 0.7
@@ -35,6 +35,8 @@ __C.TRAIN.GAMMA = 0.5
 #__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
 #NUSCENES ~50,000 images in train set
 __C.TRAIN.STEPSIZE = [300000, 500000, 700000]
+#WAYMO ~15,000 images in train set
+__C.TRAIN.STEPSIZE = [120000, 240000, 360000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -61,13 +63,16 @@ __C.TRAIN.SUMMARY_INTERVAL = 15
 #KITTI
 #__C.TRAIN.SCALES = (384,)
 #NUSCENES
-__C.TRAIN.SCALES  = (900,)
+#__C.TRAIN.SCALES  = (900,)
+#WAYMO
+__C.TRAIN.SCALES  = (1280,)
 # Max pixel size of the longest side of a scaled input image
-#KITTI
+#KITTI fullsize
 #__C.TRAIN.MAX_SIZE = 1280
-#NUSCENES
-__C.TRAIN.MAX_SIZE  = 800
-
+#NUSCENES 1/4
+#__C.TRAIN.MAX_SIZE  = 450
+#WAYMO 1/2
+__C.TRAIN.MAX_SIZE  = 960
 # Images to use per minibatch
 __C.TRAIN.IMS_PER_BATCH = 1
 
@@ -100,7 +105,7 @@ __C.TRAIN.SNAPSHOT_ITERS = 10000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
-__C.TRAIN.SNAPSHOT_PREFIX = 'res101_faster_rcnn'
+__C.TRAIN.SNAPSHOT_PREFIX = 'res50_faster_rcnn'
 
 # Normalize the targets (subtract empirical mean, divide by empirical stddev)
 __C.TRAIN.BBOX_NORMALIZE_TARGETS = True
@@ -163,7 +168,7 @@ __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 __C.TRAIN.USE_ALL_GT = True
 
 #Whether or not to ignore dont care areas when training
-__C.TRAIN.IGNORE_DC = True
+__C.TRAIN.IGNORE_DC = False
 #
 # Testing options
 #
@@ -174,12 +179,16 @@ __C.TEST = edict()
 #KITTI
 #__C.TEST.SCALES = (384,)
 #NUSCENES
-__C.TEST.SCALES  = (900,)
+#__C.TEST.SCALES  = (900,)
+#WAYMO
+__C.TEST.SCALES  = (1280,)
 # Max pixel size of the longest side of a scaled input image
 #KITTI
 #__C.TEST.MAX_SIZE = 1280
 #NUSCENES
-__C.TEST.MAX_SIZE  = 800
+#__C.TEST.MAX_SIZE  = 450
+#WAYMO 1/2
+__C.TEST.MAX_SIZE  = 960
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3
@@ -277,7 +286,7 @@ __C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
 __C.MATLAB = 'matlab'
 
 # Place outputs under an experiments directory
-__C.EXP_DIR = 'res101'
+__C.EXP_DIR = 'res50'
 
 # Use GPU implementation of non-maximum suppression
 __C.USE_GPU_NMS = True
