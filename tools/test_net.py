@@ -22,6 +22,7 @@ from nets.resnet_v1 import resnetv1
 from nets.mobilenet_v1 import mobilenetv1
 from datasets.kitti_imdb import kitti_imdb
 from datasets.nuscenes_imdb import nuscenes_imdb
+from datasets.waymo_imdb import waymo_imdb
 import torch
 
 def parse_args(manual_mode):

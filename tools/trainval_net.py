@@ -13,6 +13,7 @@ from model.config import cfg, cfg_from_file, cfg_from_list, get_output_dir, get_
 from datasets.factory import get_imdb
 from datasets.kitti_imdb import kitti_imdb
 from datasets.nuscenes_imdb import nuscenes_imdb
+from datasets.waymo_imdb import waymo_imdb
 import datasets.imdb
 import argparse
 import pprint
@@ -115,6 +116,8 @@ def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
             imdb = kitti_imdb(mode)
         elif(dataset == 'nuscenes'):
             imdb = nuscenes_imdb(mode,limiter)
+        elif(dataset == 'waymo'):
+            imdb = waymo_imdb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return
@@ -134,9 +137,9 @@ if __name__ == '__main__':
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res50'
-        args.imdb_name = 'nuscenes'
+        args.imdb_name = 'waymo'
         args.out_dir = 'output/'
-        args.imdb_root_dir = '/home/mat/thesis/data/nuscenes/'
+        args.imdb_root_dir = '/home/mat/thesis/data/waymo/'
         args.weight = os.path.join('/home/mat/thesis/data/', 'weights', 'resnet50-caffe.pth')
         #args.imdbval_name = 'evaluation'
         args.max_iters = 1000000
@@ -157,7 +160,7 @@ if __name__ == '__main__':
     imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0)
     _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0)
     #TODO: Shuffle images
-
+    sys.exit()
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
     print('{:d} val roidb entries'.format(len(val_roidb)))
@@ -170,11 +173,10 @@ if __name__ == '__main__':
     print('TensorFlow summaries will be saved to `{:s}`'.format(tb_dir))
 
     # also add the validation set, but with no flipping images
-    orgflip = cfg.TRAIN.USE_FLIPPED
-    cfg.TRAIN.USE_FLIPPED = False
-    print('imdb')
-    print(args.imdb_name)
-    cfg.TRAIN.USE_FLIPPED = orgflip
+    #orgflip = cfg.TRAIN.USE_FLIPPED
+    #cfg.TRAIN.USE_FLIPPED = False
+    print('imdb: {}'.format(args.imdb_name))
+    #cfg.TRAIN.USE_FLIPPED = orgflip
 
     # load network
     if args.net == 'vgg16':

@@ -40,6 +40,8 @@ def prepare_roidb(mode,imdb):
         #sizes = np.empty([img_idx,2])
         sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
         #sizes[:][1] = np.full(img_idx,imdb._imheight)
+    elif(imdb.name == 'waymo'):
+        sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
     #Loop thru all images
     print('index size {:d}'.format(idx))
     for i in range(idx):
