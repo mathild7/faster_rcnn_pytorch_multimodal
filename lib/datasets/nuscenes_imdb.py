@@ -33,7 +33,7 @@ from pyquaternion.quaternion import Quaternion
 from nuscenes.utils.data_classes import LidarPointCloud
 from nuscenes.utils.geometry_utils import transform_matrix
 from nuscenes.eval.detection.utils import category_to_detection_name, quaternion_yaw
-
+import shutil
 
 
 class nuscenes_imdb(imdb):
@@ -133,19 +133,6 @@ class nuscenes_imdb(imdb):
         else:
             return self._nusc
 
-    def image_path_at(self, i, mode='train'):
-        """
-    Return the absolute path to image i in the image sequence.
-    """
-        if(mode == 'train'):
-            return self.image_path_from_index(self._train_image_index[i])
-        elif(mode == 'val'):
-            return self.image_path_from_index(self._val_image_index[i])
-        elif(mode == 'test'):
-            return self.image_path_from_index(self._test_image_index[i])
-        else:
-            return None
-
     def image_path_from_index(self, index):
         """
     Construct an image path from the image's "index" identifier.
@@ -159,7 +146,7 @@ class nuscenes_imdb(imdb):
         """
     Return the default path where PASCAL VOC is expected to be installed.
     """
-        return os.path.join(cfg.DATA_DIR, 'nuscenes')
+        return os.path.join(cfg.DATA_DIR, self._name)
 
     def gt_roidb(self,mode='train'):
         """
@@ -198,8 +185,8 @@ class nuscenes_imdb(imdb):
         return gt_roidb
 
     def draw_and_save(self,mode,image_token=None):
-        datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
-        out_file = os.path.join(cfg.DATA_DIR, 'nuscenes','samples','cam_front_drawn')
+        datapath = os.path.join(cfg.DATA_DIR, self._name)
+        out_file = os.path.join(cfg.DATA_DIR, self._name,'samples','cam_front_drawn')
         if(mode == 'val'):
             roidb = self.val_roidb
         elif(mode == 'train'):
@@ -223,10 +210,10 @@ class nuscenes_imdb(imdb):
                     for roi_box in roi['boxes_dc']:
                         draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
                     #print('Saving file at location {}'.format(outfile))
-                    source_img.save(outfile,'JPEG')
+                    source_img.save(outfile,self._imtype)
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, 'nuscenes')
+        datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = imfile.replace('samples/CAM_FRONT/','samples/cam_front_{}/iter_{}_'.format(mode,iter))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
@@ -241,7 +228,7 @@ class nuscenes_imdb(imdb):
                 color = 255
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
         print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,'JPEG')    
+        source_img.save(out_file,self._imtype)    
 
 
     def get_class(self,idx):
@@ -417,7 +404,7 @@ class nuscenes_imdb(imdb):
                 ix = ix + 1
             if(anno_cat == 'dontcare'):
                 #print(line)
-                ignore[ix] = True
+                #ignore[ix] = True
                 boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
                 dists_dc[ix_dc, :] = dist
                 ix_dc = ix_dc + 1
@@ -499,40 +486,6 @@ class nuscenes_imdb(imdb):
             'flipped': False,
             'seg_areas': seg_areas[0:ix_new]
         }
-
-    def append_flipped_images(self,mode):
-        if(mode == 'train'):
-            num_images = len(self._roidb)
-        elif(mode == 'val'):
-            num_images = len(self._val_roidb)
-        for i in range(num_images):
-            boxes = self.roidb[i]['boxes'].copy()
-            boxes_dc = self.roidb[i]['boxes_dc'].copy()
-            img_token = self.roidb[i]['img_index']
-            filepath  = self.roidb[i]['imagefile']
-            cat = self.roidb[i]['cat'].copy()
-            oldx1 = boxes[:, 0].copy()
-            oldx2 = boxes[:, 2].copy()
-            boxes[:, 0] = self._imwidth - oldx2 - 1
-            boxes[:, 2] = self._imwidth - oldx1 - 1
-            oldx1_dc = boxes_dc[:, 0].copy()
-            oldx2_dc = boxes_dc[:, 2].copy()
-            boxes_dc[:, 0] = self._imwidth - oldx2_dc - 1
-            boxes_dc[:, 2] = self._imwidth - oldx1_dc - 1
-            assert (boxes[:, 2] >= boxes[:, 0]).all()
-            assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
-            entry = {
-                'img_index': img_token,
-                'imagefile': filepath,
-                'boxes': boxes,
-                'cat': cat,
-                'boxes_dc': boxes_dc,
-                'gt_classes': self.roidb[i]['gt_classes'],
-                'gt_overlaps': self.roidb[i]['gt_overlaps'],
-                'flipped': True
-            }
-            #Calls self.gt_roidb through a handler.
-            self.roidb.append(entry)
 
     def _get_nuscenes_results_file_template(self, mode,class_name):
         # data/nuscenes/results/<comp_id>_test_aeroplane.txt

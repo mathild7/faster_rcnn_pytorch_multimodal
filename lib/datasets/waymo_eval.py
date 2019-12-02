@@ -14,6 +14,7 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 import sys
 import operator
+import json
 
 #Values    Name      Description
 #----------------------------------------------------------------------------
@@ -89,7 +90,7 @@ def waymo_ap(rec, prec):
     mrec = np.concatenate(([0.], rec, [1.]))
     mpre = np.concatenate(([0.], prec, [0.]))
 
-    # compute the precision envelope
+    # compute the precision envelope (going backwards, precision will always increase as sorted by -confidence)
     for i in range(mpre.size - 1, 0, -1):
         mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
 
@@ -102,12 +103,12 @@ def waymo_ap(rec, prec):
     return ap
 
 def waymo_eval(detpath,
-                imdb,
-                imageset,
-                classname,
-                cachedir,
-                mode,
-                ovthresh=0.5):
+               imdb,
+               imageset,
+               classname,
+               cachedir,
+               mode,
+               ovthresh=0.5):
     #Min overlap is 0.7 for cars, 0.5 for ped/bike
     """rec, prec, ap = waymo_eval(detpath,
                               annopath,
@@ -144,16 +145,35 @@ def waymo_eval(detpath,
     class_recs = []
     for i, img in enumerate(imageset):
         #Load annotations for image, cut any elements not in classname
-        tmp_rec = imdb._load_waymo_annotation(img,remove_without_gt=False)
-        if(len(tmp_rec['gt_classes']) > 0):
-            gt_class_idx = np.where(tmp_rec['gt_classes'] == imdb._class_to_ind[classname])
+        labels_filename = os.path.join(imdb._devkit_path, mode, 'labels/labels.json')
+        with open(labels_filename,'r') as labels_file:
+            data = labels_file.read()
+            #print(data)
+            #print(data)
+            labels = json.loads(data)
+            for img_labels in labels:
+                #print(img_labels['assoc_frame'])
+                if(img_labels['assoc_frame'] == img.replace('.png','')):
+                    img = os.path.join(mode,'images',img)
+                    #TODO: filter if not in preferred scene
+                    tmp_rec = imdb._load_waymo_annotation(img,img_labels,remove_without_gt=False)
+                    break
+        if(tmp_rec is None):
+            tmp_rec = {}
+            print('skipping image {}'.format(img))
+            tmp_rec['img_index'] = img
+            tmp_rec['ignore_img'] = True
         else:
-            gt_class_idx = []
-        tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
-        tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
-        tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
-        tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
-        tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+            tmp_rec['ignore_img'] = False
+            if(len(tmp_rec['gt_classes']) > 0):
+                gt_class_idx = np.where(tmp_rec['gt_classes'] == imdb._class_to_ind[classname])
+            else:
+                gt_class_idx = []
+            tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
+            tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+            tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
+            tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
+            tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
         class_recs.append(tmp_rec)
         #Only print every hundredth annotation?
         if i % 10 == 0:
@@ -198,9 +218,10 @@ def waymo_eval(detpath,
     fn = np.zeros((idx))
     npos = np.zeros((len(class_recs)))
     for i, rec in enumerate(class_recs):
-        for ignore_elem in rec['ignore']:
-            if(not ignore_elem):
-                npos[i] += 1
+        if(rec['ignore_img'] is False):
+            for ignore_elem in rec['ignore']:
+                if(not ignore_elem):
+                    npos[i] += 1
     if BB.shape[0] > 0:
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
@@ -221,9 +242,17 @@ def waymo_eval(detpath,
             #Need to find associated GT image ID alongside its detection id 'd'
             #Only one such image, why appending?
             R = None
+            skip_iter = False
             for rec in class_recs:
-                if(rec['img_index'] == token):
-                    R = rec
+                #TODO: Janky fix...
+                if(rec['img_index'].replace('val/images/','') == token):
+                    if(rec['ignore_img'] is False):
+                        R = rec
+                    else:
+                        skip_iter = True
+                    break
+            if(skip_iter):
+                continue
             #Deprecated
             #R = class_recs[image_ids[d]]
             bb = BB[det_idx, :].astype(float)

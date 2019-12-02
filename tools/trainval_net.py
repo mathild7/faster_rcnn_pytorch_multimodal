@@ -139,13 +139,13 @@ if __name__ == '__main__':
         args.net = 'res50'
         args.imdb_name = 'waymo'
         args.out_dir = 'output/'
-        args.imdb_root_dir = '/home/mat/thesis/data/waymo/'
-        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', 'resnet50-caffe.pth')
+        args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
+        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-torchvision.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 1000000
     print('Called with args:')
     print(args)
-    draw_and_save = True
+    draw_and_save = False
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
@@ -160,7 +160,6 @@ if __name__ == '__main__':
     imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0)
     _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0)
     #TODO: Shuffle images
-    sys.exit()
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
     print('{:d} val roidb entries'.format(len(val_roidb)))
@@ -181,6 +180,8 @@ if __name__ == '__main__':
     # load network
     if args.net == 'vgg16':
         net = vgg16()
+    elif args.net == 'res34':
+        net = resnetv1(num_layers=34)
     elif args.net == 'res50':
         net = resnetv1(num_layers=50)
     elif args.net == 'res101':

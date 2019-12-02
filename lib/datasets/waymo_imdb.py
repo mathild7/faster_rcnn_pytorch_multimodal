@@ -7,7 +7,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import shutil
 import os
 import json
 from datasets.imdb import imdb
@@ -18,16 +18,21 @@ import scipy.sparse
 # import scipy.io as sio
 from enum import Enum
 import pickle
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 from PIL import Image, ImageDraw
-import subprocess
-import uuid
 from random import SystemRandom
 from shapely.geometry import MultiPoint, box
-import traceback
+#Useful for debugging without a IDE
+#import traceback
 from .waymo_eval import waymo_eval
 from model.config import cfg
+
+
+import re
+def atoi(text):
+    return int(text) if text.isdigit() else text
+def natural_keys(text):
+    return [ atoi(c) for c in re.split('(\d+)',text) ]
+
 class class_enum(Enum):
     UNKNOWN = 0
     VEHICLE = 1
@@ -36,7 +41,7 @@ class class_enum(Enum):
     CYCLIST = 4
 
 class waymo_imdb(imdb):
-    def __init__(self, mode='test',limiter=0):
+    def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
         imdb.__init__(self, name)
         self._train_scenes = []
@@ -46,16 +51,21 @@ class waymo_imdb(imdb):
         self._val_image_index = []
         self._test_image_index = []
         self._devkit_path = self._get_default_path()
+
+
+
+        self._imwidth  = 1920
+        self._imheight = 730
+        self._imtype   = 'PNG'
         self._mode = mode
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
         self._classes = (
             'dontcare',  # always index 0
-            'vehicle.car',
-            'human.pedestrian',
-            'vehicle.bicycle')
-
+            'vehicle.car')
+           # 'human.pedestrian',
+            #'vehicle.bicycle')
         self.config = {
             'cleanup': True,
             'matlab_eval': False,
@@ -65,35 +75,24 @@ class waymo_imdb(imdb):
             list(zip(self.classes, list(range(self.num_classes)))))
 
         self._train_image_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
-        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'train','images'))
-
-        self._imwidth  = 1920
-        self._imheight = 1280
-        self._imtype   = 'JPEG'
+        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
+        self._val_image_index.sort(key=natural_keys)
         rand = SystemRandom()
-        rand.shuffle(self._val_image_index)
-        rand.shuffle(self._train_image_index)
-
+        if(shuffle_en):
+            print('shuffling image indices')
+            rand.shuffle(self._val_image_index)
+            rand.shuffle(self._train_image_index)
+        if(limiter != 0):
+            self._val_image_index   = self._val_image_index[:limiter]
+            self._train_image_index = self._train_image_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
-    def image_path_at(self, i, mode='train'):
-        """
-    Return the absolute path to image i in the image sequence.
-    """
-        if(mode == 'train'):
-            return self.image_path_from_index(self._train_image_index[i])
-        elif(mode == 'val'):
-            return self.image_path_from_index(self._val_image_index[i])
-        elif(mode == 'test'):
-            return self.image_path_from_index(self._test_image_index[i])
-        else:
-            return None
 
-    def image_path_from_index(self, index):
+    def image_path_from_index(self, mode, index):
         """
     Construct an image path from the image's "index" identifier.
     """
-        image_path = os.path.join(self._devkit_path, index['filename'])
+        image_path = os.path.join(self._devkit_path, mode, 'images', index)
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -110,18 +109,16 @@ class waymo_imdb(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        #for line in traceback.format_stack():
-        #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self.name + '_' + mode + '_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
                     roidb = pickle.load(fid)
                 except:
                     roidb = pickle.load(fid, encoding='bytes')
-            print('{} gt roidb loaded from {}'.format(self.name, cache_file))
+            print('{} gt roidb loaded from {}'.format(self._name, cache_file))
             return roidb
-        labels_filename = os.path.join(self._devkit_path ,mode,'labels/labels.json')
+        labels_filename = os.path.join(self._devkit_path, mode,'labels/labels.json')
         gt_roidb = []
         with open(labels_filename,'r') as labels_file:
             data = labels_file.read()
@@ -138,7 +135,7 @@ class waymo_imdb(imdb):
                 #print(img)
                 for img_labels in labels:
                     #print(img_labels['assoc_frame'])
-                    if(img_labels['assoc_frame'] == img.replace('.jpeg','')):
+                    if(img_labels['assoc_frame'] == img.replace('.{}'.format(self._imtype.lower()),'')):
                         img = os.path.join(mode,'images',img)
                         #TODO: filter if not in preferred scene
                         roi = self._load_waymo_annotation(img,img_labels)
@@ -152,9 +149,23 @@ class waymo_imdb(imdb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
+    def find_gt_for_img(self,imfile,mode):
+        if(mode == 'train'):
+            roidb = self.roidb
+        elif(mode == 'val'):
+            roidb = self.val_roidb
+        for roi in roidb:
+            if(roi['imagefile'] == imfile):
+                return roi
+        return None
+
+
     def draw_and_save(self,mode,image_token=None):
-        datapath = os.path.join(cfg.DATA_DIR, 'waymo')
-        out_file = os.path.join(cfg.DATA_DIR, 'waymo',mode,'drawn')
+        datapath = os.path.join(cfg.DATA_DIR, self._name)
+        out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
+        print('deleting files in dir {}'.format(out_file))
+        shutil.rmtree(out_file)
+        os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
         elif(mode == 'train'):
@@ -162,9 +173,8 @@ class waymo_imdb(imdb):
         #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
-                print(roi['imagefile'])
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/images','/drawn').replace('.jpeg','_flipped.jpeg')
+                    outfile = roi['imagefile'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
                     outfile = roi['imagefile'].replace('/images','/drawn')
                 if(roi['boxes'].shape[0] != 0):
@@ -181,12 +191,21 @@ class waymo_imdb(imdb):
                         draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
                     for roi_box in roi['boxes_dc']:
                         draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-                    #print('Saving file at location {}'.format(outfile))
-                    source_img.save(outfile,'JPEG')
+                    print('Saving drawn file at location {}'.format(outfile))
+                    source_img.save(outfile,self._imtype)
+
+    def delete_eval_draw_folder(self,im_folder,mode):
+        datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+        print('deleting files in dir {}'.format(datapath))
+        shutil.rmtree(datapath)
+        os.makedirs(datapath)
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, 'waymo')
-        out_file = imfile.replace('/images','/{}_drawn'.format(mode)).replace('.jpeg','_iter_{}.jpeg'.format(iter))
+        datapath = os.path.join(cfg.DATA_DIR, self._name)
+        if(iter != 0):
+            out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
+        else:
+            out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
         for class_dets in dets:
@@ -200,7 +219,7 @@ class waymo_imdb(imdb):
                 color = 255
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
         print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,'JPEG')    
+        source_img.save(out_file,self._imtype)    
 
 
     def get_class(self,idx):
@@ -229,7 +248,6 @@ class waymo_imdb(imdb):
     #Only care about foreground classes
     def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True):
         filename = os.path.join(self._devkit_path, img)
-
         num_objs = len(img_labels['box'])
 
         boxes      = np.zeros((num_objs, 4), dtype=np.uint16)
@@ -239,6 +257,10 @@ class waymo_imdb(imdb):
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
+        weather = img_labels['scene_type'][0]['weather']
+        tod = img_labels['scene_type'][0]['tod']
+        if(tod != 'Day'):
+            return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
         camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
         camera_intrinsic = img_labels['calibration'][0]['intrinsic']
@@ -246,9 +268,6 @@ class waymo_imdb(imdb):
         ix = 0
         ix_dc = 0
         filter_boxes = True
-        min_thresh_car = 40
-        min_thresh_bike = 20
-        populated_idx = []
         for i, bbox in enumerate(img_labels['box']):
             difficulty = img_labels['difficulty'][i]
             anno_cat   = img_labels['class'][i]
@@ -257,12 +276,20 @@ class waymo_imdb(imdb):
             elif(class_enum(anno_cat) == class_enum.CYCLIST):
                 #Sign is taking index 3, where my code expects cyclist to be. Therefore replace any cyclist (class index 4) with sign (class index 3)
                 anno_cat = class_enum.SIGN.value
+
+            #OVERRIDE
+            if(class_enum(anno_cat) != class_enum.VEHICLE):
+                anno_cat = class_enum.UNKNOWN.value
             #Change to string 
             anno_cat = self._classes[anno_cat]
             x1 = int(float(bbox['x1']))
             y1 = int(float(bbox['y1']))
             x2 = int(float(bbox['x2']))
             y2 = int(float(bbox['y2']))
+            if(y1 < 0):
+                print('y1: {}'.format(y1))
+            if(x1 < 0):
+                print('x1: {}'.format(x1))
             if(x2 >= self._imwidth):
                 x2 = self._imwidth - 1
             if(y2 >= self._imheight):
@@ -272,8 +299,16 @@ class waymo_imdb(imdb):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
-                if(x1 >= x2):
-                    print(boxes[ix,:])
+                if(anno_cat == 'vehicle.car'):
+                    #TODO: Magic Numbers
+                    if(y2 - y1 < 10 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.2):
+                        continue
+                if(anno_cat == 'vehicle.bicycle'):
+                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
+                        continue
+                if(anno_cat == 'human.pedestrian'):
+                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
+                        continue
                 cat.append(anno_cat)
                 gt_classes[ix] = cls
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -282,16 +317,14 @@ class waymo_imdb(imdb):
                 ix = ix + 1
             if(anno_cat == 'dontcare'):
                 #print(line)
-                ignore[ix] = True
+                #ignore[ix] = True
                 boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):
             print('removing element {}'.format(img))
             return None
-
         overlaps = scipy.sparse.csr_matrix(overlaps)
-        #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'img_index': img,
             'imagefile': filename,
@@ -307,39 +340,82 @@ class waymo_imdb(imdb):
             'seg_areas': seg_areas[0:ix]
         }
 
-    def append_flipped_images(self,mode):
-        if(mode == 'train'):
-            num_images = len(self._roidb)
-        elif(mode == 'val'):
-            num_images = len(self._val_roidb)
-        for i in range(num_images):
-            boxes = self.roidb[i]['boxes'].copy()
-            boxes_dc = self.roidb[i]['boxes_dc'].copy()
-            img_token = self.roidb[i]['img_index']
-            filepath  = self.roidb[i]['imagefile']
-            cat = self.roidb[i]['cat'].copy()
-            oldx1 = boxes[:, 0].copy()
-            oldx2 = boxes[:, 2].copy()
-            boxes[:, 0] = self._imwidth - oldx2 - 1
-            boxes[:, 2] = self._imwidth - oldx1 - 1
-            oldx1_dc = boxes_dc[:, 0].copy()
-            oldx2_dc = boxes_dc[:, 2].copy()
-            boxes_dc[:, 0] = self._imwidth - oldx2_dc - 1
-            boxes_dc[:, 2] = self._imwidth - oldx1_dc - 1
-            assert (boxes[:, 2] >= boxes[:, 0]).all()
-            assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
-            entry = {
-                'img_index': img_token,
-                'imagefile': filepath,
-                'boxes': boxes,
-                'cat': cat,
-                'boxes_dc': boxes_dc,
-                'gt_classes': self.roidb[i]['gt_classes'],
-                'gt_overlaps': self.roidb[i]['gt_overlaps'],
-                'flipped': True
-            }
-            #Calls self.gt_roidb through a handler.
-            self.roidb.append(entry)
+       #Post Process Step
+        filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
+        filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
+        filtered_cat        = []
+        filtered_gt_class   = np.zeros((ix), dtype=np.int32)
+        filtered_overlaps   = np.zeros((ix, self.num_classes), dtype=np.float32)
+        ix_new = 0
+        #Remove occluded examples
+        if(filter_boxes is True):
+            for i in range(ix):
+                remove = False
+                #Any GT that overlaps with another
+                #Pedestrians will require a larger overlap than cars.
+                #Need overlap
+                #OR
+                #box behind is fully inside foreground object
+                for j in range(ix):
+                    if(i == j):
+                        continue
+                    #How many LiDAR points?
+                    
+                    #i is behind j
+                    z_diff = dists[i][0] - dists[j][0]
+                    n_diff = dists[i][1] - dists[j][1]
+                    if(boxes[i][0] > boxes[j][0] and boxes[i][1] > boxes[j][1] and boxes[i][2] < boxes[j][2] and boxes[i][3] < boxes[j][3]):
+                        fully_inside = True
+                    else:
+                        fully_inside = False
+                    #overlap_comp(boxes[i],boxes[j])
+                    if(n_diff > 0.3 and fully_inside):
+                        remove = True
+                for j in range(ix_dc):  
+                    #i is behind j
+                    z_diff = dists[i][0] - dists_dc[j][0]
+                    n_diff = dists[i][1] - dists_dc[j][1]
+                    if(boxes[i][0] > boxes_dc[j][0] and boxes[i][1] > boxes_dc[j][1] and boxes[i][2] < boxes_dc[j][2] and boxes[i][3] < boxes_dc[j][3]):
+                        fully_inside = True
+                    else:
+                        fully_inside = False
+                    #overlap_comp(boxes[i],boxes[j])
+                    if(n_diff > 0.3 and fully_inside):
+                        remove = True
+                if(remove is False):
+                    filtered_boxes[ix_new] = boxes[i]
+                    filtered_gt_class[ix_new] = gt_classes[i]
+                    filtered_cat.append(cat[i])
+                    filtered_overlaps[ix_new] = overlaps[i]
+                    ix_new = ix_new + 1
+
+            if(ix_new == 0 and remove_without_gt is True):
+                print('removing element {}'.format(img['token']))
+                return None
+        else:
+            ix_new = ix
+            filtered_boxes = boxes
+            filtered_gt_class = gt_classes[0:ix]
+            filtered_cat      = cat[0:ix]
+            filtered_overlaps = overlaps
+
+        filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
+        #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
+        return {
+            'img_index': img['token'],
+            'imagefile': filename,
+            'ignore': ignore[0:ix_new],
+            'det': ignore[0:ix_new].copy(),
+            'cat': filtered_cat,
+            'hit': ignore[0:ix_new].copy(),
+            'boxes': filtered_boxes[0:ix_new],
+            'boxes_dc': boxes_dc[0:ix_dc],
+            'gt_classes': filtered_gt_class[0:ix_new],
+            'gt_overlaps': filtered_overlaps[0:ix_new],
+            'flipped': False,
+            'seg_areas': seg_areas[0:ix_new]
+        }
+
 
     def _get_waymo_results_file_template(self, mode,class_name):
         # data/waymo/results/<comp_id>_test_aeroplane.txt
@@ -371,7 +447,7 @@ class waymo_imdb(imdb):
                     for k in range(dets.shape[0]):
                         f.write(
                             '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
-                                im_ind, img['token'], dets[k, -1], dets[k, 0],
+                                im_ind, img, dets[k, -1], dets[k, 0],
                                 dets[k, 1], dets[k, 2],
                                 dets[k, 3]))
 
@@ -421,20 +497,6 @@ class waymo_imdb(imdb):
         print('Recompute with `./tools/reval.py --matlab ...` for your paper.')
         print('-- Thanks, The Management')
         print('--------------------------------------------------------------')
-
-    def _do_matlab_eval(self, output_dir='output'):
-        print('-----------------------------------------------------')
-        print('Computing results with the official MATLAB eval code.')
-        print('-----------------------------------------------------')
-        path = os.path.join(cfg.ROOT_DIR, 'lib', 'datasets',
-                            'VOCdevkit-matlab-wrapper')
-        cmd = 'cd {} && '.format(path)
-        cmd += '{:s} -nodisplay -nodesktop '.format(cfg.MATLAB)
-        cmd += '-r "dbstop if error; '
-        cmd += 'waymo_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
-            .format(self._devkit_path, self._get_comp_id(), self._mode_sub_folder, output_dir)
-        print(('Running:\n{}'.format(cmd)))
-        status = subprocess.call(cmd, shell=True)
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')

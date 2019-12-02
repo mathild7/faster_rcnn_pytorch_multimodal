@@ -58,19 +58,25 @@ class RoIDataLayer(object):
 
         return db_inds
 
-    def _get_next_minibatch(self):
+    def _get_next_minibatch(self, augment_en):
         """Return the blobs to be used for the next minibatch.
 
     If cfg.TRAIN.USE_PREFETCH is True, then blobs will be computed in a
     separate process and made available through self._blob_queue.
     """
-        db_inds = self._get_next_minibatch_inds()
-        minibatch_db = [self._roidb[i] for i in db_inds]
-        #print('minibatch')
-        #print(minibatch_db)
-        return get_minibatch(minibatch_db, self._num_classes)
+        minibatch = None
+        while (minibatch is None):
+            db_inds = self._get_next_minibatch_inds()
+            minibatch_db = [self._roidb[i] for i in db_inds]
+            #print('minibatch')
+            #print(minibatch_db)
+            minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en)
+            if(minibatch is None):
+                print('skipping image, augmentation resulted in 0 GT boxes')
+        #TODO: if minibatch is empty due to shift/zoom, get another image
+        return minibatch
 
-    def forward(self):
+    def forward(self,augment_en):
         """Get blobs and copy them into this layer's top blob vector."""
-        blobs = self._get_next_minibatch()
+        blobs = self._get_next_minibatch(augment_en)
         return blobs

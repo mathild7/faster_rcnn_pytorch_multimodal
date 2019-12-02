@@ -19,24 +19,27 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.0002
-
+#WAYMO
+__C.TRAIN.LEARNING_RATE = 0.001
+#Kitti
+#__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
-__C.TRAIN.MOMENTUM = 0.7
+__C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
+#WAYMO
 __C.TRAIN.WEIGHT_DECAY = 0.0001
-
+#__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.5
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-#__C.TRAIN.STEPSIZE = [70000, 140000, 210000, 280000, 350000]
+#__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #NUSCENES ~50,000 images in train set
-__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
+#__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [120000, 240000, 360000]
+__C.TRAIN.STEPSIZE = [100000, 210000, 360000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -65,14 +68,14 @@ __C.TRAIN.SUMMARY_INTERVAL = 15
 #NUSCENES
 #__C.TRAIN.SCALES  = (900,)
 #WAYMO
-__C.TRAIN.SCALES  = (1280,)
+__C.TRAIN.SCALES  = (730,)
 # Max pixel size of the longest side of a scaled input image
 #KITTI fullsize
 #__C.TRAIN.MAX_SIZE = 1280
 #NUSCENES 1/4
 #__C.TRAIN.MAX_SIZE  = 450
 #WAYMO 1/2
-__C.TRAIN.MAX_SIZE  = 960
+__C.TRAIN.MAX_SIZE  = 1920
 # Images to use per minibatch
 __C.TRAIN.IMS_PER_BATCH = 1
 
@@ -181,14 +184,14 @@ __C.TEST = edict()
 #NUSCENES
 #__C.TEST.SCALES  = (900,)
 #WAYMO
-__C.TEST.SCALES  = (1280,)
+__C.TEST.SCALES  = (730,)
 # Max pixel size of the longest side of a scaled input image
 #KITTI
 #__C.TEST.MAX_SIZE = 1280
 #NUSCENES
 #__C.TEST.MAX_SIZE  = 450
 #WAYMO 1/2
-__C.TEST.MAX_SIZE  = 960
+__C.TEST.MAX_SIZE  = 1920
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3
@@ -269,11 +272,28 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.
 # they were trained with
 #__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 #UPDATED for Kitti 
-__C.PIXEL_MEANS = np.array([[[96.866, 98.76, 93.85]]])
-
-__C.PIXEL_STDDEVS = np.array([[[81.54, 80.50, 79.466]]])
-
+#__C.PIXEL_MEANS = np.array([[[96.866, 98.76, 93.85]]])
+#__C.PIXEL_STDDEVS = np.array([[[81.54, 80.50, 79.466]]])
+#__C.PIXEL_ARRANGE = [0,1,2]
+#UPDATED for waymo
 # For reproducibility
+#__C.PIXEL_MEANS = np.array([[[72.03, 75.20, 80.18]]])
+#__C.PIXEL_STDDEVS = np.array([[[26, 28, 38]]])
+#__C.PIXEL_STDDEVS = np.array([[[60, 60, 60]]])
+#__C.PIXEL_STDDEVS = np.array([[[255, 255, 255]]])
+#__C.PIXEL_ARRANGE = [0,1,2]
+
+#resenet101-pytorch
+__C.PIXEL_MEANS = np.array([[[123.675, 116.28, 103.53]]])
+__C.PIXEL_STDDEVS = np.array([[[58.395,57.12,57.375]]])
+#[B,G,R] to [R,G,B]
+__C.PIXEL_ARRANGE = [2,1,0]
+
+#cafferesnet101
+#__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
+#__C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
+#__C.PIXEL_ARRANGE = [0,1,2]
+
 __C.RNG_SEED = 3
 
 # Root directory of project
@@ -298,7 +318,7 @@ __C.POOLING_MODE = 'align'
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-__C.ANCHOR_SCALES = [8,16,32]
+__C.ANCHOR_SCALES = [4,8,16]
 
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]

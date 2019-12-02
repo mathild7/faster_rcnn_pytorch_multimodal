@@ -29,16 +29,15 @@ def im_list_to_blob(ims):
     return blob
 
 
-def prep_im_for_blob(im, pixel_means, pixel_stddev ,target_size, max_size):
+def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, target_size, max_size):
     """Mean subtract and scale an image for use in a blob."""
-    im = im.astype(np.float32, copy=False)
-    im -= pixel_means
-    #im = im/pixel_stddev
     im_shape = im.shape
     im_size_min = np.min(im_shape[0:2])
     im_size_max = np.max(im_shape[0:2])
     im_scale = float(target_size) / float(im_size_min)
-    # Prevent the biggest axis from being more than MAX_SIZE
+
+    im = im.astype(np.float32, copy=False)
+
     if np.round(im_scale * im_size_max) > max_size:
         im_scale = float(max_size) / float(im_size_max)
     im = cv2.resize(
@@ -48,5 +47,10 @@ def prep_im_for_blob(im, pixel_means, pixel_stddev ,target_size, max_size):
         fx=im_scale,
         fy=im_scale,
         interpolation=cv2.INTER_LINEAR)
+    im = im.astype(np.float32)
+    im = im[:,:,pixel_arrange]
+    im -= pixel_means
+    im = im/pixel_stddev
+    # Prevent the biggest axis from being more than MAX_SIZE
 
     return im, im_scale

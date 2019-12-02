@@ -30,25 +30,11 @@ def prepare_roidb(mode,imdb):
     elif(mode == 'val'):
         roidb = imdb.val_roidb
         idx = len(imdb.val_roidb)
-    if(imdb.name == 'kitti'):
-        sizes = [
-            PIL.Image.open(imdb.image_path_at(i)).size
-            for i in range(imdb.num_images)
-        ]
-    elif(imdb.name == 'nuscenes'):
-        #Bad practice, oh well.
-        #sizes = np.empty([img_idx,2])
-        sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
-        #sizes[:][1] = np.full(img_idx,imdb._imheight)
-    elif(imdb.name == 'waymo'):
-        sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
+    sizes = np.full([idx,2],[imdb._imwidth,imdb._imheight])
+    
     #Loop thru all images
     print('index size {:d}'.format(idx))
     for i in range(idx):
-        #Store image path
-        if(imdb.name == 'kitti'):
-            roidb[i]['imagefile'] = imdb.image_path_at(i)
-
         #print('Preparing ROI\'s for image {:s} '.format(roidb[i]['imagefile']))
         #store weidth and height of entire image (why?)
         roidb[i]['width'] = sizes[i][0]

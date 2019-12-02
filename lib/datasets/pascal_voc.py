@@ -75,11 +75,6 @@ class pascal_voc(imdb):
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
 
-    def image_path_at(self, i):
-        """
-    Return the absolute path to image i in the image sequence.
-    """
-        return self.image_path_from_index(self._image_index[i])
 
     def image_path_from_index(self, index):
         """

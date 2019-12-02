@@ -14,6 +14,7 @@ try:
 except ImportError:
     import pickle
 import os
+import shutil
 import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -37,7 +38,6 @@ def _get_image_blob(im):
       in the image pyramid
   """
     im_orig = im.astype(np.float32, copy=True)
-    im_orig -= cfg.PIXEL_MEANS
 
     im_shape = im_orig.shape
     im_size_min = np.min(im_shape[0:2])
@@ -59,8 +59,11 @@ def _get_image_blob(im):
             fy=im_scale,
             interpolation=cv2.INTER_LINEAR)
         im_scale_factors.append(im_scale)
+        im = im.astype(np.float32)
+        im -= cfg.PIXEL_MEANS
+        im = im/cfg.PIXEL_STDDEVS
+        im = im[:,:,cfg.PIXEL_ARRANGE]
         processed_ims.append(im)
-
     # Create a blob to hold the input images
     blob = im_list_to_blob(processed_ims)
 
@@ -159,7 +162,10 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
 
-
+    datapath = os.path.join(cfg.DATA_DIR, 'waymo',mode,'{}_drawn'.format(mode))
+    print('deleting files in dir {}'.format(datapath))
+    shutil.rmtree(datapath)
+    os.makedirs(datapath)
     #for i in range(10):
     for i in range(num_images):
         imfile = imdb.image_path_at(i,mode)
@@ -206,7 +212,12 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
             image_boxes = []
             for j in range(1, imdb.num_classes):
                 image_boxes.append(all_boxes[j][i][:])
-            imdb.draw_and_save_eval(imfile,[],[],image_boxes,i,mode)
+            gt_boxes = imdb.find_gt_for_img(imfile,'val')
+            if(gt_boxes is None):
+                print('image had no GT boxes')
+                imdb.draw_and_save_eval(imfile,[],[],image_boxes,0,mode)
+            else:    
+                imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],image_boxes,0,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

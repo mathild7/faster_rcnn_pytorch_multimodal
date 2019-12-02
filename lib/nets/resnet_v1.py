@@ -126,6 +126,9 @@ class resnetv1(Network):
         if self._num_layers == 50:
             self.resnet = resnet50()
 
+        elif self._num_layers == 34:
+            self.resnet = resnet34()
+            
         elif self._num_layers == 101:
             self.resnet = resnet101()
 

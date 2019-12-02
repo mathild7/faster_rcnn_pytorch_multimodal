@@ -62,7 +62,8 @@ class vgg16(Network):
         #if('resnet.' in key):
         #    new_key = key.replace('resnet.', '')
         #    return new_key
-        if('features.' in key or 'classifier.' in key):
+        #if('features.' in key or 'classifier.' in key):
+        if('features.' in key):
             new_key = key
             return new_key
         else:

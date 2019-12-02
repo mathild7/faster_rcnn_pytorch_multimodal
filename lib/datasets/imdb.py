@@ -85,9 +85,6 @@ class imdb(object):
     def num_images(self):
         return len(self.image_index)
 
-    def image_path_at(self, i):
-        raise NotImplementedError
-
     def default_roidb(self):
         raise NotImplementedError
 
@@ -108,19 +105,47 @@ class imdb(object):
             for i in range(self.num_images)
         ]
 
-    def append_flipped_images(self):
-        num_images = self._num_train_images
+
+    def image_path_at(self, i, mode='train'):
+        """
+    Return the absolute path to image i in the image sequence.
+    """
+        if(mode == 'train'):
+            return self.image_path_from_index(mode, self._train_image_index[i])
+        elif(mode == 'val'):
+            return self.image_path_from_index(mode, self._val_image_index[i])
+        elif(mode == 'test'):
+            return self.image_path_from_index(mode, self._test_image_index[i])
+        else:
+            return None
+
+    def append_flipped_images(self, mode):
+        if(mode == 'train'):
+            num_images = len(self._roidb)
+        elif(mode == 'val'):
+            num_images = len(self._val_roidb)
         for i in range(num_images):
             boxes = self.roidb[i]['boxes'].copy()
             boxes_dc = self.roidb[i]['boxes_dc'].copy()
-            img_token = self.roidb[i]['img_index']
+            img_index = self.roidb[i]['img_index']
+            filepath  = self.roidb[i]['imagefile']
+            ignore    = self.roidb[i]['ignore'].copy()
+            cat = self.roidb[i]['cat'].copy()
             oldx1 = boxes[:, 0].copy()
             oldx2 = boxes[:, 2].copy()
             boxes[:, 0] = self._imwidth - oldx2 - 1
             boxes[:, 2] = self._imwidth - oldx1 - 1
+            oldx1_dc = boxes_dc[:, 0].copy()
+            oldx2_dc = boxes_dc[:, 2].copy()
+            boxes_dc[:, 0] = self._imwidth - oldx2_dc - 1
+            boxes_dc[:, 2] = self._imwidth - oldx1_dc - 1
             assert (boxes[:, 2] >= boxes[:, 0]).all()
+            assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
             entry = {
-                'img_index': img_token,
+                'img_index': img_index,
+                'imagefile': filepath,
+                'cat': cat,
+                'ignore': ignore,
                 'boxes': boxes,
                 'boxes_dc' : boxes_dc,
                 'gt_overlaps': self.roidb[i]['gt_overlaps'],
@@ -128,8 +153,10 @@ class imdb(object):
                 'flipped': True
             }
             #Calls self.gt_roidb through a handler.
-            self.roidb.append(entry)
-        self._num_train_images = self._num_train_images * 2
+            if(mode == 'train'):
+                self._roidb.append(entry)
+            elif(mode == 'val'):
+                self._val_roidb.append(entry)
 
     def evaluate_recall(self,
                         candidate_boxes=None,
