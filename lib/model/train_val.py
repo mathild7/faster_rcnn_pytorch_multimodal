@@ -12,6 +12,7 @@ from model.bbox_transform import bbox_transform_inv, clip_boxes
 from model.config import cfg
 import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
+from .data_layer_generator import data_layer_generator
 import utils.timer
 try:
     import cPickle as pickle
@@ -26,8 +27,30 @@ import os
 import sys
 import glob
 import time
+import signal
 import gc
 from torch.multiprocessing import Pool, Process, Queue
+
+
+class GracefulKiller:
+  kill_now = False
+  orig_sigint = None
+  orig_sigterm = None
+  def __init__(self):
+    self.orig_sigint = signal.getsignal(signal.SIGINT)
+    self.orig_sigterm = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGINT, self.exit_gracefully)
+    signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+  def exit_gracefully(self,signum, frame):
+    print('caught sigint/sigterm')
+    signal.signal(signal.SIGINT, self.orig_sigint)
+    signal.signal(signal.SIGTERM, self.orig_sigterm)
+    self.kill_now = True
+
+
+
+
 #TODO: Could use original imwidth/imheight
 def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes,thresh=0.1):
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
@@ -85,6 +108,8 @@ class SolverWrapper(object):
                  epoch_size,
                  batch_size,
                  val_im_thresh,
+                 augment_en,
+                 val_augment_en,
                  pretrained_model=None):
         self.net = network
         self.imdb = imdb
@@ -97,8 +122,8 @@ class SolverWrapper(object):
         self.epoch_size = epoch_size
         self.batch_size = batch_size
         self.val_batch_size = batch_size
-        self.val_augment_en = False
-        self.augment_en     = True
+        self._val_augment_en = val_augment_en
+        self._augment_en     = augment_en
         self.val_im_thresh = val_im_thresh
         # Simply put '_val' at the end to save the summaries from the validation set
         self.tbvaldir = tbdir + '_val'
@@ -126,13 +151,16 @@ class SolverWrapper(object):
         # current state of numpy random
         st0 = np.random.get_state()
         # current position in the database
-        cur = self.data_layer._cur
+        #cur = self.data_layer._cur
         # current shuffled indexes of the database
-        perm = self.data_layer._perm
+        #perm = self.data_layer._perm
         # current position in the validation database
-        cur_val = self.data_layer_val._cur
+        #cur_val  = self.data_layer_val._cur
         # current shuffled indexes of the validation database
-        perm_val = self.data_layer_val._perm
+        #perm_val = self.data_layer_val._perm
+
+        cur_val, perm_val = self.data_gen_val.get_pointer()
+        cur, perm         = self.data_gen.get_pointer()
 
         # Dump the meta info
         with open(nfilename, 'wb') as fid:
@@ -161,10 +189,12 @@ class SolverWrapper(object):
             last_snapshot_iter = pickle.load(fid)
 
             np.random.set_state(st0)
-            self.data_layer._cur = cur
-            self.data_layer._perm = perm
-            self.data_layer_val._cur = cur_val
-            self.data_layer_val._perm = perm_val
+            #self.data_layer._cur = cur
+            #self.data_layer._perm = perm
+            #self.data_layer_val._cur = cur_val
+            #self.data_layer_val._perm = perm_val
+            self.data_gen.set_pointer(cur,perm)
+            self.data_gen_val.set_pointer(cur_val,perm_val)
 
         return last_snapshot_iter
 
@@ -292,11 +322,13 @@ class SolverWrapper(object):
     def train_model(self, max_iters):
         # Build data layers for both training and validation set
         update_weights = False
-        val_augment_en = False
-        augment_en     = True
+        val_augment_en = self._val_augment_en
+        augment_en     = self._augment_en
         val_batch_size = self.batch_size
-        self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
-        self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)       
+        #self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
+        #self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)    
+        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.imdb.num_classes)
+        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.imdb.num_classes)
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -335,12 +367,16 @@ class SolverWrapper(object):
 # a list here shorter than the number of inputs to the model, and we will
 # only set that subset of names, starting from the beginning.
         t = utils.timer.timer
+        t_net = utils.timer.timer
         loss_cumsum = 0
+        killer = GracefulKiller()
         if(iter < 10):
             self.imdb.delete_eval_draw_folder('val','trainval')
         #    scale_lr(self.optimizer,0.1)
-
-        while iter < max_iters + 1:
+        self.data_gen.start()
+        self.data_gen_val.start()
+        time.sleep(3)
+        while iter < max_iters + 1 and not killer.kill_now:
             #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % self.batch_size == 0 and iter != 0:
@@ -360,24 +396,15 @@ class SolverWrapper(object):
                 #scale_lr(self.optimizer,10)
             t.tic()
             # Get training data, one batch at a time
-            blobs = self.data_layer.forward(augment_en)
+            #blobs = self.data_layer.forward(augment_en)
+            blobs  = self.data_gen.next()
             now = time.time()
-
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
             if iter % self.val_sum_size == 0:
-                #print('performing summary at iteration: {:d}'.format(iter))
-                # Compute the graph with summary
-                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, self.val_sum_size, update_weights)
-                loss_cumsum += total_loss
-                for _sum in summary:
-                    #print('summary')
-                    #print(_sum)
-                    self.writer.add_summary(_sum, float(iter))
-                # Also check the summary on the validation set (single image)
                 update_summaries = False
                 for i in range(val_batch_size):
-                    blobs_val = self.data_layer_val.forward(val_augment_en)
+                    #blobs_val = self.data_layer_val.forward(val_augment_en)
+                    blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
                     summary_val, rois_val, roi_labels_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
@@ -395,8 +422,8 @@ class SolverWrapper(object):
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
-                last_summary_time = now
-            elif iter % self.sum_size == 0:
+
+            if iter % self.sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
@@ -448,43 +475,28 @@ class SolverWrapper(object):
                 if len(np_paths) > cfg.TRAIN.SNAPSHOT_KEPT:
                     self.remove_snapshot(np_paths, ss_paths)
             iter += 1
-
+        print('killing data generators')
+        self.data_gen.kill()
+        self.data_gen_val.kill()
+        time.sleep(1)
+        self.data_gen.clear()
+        self.data_gen_val.clear()
+        #while(not self.data_gen.is_queue_empty()):
+        #    print('emptying queue value')
+        #    dummy_var = self.data_gen.next()
+        #while(not self.data_gen_val.is_queue_empty()):
+        #    print('emptying queue value')
+        #    dummy_var = self.data_gen_val.next()
+        self.data_gen.join()
+        self.data_gen_val.join()
+        if(killer.kill_now):
+            print("Killing program")
+            sys.exit()
         if last_snapshot_iter != iter - 1:
             self.snapshot(iter - 1)
 
         self.writer.close()
         self.valwriter.close()
-
-def train_proc(self,iter,queue,val_queue):
-    blobs = queue.get()
-    if iter % self.val_sum_size == 0:
-        # Compute the graph with summary
-        rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-            self.net.train_step_with_summary(blobs, self.optimizer, self.val_sum_size, update_weights)
-        for i in range(self.val_batch_size):
-            blobs_val = val_queue.get()
-            summary_val, rois_val, roi_labels_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, self.val_batch_size, update_summaries)
-        last_summary_time = now
-    elif iter % self.sum_size == 0:
-        #print('performing summary at iteration: {:d}'.format(iter))
-        # Compute the graph with summary
-        rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-            self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
-    else:
-        rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
-            self.net.train_step(blobs, self.optimizer, update_weights)
-
-
-def data_load_proc(self,iter,queue,val_queue):
-    blobs = self.data_layer.forward(self.augment_en)
-    now = time.time()
-    utils.timer.timer.tic()
-    if(iter%self.val_sum_size == 0):
-        for i in range(self.val_batch_size):
-            val_queue.put(self.data_layer_val.forward(self.val_augment_en))
-    utils.timer.timer.toc()
-    utils.timer.timer.average_time()
-
 
 def filter_roidb(roidb):
     """Remove roidb entries that have no usable RoIs."""
@@ -522,7 +534,9 @@ def train_net(network,
               sum_size=128,
               val_sum_size=1000,
               batch_size=16,
-              val_im_thresh=0.1):
+              val_im_thresh=0.1,
+              augment_en=True,
+              val_augment_en=False):
     """Train a Faster R-CNN network."""
     #roidb = filter_roidb(imdb.roidb)
     epoch_size = len(imdb.roidb)
@@ -540,6 +554,8 @@ def train_net(network,
         epoch_size,
         batch_size,
         val_im_thresh,
+        augment_en,
+        val_augment_en,
         pretrained_model=pretrained_model)
 
     print('Solving...')

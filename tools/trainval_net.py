@@ -136,13 +136,13 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
-        args.net = 'res50'
+        args.net = 'res101'
         args.imdb_name = 'waymo'
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
-        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-torchvision.pth'.format(args.net))
+        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
-        args.max_iters = 1000000
+        args.max_iters = 120000
     print('Called with args:')
     print(args)
     draw_and_save = False
@@ -201,5 +201,7 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=128,
         val_sum_size=1000,
-        batch_size=16,
-        val_im_thresh=0.3)
+        batch_size=8,
+        val_im_thresh=0.3,
+        augment_en=True,
+        val_augment_en=False)

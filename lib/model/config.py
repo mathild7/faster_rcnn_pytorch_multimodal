@@ -31,7 +31,7 @@ __C.TRAIN.MOMENTUM = 0.6
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.5
+__C.TRAIN.GAMMA = 0.25
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
@@ -39,7 +39,7 @@ __C.TRAIN.GAMMA = 0.5
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [100000, 210000, 360000]
+__C.TRAIN.STEPSIZE = [50000, 90000,150000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -108,7 +108,7 @@ __C.TRAIN.SNAPSHOT_ITERS = 10000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
-__C.TRAIN.SNAPSHOT_PREFIX = 'res50_faster_rcnn'
+__C.TRAIN.SNAPSHOT_PREFIX = 'res101_faster_rcnn'
 
 # Normalize the targets (subtract empirical mean, divide by empirical stddev)
 __C.TRAIN.BBOX_NORMALIZE_TARGETS = True
@@ -284,15 +284,17 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.
 #__C.PIXEL_ARRANGE = [0,1,2]
 
 #resenet101-pytorch
-__C.PIXEL_MEANS = np.array([[[123.675, 116.28, 103.53]]])
-__C.PIXEL_STDDEVS = np.array([[[58.395,57.12,57.375]]])
+#__C.PIXEL_MEANS = np.array([[[123.675, 116.28, 103.53]]])
+#__C.PIXEL_MEANS = np.array([[[78.675, 75.28, 70.53]]])
+#__C.PIXEL_STDDEVS = np.array([[[58.395,57.12,57.375]]])
 #[B,G,R] to [R,G,B]
-__C.PIXEL_ARRANGE = [2,1,0]
+#__C.PIXEL_ARRANGE = [2,1,0]
 
 #cafferesnet101
-#__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
-#__C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
-#__C.PIXEL_ARRANGE = [0,1,2]
+__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
+__C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
+__C.PIXEL_ARRANGE = [0,1,2]
+__C.PIXEL_ARRANGE_BGR = [2,1,0]
 
 __C.RNG_SEED = 3
 
@@ -306,7 +308,7 @@ __C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
 __C.MATLAB = 'matlab'
 
 # Place outputs under an experiments directory
-__C.EXP_DIR = 'res50'
+__C.EXP_DIR = 'res101'
 
 # Use GPU implementation of non-maximum suppression
 __C.USE_GPU_NMS = True

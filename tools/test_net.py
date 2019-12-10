@@ -100,9 +100,9 @@ if __name__ == '__main__':
     manual_mode = True
     args = parse_args(manual_mode)
     if(manual_mode):
-        args.net = 'res50'
+        args.net = 'res101'
         args.imdb_name = 'waymo'
-        args.weights_file = 'weights/v6_res50/{}_faster_rcnn_iter_180000.pth'.format(args.net)
+        args.weights_file = 'weights/{}_faster_rcnn_iter_120000.pth'.format(args.net)
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
     print('Called with args:')

@@ -12,6 +12,8 @@ import random
 import numpy as np
 import numpy.random as npr
 import cv2
+import imgaug as ia
+import imgaug.augmenters as iaa
 from model.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
 import matplotlib.pyplot as plt
@@ -25,7 +27,7 @@ def draw_and_save_minibatch(im,roidb):
     out_file = os.path.join(datapath,out_file)
     source_img = Image.fromarray(im)
     draw = ImageDraw.Draw(source_img)
-    for det,label in zip(roidb['boxes'],roidb['gt_classes']):
+    for det,label in zip(roidb['boxes'],roidb['ignore']):
         if(label == 0):
             color = 0
         else:
@@ -50,8 +52,6 @@ def get_minibatch(roidb, num_classes, augment_en):
     #print('token {}'.format(roidb[0]['img_index']))
     #print('is it flipped?: {}'.format(roidb[0]['flipped']))
     #Contains actual image
-
-    #draw_and_save_minibatch(im_blob[0],roidb[0],im_scales[0])
     blobs = {'data': im_blob}
 
     assert len(im_scales) == 1, "Single batch only"
@@ -79,7 +79,7 @@ def get_minibatch(roidb, num_classes, augment_en):
     #print('gt boxes')
     #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['imagefile'])
     if(len(blobs['gt_boxes']) == 0):
-        print('No GT boxes for augmented image. Skipping')
+        #print('No GT boxes for augmented image. Skipping')
         return None
     #assert((item is False for item in roidb[0]['ignore']).any(), 'All GT boxes are set to ignore.')
     return blobs
@@ -103,59 +103,112 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
         #Perform augmentation
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
-        img_arr = im
-        mean = 0
-        sigma = 2
+        img_arr  = im
+        mean     = 0
+        sigma    = 2
+        c_top    = 183
+        c_bottom = 548
+        c_left   = 320
+        c_right  = 960
         local_roidb = roidb.copy()
         if(augment_en):
             #print('augmenting image {}'.format(roidb[i]['img_index']))
             #shape 0 -> height
             #shape 1 -> width
-            gaussian   = np.random.normal(mean, sigma*4, (img_arr.shape[0],img_arr.shape[1],3))
-            blur_amt   = np.random.normal(0.5, 0.5)
-            blur_amt   = np.maximum(blur_amt,0.2)
-            blur_amt   = np.minimum(blur_amt,1.0)
+
+            seq = iaa.Sequential(
+                [
+                    iaa.Sometimes(0.5,(iaa.CropAndPad(
+                        percent=(0, 0.1),
+                        pad_mode='constant',
+                        pad_cval=(0, 255),
+                        keep_size=True
+                    ))),
+                    iaa.Sometimes(0.5,(iaa.Affine(
+                        scale={"x": (1, 2), "y": (1, 2)},  # scale images to 80-120% of their size, individually per axis
+                        translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},  # translate by -20 to +20 percent (per axis)
+                        order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
+                        cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
+                        mode='constant'  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+                    ))),
+                    iaa.SomeOf((0, 3),
+                        [iaa.OneOf([
+                            iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
+                            iaa.AverageBlur(k=(2, 7)), # blur image using local means with kernel sizes between 2 and 7
+                            iaa.MedianBlur(k=(3, 11)), # blur image using local medians with kernel sizes between 2 and 7
+                        ]),
+                        iaa.AdditiveGaussianNoise(
+                            loc=0,
+                            scale=(0.0, 0.05*255), 
+                            per_channel=0.5),
+                        iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+                    ], random_order=True)
+                ], random_order=False
+            )
+            images_aug, bboxes_aug = seq(images=[img_arr],bounding_boxes=[local_roidb[i]['boxes']])
+            img_arr = images_aug[0]
+            local_roidb[i]['boxes'] = bboxes_aug[0]
+            #gaussian   = np.random.normal(mean, sigma, (img_arr.shape[0],img_arr.shape[1],3))
+            #blur_amt   = np.random.normal(0.7, 0.1)
+            #blur_amt   = np.maximum(blur_amt,0.4)
+            #blur_amt   = np.minimum(blur_amt,1.0)
             orig_height = img_arr.shape[0]
             orig_width  = img_arr.shape[1]
-            brightness = np.random.normal(mean,sigma*4)
+            #brightness = np.random.normal(mean,sigma*4)
             #Up and left shift by 20px
-            right_shift = int(np.random.normal(mean,sigma*5))
-            down_shift  = int(np.random.normal(mean,sigma*5))
-            img_arr     = img_arr.astype('float')
-            img_arr    += gaussian
-            img_arr    += brightness
+            #right_shift = int(np.random.normal(mean,sigma*3))
+            #down_shift  = int(np.random.normal(mean,sigma*3))
+            #right_shift = 0
+            #down_shift  = 0
+            #img_arr     = img_arr.astype('float')
+            #img_arr    += gaussian
+            #img_arr    += brightness
             img_arr     = np.minimum(img_arr,255)
             img_arr     = np.maximum(img_arr,0)
             img_arr     = img_arr.astype('uint8')
-            img = Image.fromarray(img_arr)
-            contrast_enhancer = ImageEnhance.Contrast(img)
-            img               = contrast_enhancer.enhance(1.5)
-            blur_enhancer     = ImageEnhance.Sharpness(img)
-            img_arr           = np.array(blur_enhancer.enhance(blur_amt))
-            if(down_shift < 0):
-                img_arr = np.pad(img_arr,((0,abs(down_shift)), (0,0), (0,0)), mode='constant')[abs(down_shift):,:,:]
-            elif(down_shift > 0):
-                img_arr = np.pad(img_arr,((abs(down_shift),0), (0,0), (0,0)), mode='constant')[:-down_shift,:,:]
-            if(right_shift < 0):
-                img_arr = np.pad(img_arr,((0,0), (0,abs(right_shift)), (0,0)), mode='constant')[:,abs(right_shift):,:]
-            elif(right_shift > 0):
-                img_arr = np.pad(img_arr,((0,0), (abs(right_shift),0), (0,0)), mode='constant')[:,:-right_shift,:]
+            #img = Image.fromarray(img_arr)
+            #contrast_enhancer = ImageEnhance.Contrast(img)
+            #img               = contrast_enhancer.enhance(1.2)
+            #blur_enhancer     = ImageEnhance.Sharpness(img)
+            #img               = (blur_enhancer.enhance(blur_amt))
+            #img               = img.crop((c_left,c_top,c_right,c_bottom))
+            #img               = img.resize((1280,730))
+            #img_arr            = np.array(img)
+            #if(down_shift < 0):
+            #    img_arr = np.pad(img_arr,((0,abs(down_shift)), (0,0), (0,0)), mode='constant',constant_values=(127))[abs(down_shift):,:,:]
+            #elif(down_shift > 0):
+            #    img_arr = np.pad(img_arr,((abs(down_shift),0), (0,0), (0,0)), mode='constant',constant_values=(127))[:-down_shift,:,:]
+            #if(right_shift < 0):
+            #    img_arr = np.pad(img_arr,((0,0), (0,abs(right_shift)), (0,0)), mode='constant',constant_values=(127))[:,abs(right_shift):,:]
+            #elif(right_shift > 0):
+            #    img_arr = np.pad(img_arr,((0,0), (abs(right_shift),0), (0,0)), mode='constant',constant_values=(127))[:,:-right_shift,:]
             for j, roi in enumerate(local_roidb[i]['boxes']):
                 #boxes[ix, :] = [x1, y1, x2, y2]
-                roi[0] = np.minimum(np.maximum(roi[0] + right_shift,0),orig_width-1)
-                roi[2] = np.minimum(np.maximum(roi[2] + right_shift,0),orig_width-1)
-                roi[1] = np.minimum(np.maximum(roi[1] + down_shift,0),orig_height-1)
-                roi[3] = np.minimum(np.maximum(roi[3] + down_shift,0),orig_height-1)
+                orig = roi
+                roi[0] = np.minimum(np.maximum(roi[0],0),orig_width-1)
+                roi[2] = np.minimum(np.maximum(roi[2],0),orig_width-1)
+                roi[1] = np.minimum(np.maximum(roi[1],0),orig_height-1)
+                roi[3] = np.minimum(np.maximum(roi[3],0),orig_height-1)
                 #TODO: magic number
                 if(roi[3] - roi[1] < 10 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
-                    print('bad shift up {} y0 {} y1 {}'.format(down_shift,roi[1],roi[3]))
+                    #print('removing box y0 {} y1 {}'.format(roi[1],roi[3]))
                     local_roidb[i]['ignore'][j] = True
                 #TODO: magic number
                 if(roi[2] - roi[0] < 10 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
-                    print('bad shift left {} x0 {} x1 {}'.format(right_shift,roi[0],roi[2]))
+                    #print('removing box  x0 {} x1 {}'.format(roi[0],roi[2]))
                     local_roidb[i]['ignore'][j] = True
+
+                if(local_roidb[i]['ignore'][j] is False and roi[2] < roi[0]):
+                    print('x2 is smaller than x1')
+                if(local_roidb[i]['ignore'][j] is False and roi[3] < roi[1]):
+                    print('y2 is smaller than y1')
+                if(local_roidb[i]['ignore'][j] is False and roi[2] - roi[0] > orig[2] - orig[0]):
+                    print('new x is larger than old x diff')
+                if(local_roidb[i]['ignore'][j] is False and roi[3] - roi[1] > orig[3] - orig[1]):
+                    print('new y diff is larger than old y diff')
             im = img_arr
-        #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE],roidb[i])
+        #draw_and_save_minibatch(im,local_roidb[0])
+        #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]
         im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, target_size,
                                         cfg.TRAIN.MAX_SIZE)

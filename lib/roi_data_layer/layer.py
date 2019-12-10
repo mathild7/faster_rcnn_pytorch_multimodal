@@ -55,7 +55,7 @@ class RoIDataLayer(object):
 
         db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.IMS_PER_BATCH]
         self._cur += cfg.TRAIN.IMS_PER_BATCH
-
+        #print('getting db inds {}'.format(db_inds))
         return db_inds
 
     def _get_next_minibatch(self, augment_en):
@@ -71,9 +71,8 @@ class RoIDataLayer(object):
             #print('minibatch')
             #print(minibatch_db)
             minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en)
-            if(minibatch is None):
-                print('skipping image, augmentation resulted in 0 GT boxes')
-        #TODO: if minibatch is empty due to shift/zoom, get another image
+            #if(minibatch is None):
+                #print('skipping image, augmentation resulted in 0 GT boxes')
         return minibatch
 
     def forward(self,augment_en):
