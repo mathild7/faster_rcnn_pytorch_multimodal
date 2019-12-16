@@ -13,6 +13,7 @@ import numpy as np
 import numpy.random as npr
 import cv2
 import imgaug as ia
+from copy import deepcopy
 import imgaug.augmenters as iaa
 from model.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
@@ -100,21 +101,26 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
         #    print('minibatch images')
         #    print('--------------------------')
 
-        #Perform augmentation
-        if roidb[i]['flipped']:
-            im = im[:, ::-1, :]
         img_arr  = im
         mean     = 0
         sigma    = 2
-        c_top    = 183
-        c_bottom = 548
-        c_left   = 320
-        c_right  = 960
-        local_roidb = roidb.copy()
+        local_roidb = deepcopy(roidb)
         if(augment_en):
             #print('augmenting image {}'.format(roidb[i]['img_index']))
             #shape 0 -> height
             #shape 1 -> width
+            flip_num = np.random.normal(1.0, 2.0)
+            if(local_roidb[i]['flipped'] is True):
+                print('something wrong has happened')
+            if(flip_num > 1.0):
+                img_arr = img_arr[:, ::-1, :]
+                local_roidb[i]['flipped'] = True
+                oldx1 = local_roidb[i]['boxes'][:, 0].copy()
+                oldx2 = local_roidb[i]['boxes'][:, 2].copy()
+                local_roidb[i]['boxes'][:, 0] = im.shape[1] - oldx2 - 1
+                local_roidb[i]['boxes'][:, 2] = im.shape[1] - oldx1 - 1
+            else:
+                local_roidb[i]['flipped'] = False
 
             seq = iaa.Sequential(
                 [
@@ -134,8 +140,8 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
                     iaa.SomeOf((0, 3),
                         [iaa.OneOf([
                             iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
-                            iaa.AverageBlur(k=(2, 7)), # blur image using local means with kernel sizes between 2 and 7
-                            iaa.MedianBlur(k=(3, 11)), # blur image using local medians with kernel sizes between 2 and 7
+                            iaa.AverageBlur(k=(1, 7)), # blur image using local means with kernel sizes between 2 and 7
+                            iaa.MedianBlur(k=(1, 7)), # blur image using local medians with kernel sizes between 2 and 7
                         ]),
                         iaa.AdditiveGaussianNoise(
                             loc=0,
@@ -190,12 +196,21 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
                 roi[1] = np.minimum(np.maximum(roi[1],0),orig_height-1)
                 roi[3] = np.minimum(np.maximum(roi[3],0),orig_height-1)
                 #TODO: magic number
-                if(roi[3] - roi[1] < 10 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
+                if(roi[3] - roi[1] < 12 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
                     #print('removing box y0 {} y1 {}'.format(roi[1],roi[3]))
                     local_roidb[i]['ignore'][j] = True
                 #TODO: magic number
-                if(roi[2] - roi[0] < 10 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
+                if(roi[2] - roi[0] < 12 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
                     #print('removing box  x0 {} x1 {}'.format(roi[0],roi[2]))
+                    local_roidb[i]['ignore'][j] = True
+
+                w = roi[2] - roi[0]
+                h = roi[3] - roi[1]
+                if(h < 0.1):
+                    local_roidb[i]['ignore'][j] = True
+                elif(w < 0.1):
+                    local_roidb[i]['ignore'][j] = True
+                elif(h/w > 3.5 or w/h > 5.0):
                     local_roidb[i]['ignore'][j] = True
 
                 if(local_roidb[i]['ignore'][j] is False and roi[2] < roi[0]):

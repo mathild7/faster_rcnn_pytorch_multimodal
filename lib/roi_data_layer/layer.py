@@ -51,6 +51,7 @@ class RoIDataLayer(object):
         """Return the roidb indices for the next minibatch."""
         #TODO: Should we really be shuffling once roidb is rolled over? (for training at least)
         if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb):
+            print('shuffling indices')
             self._shuffle_roidb_inds()
 
         db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.IMS_PER_BATCH]

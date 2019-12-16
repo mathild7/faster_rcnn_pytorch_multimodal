@@ -4,6 +4,7 @@ from threading import Thread
 import time
 from roi_data_layer.layer import RoIDataLayer
 import sys
+import numpy as np
 #try:
 #    from queue import Queue
 
@@ -65,7 +66,7 @@ class data_layer_generator(object):
         self.data_layer._perm = perm_val
         self._cur = cur_val
         self._perm = perm_val
-        print('starting at {} {}'.format(self._cur,self._perm))
+        print('starting at {}, index: {} of array: {}'.format(self._cur,np.where(self._perm == self._cur),self._perm))
 
     def get_pointer(self):
         print('saving at {} {}'.format(self._cur,self._perm))

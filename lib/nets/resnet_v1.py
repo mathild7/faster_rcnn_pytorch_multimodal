@@ -76,6 +76,7 @@ def resnet101(pretrained=False):
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
+                               #Blocks per layer
     model = ResNet(Bottleneck, [3, 4, 23, 3])
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))

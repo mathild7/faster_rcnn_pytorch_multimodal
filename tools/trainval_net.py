@@ -21,7 +21,7 @@ import numpy as np
 import sys
 import os
 import roi_data_layer.roidb as rdl_roidb
-
+from copy import deepcopy
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
 from nets.mobilenet_v1 import mobilenetv1
@@ -90,10 +90,10 @@ def get_training_validation_roidb(mode,imdb,draw_and_save=False):
         roidb_dummy = imdb.roidb
     elif(mode == 'val'):
         roidb_dummy = imdb.val_roidb
-    if cfg.TRAIN.USE_FLIPPED and mode == 'train':
-        print('Appending horizontally-flipped training examples...')
-        imdb.append_flipped_images(mode)
-        print('done')
+    #if cfg.TRAIN.USE_FLIPPED and mode == 'train':
+    #    print('Appending horizontally-flipped training examples...')
+    #    imdb.append_flipped_images(mode)
+    #    print('done')
     print('Preparing ROIs per image... ')
     rdl_roidb.prepare_roidb(mode,imdb)
     print('done')
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
         args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
-        args.max_iters = 120000
+        args.max_iters = 340000
     print('Called with args:')
     print(args)
     draw_and_save = False

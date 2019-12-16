@@ -72,7 +72,7 @@ class nuscenes_imdb(imdb):
         #print(self._train_scenes)
         for rec in self.nusc.sample_data:
             if(rec['channel'] == 'CAM_FRONT' and rec['is_key_frame'] is True):
-                rec_tmp = rec.copy()
+                rec_tmp = deepcopy(rec)
                 #Reverse lookup, getting the overall sample from the picture sample token, to get the scene information.
                 scene_name = self.nusc.get('scene',self.nusc.get('sample',rec['sample_token'])['scene_token'])['name']
                 desc = self.nusc.get('scene',self.nusc.get('sample',rec['sample_token'])['scene_token'])['description'].lower()
