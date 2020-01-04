@@ -230,6 +230,7 @@ class SolverWrapper(object):
                         'weight_decay':
                         getattr(value, 'weight_decay', cfg.TRAIN.WEIGHT_DECAY)
                     }]
+        #self.optimizer = torch.optim.Adam(params)
         self.optimizer = torch.optim.SGD(params, momentum=cfg.TRAIN.MOMENTUM)
         # Write the train and validation information to tensorboard
         self.writer = tb.writer.FileWriter(self.tbdir)

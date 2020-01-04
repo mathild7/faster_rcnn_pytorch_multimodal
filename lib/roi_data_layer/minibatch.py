@@ -95,6 +95,7 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
     im_scales = []
     for i in range(num_images):
         im = cv2.imread(roidb[i]['imagefile'])
+        #im  = cv2.imread('/home/mat/black.png')
         #print(roidb[i]['imagefile'])
         #if('000318' in roidb[i]['imagefile']):
         #    print('--------------------------')
@@ -121,33 +122,44 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
                 local_roidb[i]['boxes'][:, 2] = im.shape[1] - oldx1 - 1
             else:
                 local_roidb[i]['flipped'] = False
-
+            #iaa.Sometimes(0.5,(iaa.CropAndPad(
+            #    percent=(0, 0.1),
+            #    pad_mode='constant',
+            #    pad_cval=(0, 255),
+            #    keep_size=True
+            #))),
             seq = iaa.Sequential(
                 [
-                    iaa.Sometimes(0.5,(iaa.CropAndPad(
-                        percent=(0, 0.1),
-                        pad_mode='constant',
-                        pad_cval=(0, 255),
-                        keep_size=True
-                    ))),
-                    iaa.Sometimes(0.5,(iaa.Affine(
+                    iaa.Sometimes(0.6,(iaa.Affine(
                         scale={"x": (1, 2), "y": (1, 2)},  # scale images to 80-120% of their size, individually per axis
-                        translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},  # translate by -20 to +20 percent (per axis)
+                        translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent (per axis)
                         order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
                         cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
+                        shear=(-0.5, 0.5),
                         mode='constant'  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
                     ))),
-                    iaa.SomeOf((0, 3),
-                        [iaa.OneOf([
-                            iaa.GaussianBlur((0, 3.0)), # blur images with a sigma between 0 and 3.0
-                            iaa.AverageBlur(k=(1, 7)), # blur image using local means with kernel sizes between 2 and 7
-                            iaa.MedianBlur(k=(1, 7)), # blur image using local medians with kernel sizes between 2 and 7
-                        ]),
+                    #iaa.Sometimes(0.5,iaa.Dropout((0.01, 0.1), per_channel=0.5)),
+                    #iaa.SomeOf((0,1),[
+                    #iaa.Sometimes(0.5,iaa.Multiply((0.5, 1.5), per_channel=0.5)),
+                    #    iaa.Invert(0.05, per_channel=True)
+                    #]),
+                    #iaa.OneOf([
+                    iaa.Sometimes(0.5,iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)),
+                    #    iaa.PiecewiseAffine(scale=(0.01, 0.05))
+                    #]),
+                    iaa.SomeOf((0, 2),[
+                        iaa.SomeOf((0,3),([
+                            iaa.GaussianBlur((0.5, 3.0)),  # blur images with a sigma between 0 and 3.0
+                            iaa.AverageBlur(k=(3, 7)),  # blur image using local means with kernel sizes between 2 and 7
+                            iaa.MedianBlur(k=(3, 7)),  # blur image using local medians with kernel sizes between 2 and 7
+                            iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),
+                            iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
+                        ])),
                         iaa.AdditiveGaussianNoise(
                             loc=0,
-                            scale=(0.0, 0.05*255), 
+                            scale=(0.0, 0.08*255),
                             per_channel=0.5),
-                        iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+                        iaa.AddToHueAndSaturation((-30, 30)),  # change hue and saturation
                     ], random_order=True)
                 ], random_order=False
             )

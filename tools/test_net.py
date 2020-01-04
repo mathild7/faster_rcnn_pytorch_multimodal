@@ -102,7 +102,7 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.imdb_name = 'waymo'
-        args.weights_file = 'weights/{}_faster_rcnn_iter_130000.pth'.format(args.net)
+        args.weights_file = 'weights/{}_faster_rcnn_iter_90000.pth'.format(args.net)
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
     print('Called with args:')

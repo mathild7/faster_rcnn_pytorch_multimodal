@@ -20,7 +20,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.0001
+__C.TRAIN.LEARNING_RATE = 0.01
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -31,7 +31,7 @@ __C.TRAIN.MOMENTUM = 0.6
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.5
+__C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
@@ -39,7 +39,7 @@ __C.TRAIN.GAMMA = 0.5
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [70000,150000]
+__C.TRAIN.STEPSIZE = [150000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -338,7 +338,7 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default2'
+    weights_filename = 'default'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -354,7 +354,7 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default2'
+    weights_filename = 'default'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
