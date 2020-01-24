@@ -175,11 +175,12 @@ def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
     rois = dc_filtered_rois[keep_inds].contiguous()
     roi_scores = dc_filtered_scores[keep_inds].contiguous()
 
+    #Right here, bbox_target_data is actually the delta.
     bbox_target_data = _compute_targets(
         rois[:, 1:5].data, gt_boxes[gt_assignment[keep_inds]][:, :4].data,
         labels.data)
 
     bbox_targets, bbox_inside_weights = \
-      _get_bbox_regression_labels(bbox_target_data, num_classes)
+        _get_bbox_regression_labels(bbox_target_data, num_classes)
 
     return labels, rois, roi_scores, bbox_targets, bbox_inside_weights

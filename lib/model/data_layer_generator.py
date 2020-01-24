@@ -15,6 +15,8 @@ import numpy as np
 # WARNING: use sentinel based on value, not identity
 import queue as ThreadQueue
 from multiprocessing import Process, Queue, Value, Lock
+import threading
+from .config import cfg
 #import multiprocessing
 
 class data_layer_generator(object):
@@ -46,11 +48,18 @@ class data_layer_generator(object):
         self._cur = 0
         self._queue_count = 0
         self._perm = []
-        self._proc = Process(
-            name='{} data generator'.format(mode),
-            target=self._run,
-            args=((self._lock, self._queue,self.data_layer,self._daemon_en, self._augment_en))
-        )
+        if(cfg.DEBUG_EN):
+            self._proc = threading.Thread(
+                name='{} data generator'.format(mode),
+                target=self._run,
+                args=((self._lock, self._queue,self.data_layer,self._daemon_en, self._augment_en))
+            )
+        else:
+            self._proc = Process(
+                name='{} data generator'.format(mode),
+                target=self._run,
+                args=((self._lock, self._queue,self.data_layer,self._daemon_en, self._augment_en))
+            )
 
     def __repr__(self):
         return 'ThreadedGenerator({!r})'.format(self._iterator)

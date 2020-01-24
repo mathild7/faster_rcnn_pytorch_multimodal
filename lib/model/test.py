@@ -107,23 +107,36 @@ def im_detect(net, im):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
 
-    _, probs, bbox_pred, rois = net.test_image(blobs['data'],
-                                                blobs['im_info'])
+    _, probs, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
+                                                         blobs['im_info'])
 
     boxes = rois[:, 1:5] / im_scales[0]
+    #TODO: Useless??
     probs = np.reshape(probs, [probs.shape[0], -1])
     bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
+    #e^(x) where x = log(bbox_var) 
+    bbox_var = np.exp(bbox_var)
+    if(cfg.ENABLE_BBOX_VAR):
+        num_sample = 10
+        sample = np.random.normal(size=(bbox_var.shape[0],bbox_var.shape[1],num_sample))*bbox_var[:,:,None]/10.0 + bbox_pred[:,:,None]
+        sample = sample.astype(np.float32)
+    else:
+        num_sample = 1
+        sample = np.repeat(bbox_pred[:,:,np.newaxis],num_sample,axis=2)
+    boxes = np.repeat(boxes[:,:,np.newaxis],num_sample,axis=2)
+    pred_boxes = np.zeros(sample.shape)
     if cfg.TEST.BBOX_REG:
         # Apply bounding-box regression deltas
-        box_deltas = bbox_pred
-        pred_boxes = bbox_transform_inv(
-            torch.from_numpy(boxes), torch.from_numpy(box_deltas)).numpy()
-        pred_boxes = _clip_boxes(pred_boxes, im.shape)
+        for i in range(num_sample):
+            box_deltas = sample[:,:,i]
+            pred_boxes[:,:,i] = bbox_transform_inv(
+                torch.from_numpy(boxes[:,:,i]), torch.from_numpy(box_deltas)).numpy()
+            pred_boxes[:,:,i] = _clip_boxes(pred_boxes[:,:,i], im.shape)
     else:
         # Simply repeat the boxes, once for each class
-        pred_boxes = np.tile(boxes, (1, probs.shape[1]))
+        pred_boxes = np.tile(boxes, (1, probs.shape[1], num_sample))
 
-    return probs, pred_boxes
+    return probs, pred_boxes, bbox_var
 
 def score_to_color_dict(score):
     color = 'black'
@@ -168,39 +181,36 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
     os.makedirs(datapath)
     #for i in range(10):
     for i in range(num_images):
+        #Start here, this is where we will grab scene info for each detection.
+        #Variance comes up here, and is actually computed below.
         imfile = imdb.image_path_at(i,mode)
         im = cv2.imread(imfile)
 
         _t['im_detect'].tic()
-        scores, boxes = im_detect(net, im)
+        scores, boxes, var = im_detect(net, im)
+        mean_boxes = np.mean(boxes,axis=2)
+        var_boxes  = np.var(boxes,axis=2)
         _t['im_detect'].toc()
 
         _t['misc'].tic()
-
+        boxes_per_cls = [[] for _ in range(imdb.num_classes)]
         # skip j = 0, because it's the background class
         for j in range(1, imdb.num_classes):
-            inds = np.where(scores[:, j] > thresh)[0]
-            cls_scores = scores[inds, j]
-            cls_boxes = boxes[inds, j * 4:(j + 1) * 4]
-            cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-              .astype(np.float32, copy=False)
-            keep = nms(
-                torch.from_numpy(cls_boxes), torch.from_numpy(cls_scores),
-                cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
-            cls_dets = cls_dets[keep, :]
-            all_boxes[j][i] = cls_dets
-
-        # Limit to max_per_image detections *over all classes*
-        if max_per_image > 0:
+            #(cls_boxes, cls_bbox_var, cls_scores) (2,9)
+            all_boxes[j][i], cls_boxes = imdb.nms_hstack(scores,mean_boxes,boxes,var_boxes,thresh,j)
+            boxes_per_cls[j] = cls_boxes
+        # Limit to max_per_image detections *over all classes* Only need to do this if we have dets
+        if max_per_image > 0 and all_boxes[j][i].size != 0:
             image_scores = np.hstack(
                 [all_boxes[j][i][:, -1] for j in range(1, imdb.num_classes)])
-            #NMS - only do if necessary
+            #Grab highest X scores to keep for image
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
                 for j in range(1, imdb.num_classes):
                     #-1  is last element in array, keep all rows with high enough scores
                     keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
                     all_boxes[j][i] = all_boxes[j][i][keep, :]
+                    boxes[j] = boxes[j,keep, :]
         _t['misc'].toc()
 
         print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
@@ -211,10 +221,19 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
         if(draw_det):
             image_boxes = []
             for j in range(1, imdb.num_classes):
-                image_boxes.append(all_boxes[j][i][:])
+                #Re-extract just class dets from 'all boxes' blob. Honestly, this might be cleaner as a dict of numpy arrays.
+                if(all_boxes[j][i].size != 0):
+                    cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
+                    cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
+                    #Per image boxes
+                    image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets)))
+                else:
+                    image_boxes.append(np.empty(0))
+            #Try to convert lists to numpy as often as possible.
+            image_boxes = np.array(image_boxes)
             gt_boxes = imdb.find_gt_for_img(imfile,'val')
             if(gt_boxes is None):
-                print('image had no GT boxes')
+                #print('Draw and save: image {} had no GT boxes'.format(imfile))
                 imdb.draw_and_save_eval(imfile,[],[],image_boxes,0,mode)
             else:    
                 imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],image_boxes,0,mode)

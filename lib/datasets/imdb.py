@@ -14,6 +14,8 @@ import PIL
 from utils.bbox import bbox_overlaps
 import numpy as np
 import scipy.sparse
+from torchvision.ops import nms
+import torch
 from model.config import cfg
 
 
@@ -118,6 +120,16 @@ class imdb(object):
             return self.image_path_from_index(mode, self._test_image_index[i])
         else:
             return None
+            
+    def image_index_at(self, i, mode='train'):
+        if(mode == 'train'):
+            return self._train_image_index[i]
+        elif(mode == 'val'):
+            return self._val_image_index[i]
+        elif(mode == 'test'):
+            return self._test_image_index[i]
+        else:
+            return None
 
     def append_flipped_images(self, mode):
         if(mode == 'train'):
@@ -127,7 +139,7 @@ class imdb(object):
         for i in range(num_images):
             boxes = self.roidb[i]['boxes'].copy()
             boxes_dc = self.roidb[i]['boxes_dc'].copy()
-            img_index = self.roidb[i]['img_index']
+            img_index = self.roidb[i]['imgname']
             filepath  = self.roidb[i]['imagefile']
             ignore    = self.roidb[i]['ignore'].copy()
             cat = self.roidb[i]['cat'].copy()
@@ -142,7 +154,7 @@ class imdb(object):
             assert (boxes[:, 2] >= boxes[:, 0]).all()
             assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
             entry = {
-                'img_index': img_index,
+                'imgname': img_index,
                 'imagefile': filepath,
                 'cat': cat,
                 'ignore': ignore,
@@ -299,6 +311,32 @@ class imdb(object):
                 np.zeros((num_boxes, ), dtype=np.float32),
             })
         return roidb
+
+
+    def nms_hstack(self,scores,mean_boxes,boxes,bbox_var,thresh,c,stack_var=True):
+        inds         = np.where(scores[:, c] > thresh)[0]
+        #No detections over threshold
+        if(inds.size == 0):
+            print('no detections for image over threshold {}'.format(thresh))
+            return np.empty(0),np.empty(0)
+        cls_scores   = scores[inds, c]
+        cls_bbox_var = bbox_var[inds, c * 4:(c + 1) * 4]
+        cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
+        if(boxes.size != 0):
+            boxes        = boxes[inds, c * 4:(c + 1) * 4, :]
+        #[cls_var,cls_boxes,cls_scores]
+        #TODO: is cls_boxes x10? for samples
+        if(stack_var):
+            cls_dets = np.hstack((cls_boxes, cls_bbox_var, cls_scores[:, np.newaxis])) \
+                .astype(np.float32, copy=False)
+        else:
+            cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
+                .astype(np.float32, copy=False)
+        keep = nms(
+            torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
+            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
+        cls_dets = cls_dets[keep, :]
+        return cls_dets, boxes[keep,:,:]
 
     @staticmethod
     def merge_roidbs(a, b):

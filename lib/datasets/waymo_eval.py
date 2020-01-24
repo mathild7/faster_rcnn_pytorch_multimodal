@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import xml.etree.ElementTree as ET
 import os
+from model.config import cfg
 import pickle
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -149,19 +150,23 @@ def waymo_eval(detpath,
         with open(labels_filename,'r') as labels_file:
             data = labels_file.read()
             #print(data)
-            #print(data)
             labels = json.loads(data)
             for img_labels in labels:
                 #print(img_labels['assoc_frame'])
                 if(img_labels['assoc_frame'] == img.replace('.png','')):
                     img = os.path.join(mode,'images',img)
                     #TODO: filter if not in preferred scene
-                    tmp_rec = imdb._load_waymo_annotation(img,img_labels,remove_without_gt=False)
+                    #TODO: here is where I get my ROI for the image. Can use this as well as the variance to get average entropy
+                    #Do I really want multiple paths in which ROI's can be loaded? I should really fetch this from the existing ROIDB
+                    tmp_rec = imdb._load_waymo_annotation(img,img_labels,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
                     break
         if(tmp_rec is None):
             tmp_rec = {}
-            print('skipping image {}'.format(img))
-            tmp_rec['img_index'] = img
+            print('skipping image {}, it does not exist in the ROIDB'.format(img))
+            tmp_rec['imgname'] = img
+            tmp_rec['ignore_img'] = True
+        elif(tmp_rec['gt_boxes'].size == 0):
+            print('skipping image {}, as it has no GT boxes'.format(img))
             tmp_rec['ignore_img'] = True
         else:
             tmp_rec['ignore_img'] = False
@@ -174,6 +179,9 @@ def waymo_eval(detpath,
             tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
             tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
             tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+            tmp_rec['scene_idx'] = tmp_rec['scene_idx']
+            tmp_rec['scene_desc'] = tmp_rec['scene_desc']
+        #List of all images with GT boxes for a specific class
         class_recs.append(tmp_rec)
         #Only print every hundredth annotation?
         if i % 10 == 0:
@@ -209,7 +217,8 @@ def waymo_eval(detpath,
     confidence = np.array([float(x[2]) for x in splitlines])
     #All detections for specific class
     BB = np.array([[float(z) for z in x[3:]] for x in splitlines])
-
+    #TODO: Add variance read here
+    BB_var = np.array([[float(z) for z in x[7:]] for x in splitlines])
     #Repeated for X detections along every image presented
     idx = len(image_idx)
     #3 types, easy medium hard
@@ -232,10 +241,15 @@ def waymo_eval(detpath,
         image_tokens_sorted = [image_tokens[x] for x in sorted_ind]
         #print(image_ids)
 
+        avg_scene_var  = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        img_det_cnt    = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        scene_desc     = ["" for x in range(cfg.NUM_SCENES)]
+
         # go down dets and mark true positives and false positives
         #Zip together sorted_ind with image tokens sorted. 
         #sorted_ind -> Needed to know which detection we are selecting next
         #image_tokens_sorted -> Needed to know which set of GT's are for the same image as the det
+        print('num dets {}'.format(len(sorted_ind)))
         for det_idx,token in zip(sorted_ind,image_tokens_sorted):
             #R is a subset of detections for a specific class
             #print('doing det for image {}'.format(image_idx[d]))
@@ -245,7 +259,7 @@ def waymo_eval(detpath,
             skip_iter = False
             for rec in class_recs:
                 #TODO: Janky fix...
-                if(rec['img_index'].replace('val/images/','') == token):
+                if(rec['imgname'].replace('val/images/','') == token):
                     if(rec['ignore_img'] is False):
                         R = rec
                     else:
@@ -256,6 +270,12 @@ def waymo_eval(detpath,
             #Deprecated
             #R = class_recs[image_ids[d]]
             bb = BB[det_idx, :].astype(float)
+            #Variance extraction, collect on a per scene basis
+            bb_var = BB_var[det_idx, :].astype(float)
+            avg_scene_var[R['scene_idx']][R['img_idx']] += np.average(bb_var)
+            #print('setting mask to true for: {}-{}-{}'.format(R['scene_idx'],R['img_idx'],det_idx))
+            img_det_cnt[R['scene_idx']][R['img_idx']] += 1
+            scene_desc[R['scene_idx']] = R['scene_desc']
             ovmax = -np.inf
             cat = []
             #Multiple possible bounding boxes, perhaps for multi car detection
@@ -268,6 +288,7 @@ def waymo_eval(detpath,
             #    BBGT_height = BBGT_elem[3] - BBGT_elem[1]
             ovmax_dc = 0
             if BBGT_dc.size > 0:
+                #print('performing dont care filtering')
                 ixmin_dc = np.maximum(BBGT_dc[:, 0], bb[0])
                 iymin_dc = np.maximum(BBGT_dc[:, 1], bb[1])
                 ixmax_dc = np.minimum(BBGT_dc[:, 2], bb[2])
@@ -322,7 +343,16 @@ def waymo_eval(detpath,
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[det_idx] += 1
+        else:
+            print('waymo eval, no GT boxes detected ')
 
+    for scene_idx, scene_var in enumerate(avg_scene_var):
+        if(scene_desc[scene_idx] != ""):
+            scene_det_cnt = img_det_cnt[scene_idx]
+            img_mask = np.array(scene_det_cnt,dtype=bool)
+            avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
+            #avg_var = np.average(scene_var[img_mask[scene_idx]])
+            print('Scene: {} \n    num images {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
     map = mrec = mprec = 0
     prec = 0
     rec  = 0

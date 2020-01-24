@@ -41,7 +41,7 @@ class class_enum(Enum):
     CYCLIST = 4
 
 class waymo_imdb(imdb):
-    def __init__(self, mode='test',limiter=0, shuffle_en=True):
+    def __init__(self, mode='test',limiter=0, shuffle_en=True,tod_filter_list=None):
         name = 'waymo'
         imdb.__init__(self, name)
         self._train_scenes = []
@@ -51,7 +51,7 @@ class waymo_imdb(imdb):
         self._val_image_index = []
         self._test_image_index = []
         self._devkit_path = self._get_default_path()
-
+        self._tod_filter_list = tod_filter_list
 
 
         self._imwidth  = 1920
@@ -137,8 +137,7 @@ class waymo_imdb(imdb):
                     #print(img_labels['assoc_frame'])
                     if(img_labels['assoc_frame'] == img.replace('.{}'.format(self._imtype.lower()),'')):
                         img = os.path.join(mode,'images',img)
-                        #TODO: filter if not in preferred scene
-                        roi = self._load_waymo_annotation(img,img_labels)
+                        roi = self._load_waymo_annotation(img,img_labels,tod_filter_list=self._tod_filter_list)
                         if(roi is None):
                             sub_total += 1
                         else:
@@ -158,6 +157,16 @@ class waymo_imdb(imdb):
             if(roi['imagefile'] == imfile):
                 return roi
         return None
+
+    def scene_from_index(self,idx,mode='train'):
+        if(mode == 'train'):
+            return self._train_image_index[i]
+        elif(mode == 'val'):
+            return self._val_image_index[i]
+        elif(mode == 'test'):
+            return self._test_image_index[i]
+        else:
+            return None
 
 
     def draw_and_save(self,mode,image_token=None):
@@ -208,10 +217,14 @@ class waymo_imdb(imdb):
             out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
-        for class_dets in dets:
-            #Set of detections, one for each class
-            for det in class_dets:
-                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
+        if(dets.size == 0):
+            print('draw and save: No detections for image {}'.format(imfile))
+        else:
+            for class_dets in dets:
+                #Set of detections, one for each class
+                for det in class_dets:
+                    for i in range(0,det.shape[1]):
+                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -246,7 +259,7 @@ class waymo_imdb(imdb):
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True):
+    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[]):
         filename = os.path.join(self._devkit_path, img)
         num_objs = len(img_labels['box'])
 
@@ -259,7 +272,12 @@ class waymo_imdb(imdb):
         # "Seg" area for pascal is just the box area
         weather = img_labels['scene_type'][0]['weather']
         tod = img_labels['scene_type'][0]['tod']
-        if(tod != 'Day'):
+        scene_desc = json.dumps(img_labels['scene_type'][0])
+        #TODO: Magic number
+        scene_idx  = int(int(img_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
+        img_idx    = int(int(img_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
+        #Removing night-time/day-time ROI's
+        if(tod not in tod_filter_list):
             return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
         camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
@@ -325,19 +343,23 @@ class waymo_imdb(imdb):
             print('removing element {}'.format(img))
             return None
         overlaps = scipy.sparse.csr_matrix(overlaps)
+        #TODO: Double return
         return {
-            'img_index': img,
-            'imagefile': filename,
-            'ignore': ignore[0:ix],
-            'det': ignore[0:ix].copy(),
-            'cat': cat,
-            'hit': ignore[0:ix].copy(),
-            'boxes': boxes[0:ix],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': gt_classes[0:ix],
+            'imgname':   img,
+            'img_idx':     img_idx,
+            'scene_idx':   scene_idx,
+            'scene_desc':  scene_desc,
+            'imagefile':   filename,
+            'ignore':      ignore[0:ix],
+            'det':         ignore[0:ix].copy(),
+            'cat':         cat,
+            'hit':         ignore[0:ix].copy(),
+            'boxes':       boxes[0:ix],
+            'boxes_dc':    boxes_dc[0:ix_dc],
+            'gt_classes':  gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix]
+            'flipped':     False,
+            'seg_areas':   seg_areas[0:ix]
         }
 
        #Post Process Step
@@ -402,7 +424,10 @@ class waymo_imdb(imdb):
         filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
-            'img_index': img['token'],
+            'imgname': img['token'],
+            'img_idx':     img_idx,
+            'scene_idx':   scene_idx,
+            'scene_desc':  scene_desc,
             'imagefile': filename,
             'ignore': ignore[0:ix_new],
             'det': ignore[0:ix_new].copy(),
@@ -439,17 +464,23 @@ class waymo_imdb(imdb):
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
                     dets = all_boxes[cls_ind][im_ind]
+                    #TODO: Add this to dets file
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:]
                     #print('index: ' + index)
                     #print(dets)
-                    if dets == []:
+                    if dets.size == 0:
                         continue
                     # expects 1-based indices
+                    #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
-                                im_ind, img, dets[k, -1], dets[k, 0],
-                                dets[k, 1], dets[k, 2],
-                                dets[k, 3]))
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                                im_ind, img, dets[k, -1], 
+                                dets[k, 0], dets[k, 1], 
+                                dets[k, 2], dets[k, 3], 
+                                dets[k, 4], dets[k, 5], 
+                                dets[k, 6], dets[k, 7]))
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files

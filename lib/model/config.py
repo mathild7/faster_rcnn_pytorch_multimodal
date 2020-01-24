@@ -20,7 +20,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.008
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -28,7 +28,7 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.0001
+__C.TRAIN.WEIGHT_DECAY = 0.00001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.1
@@ -39,7 +39,7 @@ __C.TRAIN.GAMMA = 0.1
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [150000]
+__C.TRAIN.STEPSIZE = [20000,70000,150000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -191,7 +191,7 @@ __C.TEST.SCALES  = (730,)
 #NUSCENES
 #__C.TEST.MAX_SIZE  = 450
 #WAYMO 1/2
-__C.TEST.MAX_SIZE  = 1920
+__C.TEST.MAX_SIZE  = 960
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3
@@ -261,7 +261,7 @@ __C.MOBILENET.FIXED_LAYERS = 5
 __C.MOBILENET.WEIGHT_DECAY = 0.00004
 
 # Depth multiplier
-__C.MOBILENET.DEPTH_MULTIPLIER = 1.
+__C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 
 #
 # MISC
@@ -329,6 +329,21 @@ __C.ANCHOR_RATIOS = [0.5,1,2]
 __C.RPN_CHANNELS = 512
 
 
+#Bayesian Config
+__C.ENABLE_RPN_BBOX_VAR      = False
+__C.ENABLE_RPN_CLS_VAR       = False
+__C.ENABLE_BBOX_VAR          = True
+__C.TEST.ENABLE_BBOX_VAR     = True
+__C.ENABLE_CLS_VAR           = False
+__C.NUM_SCENES               = 100
+__C.MAX_IMG_PER_SCENE        = 1000
+__C.TRAIN.TOD_FILTER_LIST    = ['Day']
+__C.TEST.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
+#Need to turn this on in order to debug
+#Slows
+__C.DEBUG_EN                 = True
+
+
 def get_output_dir(imdb, weights_filename):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.
@@ -338,7 +353,7 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    weights_filename = 'default8'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -354,7 +369,7 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    weights_filename = 'default8'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

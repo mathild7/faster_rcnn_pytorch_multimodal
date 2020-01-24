@@ -142,7 +142,7 @@ if __name__ == '__main__':
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
         args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
-        args.max_iters = 340000
+        args.max_iters = 700000
     print('Called with args:')
     print(args)
     draw_and_save = False
@@ -155,10 +155,9 @@ if __name__ == '__main__':
     pprint.pprint(cfg)
 
     np.random.seed(cfg.RNG_SEED)
-
     # train set
-    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0)
-    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0)
+    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
+    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
     #TODO: Shuffle images
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
@@ -175,7 +174,7 @@ if __name__ == '__main__':
     #orgflip = cfg.TRAIN.USE_FLIPPED
     #cfg.TRAIN.USE_FLIPPED = False
     print('imdb: {}'.format(args.imdb_name))
-    #cfg.TRAIN.USE_FLIPPED = orgflip
+    #cfg.TRAIN.USE_FLIPPED = orgflipqua
 
     # load network
     if args.net == 'vgg16':
@@ -199,9 +198,9 @@ if __name__ == '__main__':
         tb_dir,
         pretrained_model=args.weight,
         max_iters=args.max_iters,
-        sum_size=128,
+        sum_size=250,
         val_sum_size=1000,
-        batch_size=64,
+        batch_size=16,
         val_im_thresh=0.3,
         augment_en=True,
         val_augment_en=False)

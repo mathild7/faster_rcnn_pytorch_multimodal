@@ -509,6 +509,9 @@ class nuscenes_imdb(imdb):
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
                     dets = all_boxes[cls_ind][im_ind]
+                    #TODO: Include in file write
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:] 
                     #print('index: ' + index)
                     #print(dets)
                     if dets == []:
@@ -516,10 +519,10 @@ class nuscenes_imdb(imdb):
                     # expects 1-based indices
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
                                 im_ind, img['token'], dets[k, -1], dets[k, 0],
                                 dets[k, 1], dets[k, 2],
-                                dets[k, 3]))
+                                dets[k, 3], dets[k, 4], dets[k, 5], dets[k, 6], dets[k, 7]))
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files

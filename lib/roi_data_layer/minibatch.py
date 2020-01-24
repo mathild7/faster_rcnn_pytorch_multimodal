@@ -24,7 +24,7 @@ from scipy.ndimage.filters import gaussian_filter
 
 def draw_and_save_minibatch(im,roidb):
     datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
-    out_file = roidb['img_index'].replace('images/','img-')
+    out_file = roidb['imgname'].replace('images/','img-')
     out_file = os.path.join(datapath,out_file)
     source_img = Image.fromarray(im)
     draw = ImageDraw.Draw(source_img)
@@ -50,7 +50,7 @@ def get_minibatch(roidb, num_classes, augment_en):
     # Get the input image blob, formatted for caffe
     im_blob, im_scales, local_roidb = _get_image_blob(roidb, random_scale_inds, augment_en)
     #print('got image {}'.format(roidb[0]['imagefile']))
-    #print('token {}'.format(roidb[0]['img_index']))
+    #print('token {}'.format(roidb[0]['imgname']))
     #print('is it flipped?: {}'.format(roidb[0]['flipped']))
     #Contains actual image
     blobs = {'data': im_blob}
@@ -107,7 +107,7 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
         sigma    = 2
         local_roidb = deepcopy(roidb)
         if(augment_en):
-            #print('augmenting image {}'.format(roidb[i]['img_index']))
+            #print('augmenting image {}'.format(roidb[i]['imgname']))
             #shape 0 -> height
             #shape 1 -> width
             flip_num = np.random.normal(1.0, 2.0)

@@ -52,12 +52,12 @@ class GracefulKiller:
 
 
 #TODO: Could use original imwidth/imheight
-def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes,thresh=0.1):
+def compute_bbox(rois, cls_score, bbox_pred, bbox_var, imheight, imwidth, imscale, imdb,thresh=0.1):
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
     rois = rois[:, 1:5] / imscale
     #Deleting extra dim
-    cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
-    bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
+    #cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
+    #bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
     pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
     # x1 >= 0
     pred_boxes[:, 0::4] = np.maximum(pred_boxes[:, 0::4], 0)
@@ -73,17 +73,11 @@ def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_cla
     #    for j,cls_s in enumerate(score):
     #        if((cls_s > thresh or cls_s < 0.0) and j > 0):
                 #print('score for entry {} and class {} is {}'.format(i,j,cls_s))
-    for j in range(1, num_classes):
-        inds = np.where(cls_score[:, j] > thresh)[0]
-        cls_scores = cls_score[inds, j]
-        cls_boxes = pred_boxes[inds, j * 4:(j + 1) * 4]
-        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-            .astype(np.float32, copy=False)
-        keep = nms(
-            torch.from_numpy(cls_boxes), torch.from_numpy(cls_scores),
-            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
-        cls_dets = cls_dets[keep, :]
-        all_boxes.append(cls_dets)
+
+    for j in range(1, imdb.num_classes):
+        #Don't need to stack variance here, it is only used in trainval to draw stuff
+        all_box, _ = imdb.nms_hstack(cls_score,pred_boxes,np.empty(0),bbox_var,thresh,j,stack_var=False)
+        all_boxes.append(all_box)
     return rois, all_boxes
 
 def scale_lr(optimizer, scale):
@@ -378,6 +372,9 @@ class SolverWrapper(object):
         self.data_gen_val.start()
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
+
+            #if(iter >= 20000 and cfg.ENABLE_BBOX_VAR is False):
+            #    cfg.ENABLE_BBOX_VAR = True
             #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % self.batch_size == 0 and iter != 0:
@@ -408,10 +405,12 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-                    summary_val, rois_val, roi_labels_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                    summary_val, rois_val, roi_labels_val, bbox_pred_val, bbox_var_val, cls_prob_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     #im info 0 -> H 1 -> W 2 -> scale
                     #Add ability to do compute_bbox on rois_val and pass to draw&save
-                    rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
+                    rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,bbox_var_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb,self.val_im_thresh)
+                    bbox_pred_val = np.array(bbox_pred_val)
+                    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
                     self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,iter+i,'trainval')
 
                     #for obj in gc.get_objects():
