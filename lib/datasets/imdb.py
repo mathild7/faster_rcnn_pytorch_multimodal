@@ -322,7 +322,7 @@ class imdb(object):
         cls_scores   = scores[inds, c]
         cls_bbox_var = bbox_var[inds, c * 4:(c + 1) * 4]
         cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
-        if(boxes.size != 0):
+        if(boxes is not None):
             boxes        = boxes[inds, c * 4:(c + 1) * 4, :]
         #[cls_var,cls_boxes,cls_scores]
         #TODO: is cls_boxes x10? for samples
@@ -336,7 +336,10 @@ class imdb(object):
             torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
             cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
         cls_dets = cls_dets[keep, :]
-        return cls_dets, boxes[keep,:,:]
+        #Only if this variable has been provided
+        if(boxes is not None):
+            boxes = boxes[keep,:,:]
+        return cls_dets, boxes
 
     @staticmethod
     def merge_roidbs(a, b):

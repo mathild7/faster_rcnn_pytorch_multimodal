@@ -362,7 +362,7 @@ class waymo_imdb(imdb):
             'seg_areas':   seg_areas[0:ix]
         }
 
-       #Post Process Step
+        #Post Process Step
         filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
         filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
         filtered_cat        = []

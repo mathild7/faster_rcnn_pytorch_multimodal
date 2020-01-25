@@ -107,7 +107,7 @@ def get_training_validation_roidb(mode,imdb,draw_and_save=False):
     else:
         return None
 
-def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
+def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0,tod_filter_list=None):
     """
   Combine multiple roidbs
   """
@@ -117,7 +117,7 @@ def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
         elif(dataset == 'nuscenes'):
             imdb = nuscenes_imdb(mode,limiter)
         elif(dataset == 'waymo'):
-            imdb = waymo_imdb(mode,limiter)
+            imdb = waymo_imdb(mode,limiter,tod_filter_list=tod_filter_list)
         else:
             print('Requested dataset is not available')
             return

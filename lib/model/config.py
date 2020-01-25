@@ -228,6 +228,7 @@ __C.TEST.MODE = 'nms'
 # Only useful when TEST.MODE is 'top', specifies the number of top proposals to select
 __C.TEST.RPN_TOP_N = 5000
 
+__C.TEST.IGNORE_DC = False
 #
 # ResNet options
 #
@@ -332,13 +333,14 @@ __C.RPN_CHANNELS = 512
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
 __C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_BBOX_VAR          = True
-__C.TEST.ENABLE_BBOX_VAR     = True
+__C.ENABLE_BBOX_VAR          = False
+__C.TEST.ENABLE_BBOX_VAR     = False
 __C.ENABLE_CLS_VAR           = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day']
-__C.TEST.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
+__C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
+__C.TEST.NUM_BBOX_VAR_SAMPLE     = 30
 #Need to turn this on in order to debug
 #Slows
 __C.DEBUG_EN                 = True
@@ -353,7 +355,7 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default8'
+    weights_filename = 'default'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -369,7 +371,7 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default8'
+    weights_filename = 'default'
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

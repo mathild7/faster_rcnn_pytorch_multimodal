@@ -76,7 +76,7 @@ def compute_bbox(rois, cls_score, bbox_pred, bbox_var, imheight, imwidth, imscal
 
     for j in range(1, imdb.num_classes):
         #Don't need to stack variance here, it is only used in trainval to draw stuff
-        all_box, _ = imdb.nms_hstack(cls_score,pred_boxes,np.empty(0),bbox_var,thresh,j,stack_var=False)
+        all_box, _ = imdb.nms_hstack(cls_score,pred_boxes,None,bbox_var,thresh,j,stack_var=False)
         all_boxes.append(all_box)
     return rois, all_boxes
 
@@ -410,7 +410,8 @@ class SolverWrapper(object):
                     #Add ability to do compute_bbox on rois_val and pass to draw&save
                     rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,bbox_var_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb,self.val_im_thresh)
                     bbox_pred_val = np.array(bbox_pred_val)
-                    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
+                    if(bbox_pred_val.size != 0):
+                        bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
                     self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,iter+i,'trainval')
 
                     #for obj in gc.get_objects():

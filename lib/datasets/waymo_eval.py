@@ -165,7 +165,7 @@ def waymo_eval(detpath,
             print('skipping image {}, it does not exist in the ROIDB'.format(img))
             tmp_rec['imgname'] = img
             tmp_rec['ignore_img'] = True
-        elif(tmp_rec['gt_boxes'].size == 0):
+        elif(tmp_rec['boxes'].size == 0):
             print('skipping image {}, as it has no GT boxes'.format(img))
             tmp_rec['ignore_img'] = True
         else:
@@ -287,7 +287,7 @@ def waymo_eval(detpath,
             #for i, BBGT_elem in enumerate(BBGT):
             #    BBGT_height = BBGT_elem[3] - BBGT_elem[1]
             ovmax_dc = 0
-            if BBGT_dc.size > 0:
+            if BBGT_dc.size > 0 and cfg.TEST.IGNORE_DC:
                 #print('performing dont care filtering')
                 ixmin_dc = np.maximum(BBGT_dc[:, 0], bb[0])
                 iymin_dc = np.maximum(BBGT_dc[:, 1], bb[1])

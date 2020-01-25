@@ -115,9 +115,10 @@ def im_detect(net, im):
     probs = np.reshape(probs, [probs.shape[0], -1])
     bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
     #e^(x) where x = log(bbox_var) 
-    bbox_var = np.exp(bbox_var)
     if(cfg.ENABLE_BBOX_VAR):
-        num_sample = 10
+        bbox_var = np.exp(bbox_var)
+        num_sample = cfg.TEST.NUM_BBOX_VAR_SAMPLE
+        #TODO: Fix magic /10.0
         sample = np.random.normal(size=(bbox_var.shape[0],bbox_var.shape[1],num_sample))*bbox_var[:,:,None]/10.0 + bbox_pred[:,:,None]
         sample = sample.astype(np.float32)
     else:
@@ -134,7 +135,7 @@ def im_detect(net, im):
             pred_boxes[:,:,i] = _clip_boxes(pred_boxes[:,:,i], im.shape)
     else:
         # Simply repeat the boxes, once for each class
-        pred_boxes = np.tile(boxes, (1, probs.shape[1], num_sample))
+        pred_boxes = np.tile(boxes, (1, probs.shape[1], cfg.TEST.NUM_BBOX_VAR_SAMPLE))
 
     return probs, pred_boxes, bbox_var
 
@@ -223,6 +224,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
             for j in range(1, imdb.num_classes):
                 #Re-extract just class dets from 'all boxes' blob. Honestly, this might be cleaner as a dict of numpy arrays.
                 if(all_boxes[j][i].size != 0):
+                    #first new axis is to be hstacked in parallel with bbox (4 corners + 1(newaxis)pred), second new axis is for the sampled bboxes multiplier (this will be 1 without var)
                     cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
                     cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
                     #Per image boxes
