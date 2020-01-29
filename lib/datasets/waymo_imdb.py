@@ -58,6 +58,7 @@ class waymo_imdb(imdb):
         self._imheight = 730
         self._imtype   = 'PNG'
         self._mode = mode
+        print('imdb mode: {}'.format(mode))
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
@@ -259,7 +260,7 @@ class waymo_imdb(imdb):
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[]):
+    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
         filename = os.path.join(self._devkit_path, img)
         num_objs = len(img_labels['box'])
 
@@ -278,6 +279,7 @@ class waymo_imdb(imdb):
         img_idx    = int(int(img_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
         #Removing night-time/day-time ROI's
         if(tod not in tod_filter_list):
+            print('TOD {} not in specified filter list'.format(tod))
             return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
         camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
@@ -285,7 +287,6 @@ class waymo_imdb(imdb):
         # Load object bounding boxes into a data frame.
         ix = 0
         ix_dc = 0
-        filter_boxes = True
         for i, bbox in enumerate(img_labels['box']):
             difficulty = img_labels['difficulty'][i]
             anno_cat   = img_labels['class'][i]
@@ -317,14 +318,14 @@ class waymo_imdb(imdb):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
-                if(anno_cat == 'vehicle.car'):
+                if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
-                    if(y2 - y1 < 10 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.2):
+                    if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
                         continue
-                if(anno_cat == 'vehicle.bicycle'):
+                if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
                         continue
-                if(anno_cat == 'human.pedestrian'):
+                if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
                         continue
                 cat.append(anno_cat)
@@ -340,12 +341,12 @@ class waymo_imdb(imdb):
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):
-            print('removing element {}'.format(img))
+            print('removing image {} with no GT boxes specified'.format(img))
             return None
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'imgname':   img,
+            'imgname':     img,
             'img_idx':     img_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
@@ -363,83 +364,83 @@ class waymo_imdb(imdb):
         }
 
         #Post Process Step
-        filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
-        filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
-        filtered_cat        = []
-        filtered_gt_class   = np.zeros((ix), dtype=np.int32)
-        filtered_overlaps   = np.zeros((ix, self.num_classes), dtype=np.float32)
-        ix_new = 0
+        #filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
+        #filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
+        #filtered_cat        = []
+        #filtered_gt_class   = np.zeros((ix), dtype=np.int32)
+        #filtered_overlaps   = np.zeros((ix, self.num_classes), dtype=np.float32)
+        #ix_filter = 0
         #Remove occluded examples
-        if(filter_boxes is True):
-            for i in range(ix):
-                remove = False
+        #if(filter_boxes is True):
+        #    for i in range(ix):
+        #        remove = False
                 #Any GT that overlaps with another
                 #Pedestrians will require a larger overlap than cars.
                 #Need overlap
                 #OR
                 #box behind is fully inside foreground object
-                for j in range(ix):
-                    if(i == j):
-                        continue
+                #for j in range(ix):
+                    #if(i == j):
+                    #    continue
                     #How many LiDAR points?
                     
                     #i is behind j
-                    z_diff = dists[i][0] - dists[j][0]
-                    n_diff = dists[i][1] - dists[j][1]
-                    if(boxes[i][0] > boxes[j][0] and boxes[i][1] > boxes[j][1] and boxes[i][2] < boxes[j][2] and boxes[i][3] < boxes[j][3]):
-                        fully_inside = True
-                    else:
-                        fully_inside = False
+                    #z_diff = dists[i][0] - dists[j][0]
+                    #n_diff = dists[i][1] - dists[j][1]
+                    #if(boxes[i][0] > boxes[j][0] and boxes[i][1] > boxes[j][1] and boxes[i][2] < boxes[j][2] and boxes[i][3] < boxes[j][3]):
+                    #    fully_inside = True
+                    #else:
+                    #    fully_inside = False
                     #overlap_comp(boxes[i],boxes[j])
-                    if(n_diff > 0.3 and fully_inside):
-                        remove = True
-                for j in range(ix_dc):  
+                    #if(n_diff > 0.3 and fully_inside):
+                    #    remove = True
+                #for j in range(ix_dc):  
                     #i is behind j
-                    z_diff = dists[i][0] - dists_dc[j][0]
-                    n_diff = dists[i][1] - dists_dc[j][1]
-                    if(boxes[i][0] > boxes_dc[j][0] and boxes[i][1] > boxes_dc[j][1] and boxes[i][2] < boxes_dc[j][2] and boxes[i][3] < boxes_dc[j][3]):
-                        fully_inside = True
-                    else:
-                        fully_inside = False
+                #    z_diff = dists[i][0] - dists_dc[j][0]
+                #    n_diff = dists[i][1] - dists_dc[j][1]
+                #    if(boxes[i][0] > boxes_dc[j][0] and boxes[i][1] > boxes_dc[j][1] and boxes[i][2] < boxes_dc[j][2] and boxes[i][3] < boxes_dc[j][3]):
+                #        fully_inside = True
+                #    else:
+                #        fully_inside = False
                     #overlap_comp(boxes[i],boxes[j])
-                    if(n_diff > 0.3 and fully_inside):
-                        remove = True
-                if(remove is False):
-                    filtered_boxes[ix_new] = boxes[i]
-                    filtered_gt_class[ix_new] = gt_classes[i]
-                    filtered_cat.append(cat[i])
-                    filtered_overlaps[ix_new] = overlaps[i]
-                    ix_new = ix_new + 1
+                #    if(n_diff > 0.3 and fully_inside):
+                #        remove = True
+                #if(remove is False):
+                #    filtered_boxes[ix_filter] = boxes[i]
+                #    filtered_gt_class[ix_filter] = gt_classes[i]
+                #    filtered_cat.append(cat[i])
+                #    filtered_overlaps[ix_filter] = overlaps[i]
+                #    ix_filter = ix_filter + 1
 
-            if(ix_new == 0 and remove_without_gt is True):
-                print('removing element {}'.format(img['token']))
-                return None
-        else:
-            ix_new = ix
-            filtered_boxes = boxes
-            filtered_gt_class = gt_classes[0:ix]
-            filtered_cat      = cat[0:ix]
-            filtered_overlaps = overlaps
+            #if(ix_filter == 0 and remove_without_gt is True):
+            #    print('removing element {}'.format(img['token']))
+            #    return None
+        #else:
+        #    ix_filter = ix
+        #    filtered_boxes = boxes
+        #    filtered_gt_class = gt_classes[0:ix]
+        #    filtered_cat      = cat[0:ix]
+        #    filtered_overlaps = overlaps
 
-        filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
+        #filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
-        return {
-            'imgname': img['token'],
-            'img_idx':     img_idx,
-            'scene_idx':   scene_idx,
-            'scene_desc':  scene_desc,
-            'imagefile': filename,
-            'ignore': ignore[0:ix_new],
-            'det': ignore[0:ix_new].copy(),
-            'cat': filtered_cat,
-            'hit': ignore[0:ix_new].copy(),
-            'boxes': filtered_boxes[0:ix_new],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': filtered_gt_class[0:ix_new],
-            'gt_overlaps': filtered_overlaps[0:ix_new],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix_new]
-        }
+        #return {
+        #    'imgname':     img,
+        #    'img_idx':     img_idx,
+        #    'scene_idx':   scene_idx,
+        #    'scene_desc':  scene_desc,
+        #    'imagefile': filename,
+        #    'ignore': ignore[0:ix_filter],
+        #    'det': ignore[0:ix_filter].copy(),
+        #    'cat': filtered_cat,
+        #    'hit': ignore[0:ix_filter].copy(),
+        #    'boxes': filtered_boxes[0:ix_filter],
+        #    'boxes_dc': boxes_dc[0:ix_dc],
+        #    'gt_classes': filtered_gt_class[0:ix_filter],
+        #    'gt_overlaps': filtered_overlaps[0:ix_filter],
+        #    'flipped': False,
+        #    'seg_areas': seg_areas[0:ix_filter]
+        #}
 
 
     def _get_waymo_results_file_template(self, mode,class_name):

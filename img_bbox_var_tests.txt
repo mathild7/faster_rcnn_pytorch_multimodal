@@ -1,0 +1,314 @@
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: all, test: all
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+num dets 4258
+waymo eval, no GT boxes detected 
+Scene: 0 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 23.94
+    total dets 127.0
+Scene: 1 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 36.33
+    total dets 190.0
+Scene: 2 
+    num images 24 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 16.97
+    total dets 113.0
+Scene: 3 
+    num images 17 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 25.15
+    total dets 123.0
+Scene: 4 
+    num images 20 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 22.26
+    total dets 190.0
+Scene: 5 
+    num images 9 
+     Description {"weather": "sunny", "tod": "Dawn/Dusk"} 
+     Average Variance 62.03
+    total dets 16.0
+Scene: 6 
+    num images 17 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 95.43
+    total dets 34.0
+Scene: 7 
+    num images 18 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 98.71
+    total dets 64.0
+Scene: 8 
+    num images 17 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 20.60
+    total dets 98.0
+Scene: 9 
+    num images 31 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 21.99
+    total dets 291.0
+Scene: 10 
+    num images 33 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 28.14
+    total dets 383.0
+Scene: 11 
+    num images 27 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 17.52
+    total dets 299.0
+Scene: 12 
+    num images 19 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 37.16
+    total dets 52.0
+Scene: 13 
+    num images 22 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 32.94
+    total dets 204.0
+Scene: 14 
+    num images 6 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 35.66
+    total dets 7.0
+Scene: 15 
+    num images 23 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 21.89
+    total dets 185.0
+Scene: 16 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 17.69
+    total dets 224.0
+Scene: 17 
+    num images 21 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 23.53
+    total dets 198.0
+Scene: 18 
+    num images 28 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 46.44
+    total dets 193.0
+Scene: 19 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 39.69
+    total dets 182.0
+Scene: 21 
+    num images 35 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 42.95
+    total dets 428.0
+Scene: 22 
+    num images 10 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 59.05
+    total dets 18.0
+Scene: 23 
+    num images 22 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 45.98
+    total dets 277.0
+Scene: 24 
+    num images 20 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 27.75
+    total dets 239.0
+Scene: 25 
+    num images 30 
+     Description {"weather": "sunny", "tod": "Dawn/Dusk"} 
+     Average Variance 31.73
+    total dets 104.0
+AP for vehicle.car = 0.3047
+Mean AP = 0.3047 
+~~~~~~~~
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: all, test: day
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: all, test: night
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: day, test: all
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Scene: 0 
+    num images 21 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 16.81
+    total dets 108.0
+Scene: 1 
+    num images 17 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 30.93
+    total dets 116.0
+Scene: 2 
+    num images 19 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 13.67
+    total dets 121.0
+Scene: 3 
+    num images 24 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 25.81
+    total dets 162.0
+Scene: 4 
+    num images 38 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 24.78
+    total dets 409.0
+Scene: 5 
+    num images 8 
+     Description {"weather": "sunny", "tod": "Dawn/Dusk"} 
+     Average Variance 47.04
+    total dets 27.0
+Scene: 6 
+    num images 6 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 238.81
+    total dets 6.0
+Scene: 7 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 64.00
+    total dets 42.0
+Scene: 8 
+    num images 22 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 16.63
+    total dets 132.0
+Scene: 9 
+    num images 29 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 18.70
+    total dets 304.0
+Scene: 10 
+    num images 24 
+     Description {"weather": "sunny", "tod": "Night"} 
+     Average Variance 49.69
+    total dets 139.0
+Scene: 11 
+    num images 26 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 20.17
+    total dets 280.0
+Scene: 12 
+    num images 34 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 48.34
+    total dets 108.0
+Scene: 13 
+    num images 25 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 34.84
+    total dets 230.0
+Scene: 14 
+    num images 8 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 19.22
+    total dets 9.0
+Scene: 15 
+    num images 20 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 23.70
+    total dets 173.0
+Scene: 16 
+    num images 23 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 18.31
+    total dets 223.0
+Scene: 17 
+    num images 18 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 21.35
+    total dets 179.0
+Scene: 18 
+    num images 19 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 28.24
+    total dets 154.0
+Scene: 19 
+    num images 21 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 31.30
+    total dets 165.0
+Scene: 21 
+    num images 23 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 44.22
+    total dets 276.0
+Scene: 22 
+    num images 7 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 24.58
+    total dets 10.0
+Scene: 23 
+    num images 22 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 41.72
+    total dets 314.0
+Scene: 24 
+    num images 24 
+     Description {"weather": "sunny", "tod": "Day"} 
+     Average Variance 27.06
+    total dets 289.0
+Scene: 25 
+    num images 18 
+     Description {"weather": "sunny", "tod": "Dawn/Dusk"} 
+     Average Variance 34.72
+    total dets 70.0
+AP for vehicle.car = 0.2763
+Mean AP = 0.2763 
+~~~~~~~~
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: day, test: day
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+bbox_var, 80k iter, train: day, test: night
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: all, test: all
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: all, test: day
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: all, test: night
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: day, test: all
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: day, test: day
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+vanilla, 80k iter, train: day, test: night
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+

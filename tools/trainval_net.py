@@ -145,7 +145,7 @@ if __name__ == '__main__':
         args.max_iters = 700000
     print('Called with args:')
     print(args)
-    draw_and_save = False
+    draw_and_save = True
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:

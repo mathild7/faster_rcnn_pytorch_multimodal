@@ -320,7 +320,8 @@ class imdb(object):
             print('no detections for image over threshold {}'.format(thresh))
             return np.empty(0),np.empty(0)
         cls_scores   = scores[inds, c]
-        cls_bbox_var = bbox_var[inds, c * 4:(c + 1) * 4]
+        if(stack_var):
+            cls_bbox_var = bbox_var[inds, c * 4:(c + 1) * 4]
         cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
         if(boxes is not None):
             boxes        = boxes[inds, c * 4:(c + 1) * 4, :]

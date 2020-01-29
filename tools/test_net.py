@@ -102,7 +102,7 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.imdb_name = 'waymo'
-        args.weights_file = 'weights/{}_faster_rcnn_iter_130000.pth'.format(args.net)
+        args.weights_file = 'weights/bbox_var/{}_faster_rcnn_iter_80000_all.pth'.format(args.net)
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
     print('Called with args:')
@@ -162,4 +162,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.6,draw_det=True,eval_det=True)
+    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.5,draw_det=True,eval_det=True)

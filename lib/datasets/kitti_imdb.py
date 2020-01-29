@@ -223,7 +223,7 @@ class kitti_imdb(imdb):
         }
 
 
-
+    #TODO: make dependence of ROIDB in test mode, gone.
     def find_gt_for_img(self,imfile,mode):
         if(mode == 'train'):
             roidb = self.roidb
