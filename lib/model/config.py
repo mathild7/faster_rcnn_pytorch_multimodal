@@ -333,16 +333,17 @@ __C.RPN_CHANNELS = 512
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
 __C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_BBOX_VAR          = True
-__C.ENABLE_CLS_VAR           = False
+__C.ENABLE_BBOX_VAR          = False
+__C.ENABLE_CLS_VAR           = True
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
+__C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 __C.TEST.NUM_BBOX_VAR_SAMPLE = 20
 #Need to turn this on in order to debug
 #Slows
-__C.DEBUG_EN                 = False
+__C.DEBUG_EN                 = True
 
 
 def get_output_dir(imdb, weights_filename):
@@ -354,10 +355,18 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
+    mode = ''
     if __C.ENABLE_BBOX_VAR:
-      mode = 'bbox_var'
-    else:
-      mode = 'vanilla'
+      mode = mode + 'bbox_var_'
+    if __C.ENABLE_CLS_VAR:
+      mode = mode + 'cls_var_'
+    if __C.ENABLE_RPN_BBOX_VAR:
+      mode = mode + 'rpn_bbox_var_'
+    if __C.ENABLE_RPN_CLS_VAR:
+      mode = mode + 'rpn_cls_var_'
+    #catch all, if nothing is enabled
+    if(mode == ''):
+      mode = 'vanilla_'
     if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
       train_filter = 'all'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Day'):
@@ -366,15 +375,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    if(len(__C.TEST.TOD_FILTER_LIST) == 3):
-      test_filter = 'all'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Day'):
-      test_filter = 'day'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Night'):
-      test_filter = 'night'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
-      test_filter = 'dawn_dusk'
-    weights_filename = '{}_train_{}_test_{}'.format(mode,train_filter,test_filter)
+    weights_filename = '{}_train_{}'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -390,10 +391,19 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
+    mode = ''
     if __C.ENABLE_BBOX_VAR:
-      mode = 'bbox_var'
-    else:
-      mode = 'vanilla'
+      mode = mode + 'bbox_var_'
+    if __C.ENABLE_CLS_VAR:
+      mode = mode + 'cls_var_'
+    if __C.ENABLE_RPN_BBOX_VAR:
+      mode = mode + 'rpn_bbox_var_'
+    if __C.ENABLE_RPN_CLS_VAR:
+      mode = mode + 'rpn_cls_var_'
+    #catch all, if nothing is enabled
+    if(mode == ''):
+      mode = 'vanilla_'
+    
     if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
       train_filter = 'all'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Day'):
@@ -402,15 +412,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    if(len(__C.TEST.TOD_FILTER_LIST) == 3):
-      test_filter = 'all'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Day'):
-      test_filter = 'day'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Night'):
-      test_filter = 'night'
-    elif(__C.TEST.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
-      test_filter = 'dawn_dusk'
-    weights_filename = '{}_train_{}_test_{}'.format(mode,train_filter,test_filter)
+    weights_filename = '{}train_{}'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

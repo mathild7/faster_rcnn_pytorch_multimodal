@@ -145,7 +145,6 @@ if __name__ == '__main__':
         args.max_iters = 700000
     print('Called with args:')
     print(args)
-    draw_and_save = True
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
@@ -156,8 +155,8 @@ if __name__ == '__main__':
 
     np.random.seed(cfg.RNG_SEED)
     # train set
-    imdb, roidb = combined_roidb('train',args.imdb_name,draw_and_save,None,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
-    _ , val_roidb = combined_roidb('val',args.imdb_name,draw_and_save,imdb,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
+    imdb, roidb = combined_roidb('train',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,None,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
+    _ , val_roidb = combined_roidb('val',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,imdb,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
     #TODO: Shuffle images
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))
@@ -198,7 +197,7 @@ if __name__ == '__main__':
         tb_dir,
         pretrained_model=args.weight,
         max_iters=args.max_iters,
-        sum_size=250,
+        sum_size=100,
         val_sum_size=1000,
         batch_size=16,
         val_im_thresh=0.3,

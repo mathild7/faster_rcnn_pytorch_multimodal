@@ -225,7 +225,7 @@ class waymo_imdb(imdb):
                 #Set of detections, one for each class
                 for det in class_dets:
                     for i in range(0,det.shape[1]):
-                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0))
+                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0),width=2)
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0

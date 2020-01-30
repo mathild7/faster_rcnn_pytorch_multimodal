@@ -405,7 +405,7 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-                    summary_val, rois_val, roi_labels_val, bbox_pred_val, bbox_var_val, cls_prob_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                    summary_val, rois_val, roi_labels_val, bbox_pred_val, bbox_var_val, cls_prob_val, cls_var_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     #im info 0 -> H 1 -> W 2 -> scale
                     #Add ability to do compute_bbox on rois_val and pass to draw&save
                     rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,bbox_var_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb,self.val_im_thresh)

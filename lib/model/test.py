@@ -107,8 +107,8 @@ def im_detect(net, im):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
 
-    _, probs, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
-                                                         blobs['im_info'])
+    _, probs, cls_var, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
+                                                                  blobs['im_info'])
 
     boxes = rois[:, 1:5] / im_scales[0]
     #TODO: Useless??
