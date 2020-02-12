@@ -107,15 +107,15 @@ def im_detect(net, im):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
 
-    _, probs, cls_var, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
+    _, probs, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
                                                                   blobs['im_info'])
 
-    boxes = rois[:, 1:5] / im_scales[0]
+    boxes = rois[:, 1:5]
     #TODO: Useless??
-    probs = np.reshape(probs, [probs.shape[0], -1])
-    bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
+    #probs = np.reshape(probs, [probs.shape[0], -1])
+    #bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
     #e^(x) where x = log(bbox_var) 
-    if(cfg.ENABLE_BBOX_VAR):
+    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
         bbox_var = np.exp(bbox_var)
         num_sample = cfg.TEST.NUM_BBOX_VAR_SAMPLE
         #TODO: Fix magic /10.0
@@ -131,13 +131,13 @@ def im_detect(net, im):
         for i in range(num_sample):
             box_deltas = sample[:,:,i]
             pred_boxes[:,:,i] = bbox_transform_inv(
-                torch.from_numpy(boxes[:,:,i]), torch.from_numpy(box_deltas)).numpy()
+                torch.from_numpy(boxes[:,:,i]), torch.from_numpy(box_deltas),im_scales[2]).numpy()
             pred_boxes[:,:,i] = _clip_boxes(pred_boxes[:,:,i], im.shape)
     else:
         # Simply repeat the boxes, once for each class
         pred_boxes = np.tile(boxes, (1, probs.shape[1], cfg.TEST.NUM_BBOX_VAR_SAMPLE))
 
-    return probs, pred_boxes, bbox_var
+    return probs, cls_var, pred_boxes, bbox_var
 
 def score_to_color_dict(score):
     color = 'black'
@@ -171,7 +171,10 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
     #  (x1, y1, x2, y2, score)
     all_boxes = [[[] for _ in range(num_images)]
                  for _ in range(imdb.num_classes)]
-
+    all_bbox_var = [[[] for _ in range(num_images)]
+                 for _ in range(imdb.num_classes)]
+    all_cls_var = [[[] for _ in range(num_images)]
+                 for _ in range(imdb.num_classes)]
     output_dir = get_output_dir(imdb, out_dir)
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
@@ -188,7 +191,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
         im = cv2.imread(imfile)
 
         _t['im_detect'].tic()
-        scores, boxes, var = im_detect(net, im)
+        scores, boxes, bbox_var = im_detect(net, im)
         mean_boxes = np.mean(boxes,axis=2)
         var_boxes  = np.var(boxes,axis=2)
         _t['im_detect'].toc()
@@ -198,8 +201,17 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
         # skip j = 0, because it's the background class
         for j in range(1, imdb.num_classes):
             #(cls_boxes, cls_bbox_var, cls_scores) (2,9)
-            all_boxes[j][i], cls_boxes = imdb.nms_hstack(scores,mean_boxes,boxes,var_boxes,thresh,j)
-            boxes_per_cls[j] = cls_boxes
+            #all_boxes only contains means and variances, no samples!!
+            all_boxes[j][i], inds, keep = imdb.nms_hstack(scores,mean_boxes,thresh,j)
+            if(len(keep) != 0):
+                if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                    all_bbox_var[j][i], bbox_samples = imdb.nms_hstack_var('bbox',var_boxes,boxes,inds,keep,j)
+                else:
+                    all_bbox_var[j][i] = [0,0,0,0]
+                if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+                    all_cls_var[j][i]                = imdb.nms_hstack_var('cls',score_var,None,inds,keep,j)
+                else:
+                    all_cls_var[j][i] = 0
         # Limit to max_per_image detections *over all classes* Only need to do this if we have dets
         if max_per_image > 0 and all_boxes[j][i].size != 0:
             image_scores = np.hstack(
@@ -211,6 +223,8 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
                     #-1  is last element in array, keep all rows with high enough scores
                     keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
                     all_boxes[j][i] = all_boxes[j][i][keep, :]
+                    all_cls_var[j][i] = all_cls_var[j][i][keep, :]
+                    all_bbox_var[j][i] = all_bbox_var[j][i][keep, :]
                     boxes[j] = boxes[j,keep, :]
         _t['misc'].toc()
 
@@ -227,8 +241,10 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
                     #first new axis is to be hstacked in parallel with bbox (4 corners + 1(newaxis)pred), second new axis is for the sampled bboxes multiplier (this will be 1 without var)
                     cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
                     cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
+                    cls_var  = (all_cls_var[j][i][-1])[:,np.newaxis,np.newaxis]
+                    cls_var  = np.repeat(cls_var,boxes_per_cls[j].shape[2],axis=2)
                     #Per image boxes
-                    image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets)))
+                    image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets,cls_var)))
                 else:
                     image_boxes.append(np.empty(0))
             #Try to convert lists to numpy as often as possible.
@@ -241,6 +257,7 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
                 imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],image_boxes,0,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
+    all_boxes = np.hstack((all_boxes,all_bbox_var,all_cls_var))
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
     if(eval_det):

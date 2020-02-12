@@ -41,7 +41,7 @@ class class_enum(Enum):
     CYCLIST = 4
 
 class waymo_imdb(imdb):
-    def __init__(self, mode='test',limiter=0, shuffle_en=True,tod_filter_list=None):
+    def __init__(self, mode='test',limiter=0, shuffle_en=True,tod_filter_list=None,draw_uncertainties='none',num_bbox_samples=1):
         name = 'waymo'
         imdb.__init__(self, name)
         self._train_scenes = []
@@ -52,7 +52,8 @@ class waymo_imdb(imdb):
         self._test_image_index = []
         self._devkit_path = self._get_default_path()
         self._tod_filter_list = tod_filter_list
-
+        self._num_bbox_samples = num_bbox_samples
+        self._draw_uncertainties = draw_uncertainties
 
         self._imwidth  = 1920
         self._imheight = 730
@@ -210,8 +211,9 @@ class waymo_imdb(imdb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
+    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
+
         if(iter != 0):
             out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
@@ -224,8 +226,30 @@ class waymo_imdb(imdb):
             for class_dets in dets:
                 #Set of detections, one for each class
                 for det in class_dets:
+                    det = det[:,np.newaxis]
+                    bbox = det[:4]
+                    if(self._draw_uncertainties == 'aleatoric' and cfg.ENABLE_ALEATORIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                        entropy = uncertainties['a_cls_entropy']
+                        det_width = min(int((entropy-1)*100),-1)+2
+                        bbox_var = uncertainties['a_bbox_var']
+                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
+                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                    elif(self._draw_uncertainties == 'epistemic' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+                        entropy = uncertainties['e_cls_entropy']
+                        det_width = min(int((entropy-1)*100),-1)+2
+                        bbox_var = uncertainties['e_bbox_var']
+                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
+                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                    elif(self._draw_uncertainties == 'custom' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                        entropy = uncertainties['e_cls_entropy']
+                        det_width = min(int((entropy-1)*100),-1)+2
+                        bbox_var = uncertainties['a_bbox_var']
+                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
+                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                    else:
+                        det_width = 2
                     for i in range(0,det.shape[1]):
-                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0),width=2)
+                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0),width=det_width)
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -476,12 +500,12 @@ class waymo_imdb(imdb):
                     #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
-                                im_ind, img, dets[k, -1], 
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                                im_ind, img, dets[k, 4], 
                                 dets[k, 0], dets[k, 1], 
                                 dets[k, 2], dets[k, 3], 
-                                dets[k, 4], dets[k, 5], 
-                                dets[k, 6], dets[k, 7]))
+                                dets[k, 5], dets[k, 6], 
+                                dets[k, 7], dets[k, 8], dets[k, 9]))
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files

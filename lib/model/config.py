@@ -118,8 +118,7 @@ __C.TRAIN.BBOX_INSIDE_WEIGHTS = (1.0, 1.0, 1.0, 1.0)
 
 # Normalize the targets using "precomputed" (or made up) means and stdevs
 # (BBOX_NORMALIZE_TARGETS must also be True)
-__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED = True
-
+__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED  = True
 __C.TRAIN.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 
 __C.TRAIN.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -191,7 +190,9 @@ __C.TEST.SCALES  = (730,)
 #NUSCENES
 #__C.TEST.MAX_SIZE  = 450
 #WAYMO 1/2
-__C.TEST.MAX_SIZE  = 960
+#__C.TEST.MAX_SIZE = 960
+#WAYMO FULL SCALE
+__C.TEST.MAX_SIZE  = 1920
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3
@@ -333,14 +334,21 @@ __C.RPN_CHANNELS = 512
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
 __C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_BBOX_VAR          = False
-__C.ENABLE_CLS_VAR           = True
+__C.ENABLE_ALEATORIC_BBOX_VAR          = True
+__C.ENABLE_ALEATORIC_CLS_VAR           = True
+__C.ENABLE_EPISTEMIC_BBOX_VAR          = True
+__C.ENABLE_EPISTEMIC_CLS_VAR           = True
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 __C.TEST.NUM_BBOX_VAR_SAMPLE = 20
+__C.NUM_ALEATORIC_SAMPLE     = 60
+__C.NUM_MC_RUNS              = 30
+__C.DRAW_UNCERTAINTIES       = 'custom'
+
+__C.NUM_BBOX_SAMPLE_DRAW     = 10
 #Need to turn this on in order to debug
 #Slows
 __C.DEBUG_EN                 = True
@@ -356,9 +364,9 @@ def get_output_dir(imdb, weights_filename):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
     mode = ''
-    if __C.ENABLE_BBOX_VAR:
+    if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
-    if __C.ENABLE_CLS_VAR:
+    if __C.ENABLE_ALEATORIC_CLS_VAR:
       mode = mode + 'cls_var_'
     if __C.ENABLE_RPN_BBOX_VAR:
       mode = mode + 'rpn_bbox_var_'
@@ -375,7 +383,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}_train_{}'.format(mode,train_filter)
+    weights_filename = '{}train_{}'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -392,9 +400,9 @@ def get_output_tb_dir(imdb, weights_filename):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
     mode = ''
-    if __C.ENABLE_BBOX_VAR:
+    if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
-    if __C.ENABLE_CLS_VAR:
+    if __C.ENABLE_ALEATORIC_CLS_VAR:
       mode = mode + 'cls_var_'
     if __C.ENABLE_RPN_BBOX_VAR:
       mode = mode + 'rpn_bbox_var_'

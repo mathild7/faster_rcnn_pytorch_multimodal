@@ -129,7 +129,7 @@ if __name__ == '__main__':
     elif(args.imdb_name == 'nuscenes'):
         imdb = nuscenes_imdb(mode='val',limiter=1000)
     elif(args.imdb_name == 'waymo'):
-        imdb = waymo_imdb(mode='val',limiter=1000, shuffle_en=True,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
+        imdb = waymo_imdb(mode='val',limiter=1000, shuffle_en=True,tod_filter_list=cfg.TEST.TOD_FILTER_LIST,draw_uncertainties=cfg.DRAW_UNCERTAINTIES,num_bbox_sample=cfg.NUM_BBOX_SAMPLE_DRAW)
 
     # load network
     if args.net == 'vgg16':

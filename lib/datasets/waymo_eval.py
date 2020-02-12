@@ -216,9 +216,10 @@ def waymo_eval(detpath,
     image_tokens = [x[1] for x in splitlines]
     confidence = np.array([float(x[2]) for x in splitlines])
     #All detections for specific class
-    BB = np.array([[float(z) for z in x[3:]] for x in splitlines])
+    BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
     #TODO: Add variance read here
-    BB_var = np.array([[float(z) for z in x[7:]] for x in splitlines])
+    BB_var = np.array([[float(z) for z in x[7:11]] for x in splitlines])
+    cls_var = np.array([[float(z) for z in x[11]] for x in splitlines])
     #Repeated for X detections along every image presented
     idx = len(image_idx)
     #3 types, easy medium hard

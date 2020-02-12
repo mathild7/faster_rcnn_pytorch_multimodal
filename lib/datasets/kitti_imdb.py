@@ -274,7 +274,7 @@ class kitti_imdb(imdb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
+    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = imfile.replace('/image_2/','/{}_drawn/iter_{}_'.format(mode,iter))
         source_img = Image.open(imfile)
