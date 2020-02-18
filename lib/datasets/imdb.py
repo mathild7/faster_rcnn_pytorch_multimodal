@@ -312,20 +312,6 @@ class imdb(object):
             })
         return roidb
 
-    #TODO: Rework to accept all kinds of variance
-    def nms_hstack_var_torch(self,var_type,var,inds,keep,c):
-        if(var_type == 'cls'):
-            cls_var = var[inds,c]
-            cls_var = cls_var[keep].unsqueeze(1)
-            return cls_var.cpu().numpy()
-        elif(var_type == 'bbox'):
-            cls_bbox_var = var[inds, c * 4:(c + 1) * 4]
-            cls_bbox_var = cls_bbox_var[keep, :]
-            #bbox_samples = samples[inds, c * 4:(c + 1) * 4]
-            #bbox_samples = bbox_samples[keep, :, :]
-            return cls_bbox_var.cpu().numpy()
-        else:
-            return None
 
     #TODO: Rework to accept all kinds of variance
     def nms_hstack_var(self,var_type,var,samples,inds,keep,c):
@@ -341,24 +327,6 @@ class imdb(object):
             return cls_bbox_var, bbox_samples
         else:
             return None
-
-    def nms_hstack_torch(self,scores,mean_boxes,thresh,c):
-        inds = torch.where(scores[:, c] > thresh)[0]
-        #inds         = np.where(scores[:, c] > thresh)[0]
-        #No detections over threshold
-        if(inds.shape[0] == 0):
-            print('no detections for image over threshold {}'.format(thresh))
-            return np.empty(0),[],[]
-        cls_scores   = scores[inds, c]
-        cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
-        #[cls_var,cls_boxes,cls_scores]
-        cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
-            .astype(np.float32, copy=False)
-        keep = nms(cls_boxes, cls_scores,
-            cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
-        cls_dets = cls_dets[keep, :]
-        #Only if this variable has been provided
-        return cls_dets, inds, keep
 
 
 

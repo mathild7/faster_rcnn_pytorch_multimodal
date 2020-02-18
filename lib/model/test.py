@@ -26,7 +26,7 @@ from model.config import cfg, get_output_dir
 from model.bbox_transform import clip_boxes, bbox_transform_inv
 
 import torch
-
+from utils.filter_predictions import *
 
 def _get_image_blob(im):
     """Converts an image into a network input.
@@ -99,45 +99,53 @@ def _rescale_boxes(boxes, inds, scales):
     return boxes
 
 
-def im_detect(net, im):
+def im_detect(net, im, num_classes, thresh):
     blobs, im_scales = _get_blobs(im)
     assert len(im_scales) == 1, "Only single-image batch implemented"
 
     im_blob = blobs['data']
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
-
-    _, probs, bbox_pred, bbox_var, rois = net.test_image(blobs['data'],
-                                                                  blobs['im_info'])
-
+    net.set_num_mc_run(cfg.NUM_MC_RUNS)
+    _, probs, a_cls_entropy,\
+        e_cls_mutual_info, bbox_pred,\
+        a_bbox_var, e_bbox_var, rois = net.test_image(blobs['data'],blobs['im_info'])
+    net.set_num_mc_run(1)
     boxes = rois[:, 1:5]
     #TODO: Useless??
     #probs = np.reshape(probs, [probs.shape[0], -1])
     #bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
     #e^(x) where x = log(bbox_var) 
-    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
-        bbox_var = np.exp(bbox_var)
-        num_sample = cfg.TEST.NUM_BBOX_VAR_SAMPLE
-        #TODO: Fix magic /10.0
-        sample = np.random.normal(size=(bbox_var.shape[0],bbox_var.shape[1],num_sample))*bbox_var[:,:,None]/10.0 + bbox_pred[:,:,None]
-        sample = sample.astype(np.float32)
-    else:
-        num_sample = 1
-        sample = np.repeat(bbox_pred[:,:,np.newaxis],num_sample,axis=2)
-    boxes = np.repeat(boxes[:,:,np.newaxis],num_sample,axis=2)
-    pred_boxes = np.zeros(sample.shape)
-    if cfg.TEST.BBOX_REG:
-        # Apply bounding-box regression deltas
-        for i in range(num_sample):
-            box_deltas = sample[:,:,i]
-            pred_boxes[:,:,i] = bbox_transform_inv(
-                torch.from_numpy(boxes[:,:,i]), torch.from_numpy(box_deltas),im_scales[2]).numpy()
-            pred_boxes[:,:,i] = _clip_boxes(pred_boxes[:,:,i], im.shape)
-    else:
-        # Simply repeat the boxes, once for each class
-        pred_boxes = np.tile(boxes, (1, probs.shape[1], cfg.TEST.NUM_BBOX_VAR_SAMPLE))
 
-    return probs, cls_var, pred_boxes, bbox_var
+
+    rois, bbox_pred, uncertainties = filter_pred(boxes, probs, a_cls_entropy, e_cls_mutual_info,
+                                                 bbox_pred, a_bbox_var, e_bbox_var,
+                                                 blobs['im_info'][0],blobs['im_info'][1],blobs['im_info'][2],
+                                                 num_classes,thresh)
+    #TODO: Fix all this bullshit
+    #REPLACED BY - filter_pred()
+    #if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+    #    bbox_var = np.exp(bbox_var)
+    #    num_sample = cfg.TEST.NUM_BBOX_VAR_SAMPLE
+    #    #TODO: Fix magic /10.0
+    #    sample = np.random.normal(size=(bbox_var.shape[0],bbox_var.shape[1],num_sample))*bbox_var[:,:,None]/10.0 + bbox_pred[:,:,None]
+    #    sample = sample.astype(np.float32)
+    #else:
+    #    num_sample = 1
+    #    sample = np.repeat(bbox_pred[:,:,np.newaxis],num_sample,axis=2)
+    #boxes = np.repeat(boxes[:,:,np.newaxis],num_sample,axis=2)
+    #pred_boxes = np.zeros(sample.shape)
+    #if cfg.TEST.BBOX_REG:
+    #    # Apply bounding-box regression deltas
+    #    for i in range(num_sample):
+    #        box_deltas = sample.permute(0,2,1).view(-1,sample.shape[1]).view(-1,num_sample,sample.shape[1])
+    #        pred_boxes = bbox_transform_inv(boxes, box_deltas,im_scales[2]).numpy()
+    #        pred_boxes = _clip_boxes(pred_boxes, im.shape)
+    #else:
+        # Simply repeat the boxes, once for each class
+   #     pred_boxes = np.tile(boxes, (1, probs.shape[1], cfg.TEST.NUM_BBOX_VAR_SAMPLE))
+
+    return rois, bbox_pred, uncertainties
 
 def score_to_color_dict(score):
     color = 'black'
@@ -161,6 +169,7 @@ def score_to_color_dict(score):
 
 def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw_det=False,eval_det=False):
     np.random.seed(cfg.RNG_SEED)
+    #TODO: Check if a cached detections exists
     """Test a Fast R-CNN network on an image database."""
     if(mode == 'test'):
         num_images = len(imdb._test_image_index)
@@ -169,12 +178,26 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
     # all detections are collected into:
     #  all_boxes[cls][image] = N x 5 array of detections in
     #  (x1, y1, x2, y2, score)
-    all_boxes = [[[] for _ in range(num_images)]
-                 for _ in range(imdb.num_classes)]
-    all_bbox_var = [[[] for _ in range(num_images)]
-                 for _ in range(imdb.num_classes)]
-    all_cls_var = [[[] for _ in range(num_images)]
-                 for _ in range(imdb.num_classes)]
+    num_uncertainty_en = 0
+    num_uncertainty_pos = 0
+    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+        num_uncertainty_en += 1
+        num_uncertainty_pos += 4
+    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+        num_uncertainty_en += 1
+        num_uncertainty_pos += 4
+    if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+        num_uncertainty_en += 1
+        num_uncertainty_pos += 1
+    if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+        num_uncertainty_en += 1
+        num_uncertainty_pos += 1
+
+
+    all_boxes       = [[[] for _ in range(num_images)]
+                       for _ in range(imdb.num_classes)]
+    if(num_uncertainty_en != 0):
+        all_uncertainty = [[[[] for _ in range(num_uncertainty_en)] for _ in range(num_images)] for _ in range(imdb.num_classes)]
     output_dir = get_output_dir(imdb, out_dir)
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
@@ -191,73 +214,67 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
         im = cv2.imread(imfile)
 
         _t['im_detect'].tic()
-        scores, boxes, bbox_var = im_detect(net, im)
-        mean_boxes = np.mean(boxes,axis=2)
-        var_boxes  = np.var(boxes,axis=2)
+        rois, bbox, uncertainties = im_detect(net, im, imdb.num_classes,thresh)
         _t['im_detect'].toc()
-
         _t['misc'].tic()
-        boxes_per_cls = [[] for _ in range(imdb.num_classes)]
-        # skip j = 0, because it's the background class
-        for j in range(1, imdb.num_classes):
-            #(cls_boxes, cls_bbox_var, cls_scores) (2,9)
-            #all_boxes only contains means and variances, no samples!!
-            all_boxes[j][i], inds, keep = imdb.nms_hstack(scores,mean_boxes,thresh,j)
-            if(len(keep) != 0):
-                if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                    all_bbox_var[j][i], bbox_samples = imdb.nms_hstack_var('bbox',var_boxes,boxes,inds,keep,j)
-                else:
-                    all_bbox_var[j][i] = [0,0,0,0]
-                if(cfg.ENABLE_ALEATORIC_CLS_VAR):
-                    all_cls_var[j][i]                = imdb.nms_hstack_var('cls',score_var,None,inds,keep,j)
-                else:
-                    all_cls_var[j][i] = 0
-        # Limit to max_per_image detections *over all classes* Only need to do this if we have dets
-        if max_per_image > 0 and all_boxes[j][i].size != 0:
+        if max_per_image > 0 and len(bbox[0]) != 0:
             image_scores = np.hstack(
-                [all_boxes[j][i][:, -1] for j in range(1, imdb.num_classes)])
+                [bbox[j][:, -1] for j in range(1, imdb.num_classes)])
             #Grab highest X scores to keep for image
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
                 for j in range(1, imdb.num_classes):
                     #-1  is last element in array, keep all rows with high enough scores
-                    keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
-                    all_boxes[j][i] = all_boxes[j][i][keep, :]
-                    all_cls_var[j][i] = all_cls_var[j][i][keep, :]
-                    all_bbox_var[j][i] = all_bbox_var[j][i][keep, :]
-                    boxes[j] = boxes[j,keep, :]
+                    keep = np.where(bbox[j][:, -1] >= image_thresh)[0]
+                    bbox[j] = bbox[j][keep, :]
+                    for key in uncertainties[j]:
+                        uncertainties[j][key] = uncertainties[j][key][keep, :]
+        for j in range(1, imdb.num_classes):
+            if(bbox[j].size != 0):
+                bbox_uncertainty_hstack = np.zeros((bbox[j].shape[0],bbox[j].shape[1]+num_uncertainty_pos))
+                bbox_uncertainty_hstack[:,0:bbox[j].shape[1]] = bbox[j]
+                hstack_ptr = bbox[j].shape[1]
+                for k,key in enumerate(uncertainties[j]):
+                    uncert = np.array(uncertainties[j][key])
+                    hstack_end = hstack_ptr+uncert.shape[1]
+                    bbox_uncertainty_hstack[:,hstack_ptr:hstack_end] = uncert[:,:]
+                    hstack_ptr = hstack_end
+                all_boxes[j][i] = bbox_uncertainty_hstack
+            else:
+                all_boxes[j][i] = np.empty(0)
         _t['misc'].toc()
 
-        print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
-            .format(i + 1, num_images, _t['im_detect'].average_time(),
-                _t['misc'].average_time()))
+        print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s'
+            .format(i + 1, num_images, _t['im_detect'].average_time(), _t['misc'].average_time()))
         
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
         if(draw_det):
             image_boxes = []
-            for j in range(1, imdb.num_classes):
+            #for j in range(1, imdb.num_classes):
                 #Re-extract just class dets from 'all boxes' blob. Honestly, this might be cleaner as a dict of numpy arrays.
-                if(all_boxes[j][i].size != 0):
+            #    if(all_boxes[j][i].size != 0):
                     #first new axis is to be hstacked in parallel with bbox (4 corners + 1(newaxis)pred), second new axis is for the sampled bboxes multiplier (this will be 1 without var)
-                    cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
-                    cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
-                    cls_var  = (all_cls_var[j][i][-1])[:,np.newaxis,np.newaxis]
-                    cls_var  = np.repeat(cls_var,boxes_per_cls[j].shape[2],axis=2)
+            #        cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
+            #        cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
+            #        cls_var  = (all_cls_var[j][i][-1])[:,np.newaxis,np.newaxis]
+            #        cls_var  = np.repeat(cls_var,boxes_per_cls[j].shape[2],axis=2)
                     #Per image boxes
-                    image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets,cls_var)))
-                else:
-                    image_boxes.append(np.empty(0))
+            #        image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets,cls_var)))
+            #    else:
+            #        image_boxes.append(np.empty(0))
             #Try to convert lists to numpy as often as possible.
-            image_boxes = np.array(image_boxes)
+            #image_boxes = np.array(image_boxes)
             gt_boxes = imdb.find_gt_for_img(imfile,'val')
             if(gt_boxes is None):
                 #print('Draw and save: image {} had no GT boxes'.format(imfile))
-                imdb.draw_and_save_eval(imfile,[],[],image_boxes,0,mode)
+                imdb.draw_and_save_eval(imfile,[],[],bbox,uncertainties,0,mode)
             else:    
-                imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],image_boxes,0,mode)
+                imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],bbox,uncertainties,0,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
-    all_boxes = np.hstack((all_boxes,all_bbox_var,all_cls_var))
+    #Transform uncertainties dict into array
+    #bbox            = np.array(bbox)
+    #all_boxes = np.hstack((bbox,all_uncertainty))
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
     if(eval_det):

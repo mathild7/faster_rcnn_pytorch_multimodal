@@ -14,6 +14,7 @@ import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
 from .data_layer_generator import data_layer_generator
 import utils.timer
+from utils.filter_predictions import *
 try:
     import cPickle as pickle
 except ImportError:
@@ -48,60 +49,6 @@ class GracefulKiller:
     signal.signal(signal.SIGTERM, self.orig_sigterm)
     self.kill_now = True
 
-
-
-
-#TODO: Could use original imwidth/imheight
-def filter_pred(rois, cls_score, a_cls_entropy, e_cls_entropy, bbox_pred, a_bbox_var, e_bbox_var, imheight, imwidth, imscale, imdb,thresh=0.1):
-    #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
-    rois = rois[:, 1:5].cpu().numpy()
-    #Deleting extra dim
-    #cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
-    #bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
-    pred_boxes = bbox_pred
-    
-    #pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
-    # x1 >= 0
-    pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], 0)[0]
-    # y1 >= 0
-    pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], 0)[0]
-    # x2 < imwidth
-    pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.tensor([imwidth/imscale - 1]).cuda())[0]
-    # y2 < imheight 3::4 means start at 3 then jump every 4
-    pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.tensor([imheight/imscale - 1]).cuda())[0]
-    all_boxes = []
-    all_uncertainties = []
-    # skip j = 0, because it's the background class
-    #for i,score in enumerate(cls_score):
-    #    for j,cls_s in enumerate(score):
-    #        if((cls_s > thresh or cls_s < 0.0) and j > 0):
-                #print('score for entry {} and class {} is {}'.format(i,j,cls_s))
-
-    for j in range(1, imdb.num_classes):
-        #Don't need to stack variance here, it is only used in trainval to draw stuff
-        all_box, inds, keep = imdb.nms_hstack_torch(cls_score,pred_boxes,thresh,j)
-        if(len(keep) != 0):
-            uncertainties = {}
-            if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                uncertainties['a_bbox_var'] = imdb.nms_hstack_var_torch('bbox',a_bbox_var,inds,keep,j)
-            else:
-                a_bbox_var = [0,0,0,0]
-            if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
-                uncertainties['e_bbox_var'] = imdb.nms_hstack_var_torch('bbox',e_bbox_var,inds,keep,j)
-            else:
-                e_bbox_var = [0]
-            if(cfg.ENABLE_ALEATORIC_CLS_VAR):
-                uncertainties['a_cls_entropy'] = a_cls_entropy
-                #uncertainties['a_cls_entropy'] = imdb.nms_hstack_var_torch('cls',a_cls_entropy,inds,keep,j)
-            else:
-                a_cls_var = [0]
-            if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
-                uncertainties['e_cls_entropy'] = imdb.nms_hstack_var_torch('cls',e_cls_entropy,inds,keep,j)
-            else:
-                e_cls_var = [0]
-            all_boxes.append(all_box)
-            all_uncertainties.append(uncertainties)
-    return rois, all_boxes, all_uncertainties
 
 def scale_lr(optimizer, scale):
     """Scale the learning rate of the optimizer"""
@@ -428,21 +375,21 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-                    self.net.set_num_mc_run(10)
+                    self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
                         bbox_pred_val, a_bbox_var_val, e_bbox_var_val, \
-                        cls_prob_val, a_cls_entropy_val, e_cls_entropy_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                        cls_prob_val, a_cls_entropy_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
                     #Add ability to do filter_pred on rois_val and pass to draw&save
-                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, e_cls_entropy_val,
+                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, e_cls_mutual_info_val,
                                                                              bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
                                                                              blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
-                                                                             self.imdb,self.val_im_thresh)
+                                                                             self.imdb.num_classes,self.val_im_thresh)
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     bbox_pred_val = np.array(bbox_pred_val)
-                    if(bbox_pred_val.size != 0):
-                        bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
+                    #if(bbox_pred_val.size != 0):
+                    #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
                     self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
 
                     #for obj in gc.get_objects():
@@ -458,8 +405,7 @@ class SolverWrapper(object):
             if iter % self.sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
-                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
+                total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss
                 for _sum in summary:
                     #print('summary')
@@ -478,8 +424,7 @@ class SolverWrapper(object):
                     #This solution was not used as more difficult to implement. The RoI pooling is made differentiable w.r.t the box coordinates using a RoI warping layer.
                 #4-Step Alternating training: 
                     #The strategy chosen takes 4 steps: In the first of one the RPN is trained. In the second, Fast-RCNN is trained using pre-computed RPN proposals. For the third step, the trained Fast-RCNN is used to initialize a new RPN where only RPN’s layers are fine-tuned. Finally in the fourth step RPN’s layers are frozen and only Fast-RCNN is fine-tuned.
-                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
-                  self.net.train_step(blobs, self.optimizer, update_weights)
+                total_loss = self.net.train_step(blobs, self.optimizer, update_weights)
                 loss_cumsum += total_loss
             t.toc()
 

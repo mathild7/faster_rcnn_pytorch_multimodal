@@ -343,9 +343,9 @@ __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
-__C.TEST.NUM_BBOX_VAR_SAMPLE = 20
-__C.NUM_ALEATORIC_SAMPLE     = 60
-__C.NUM_MC_RUNS              = 30
+__C.NUM_BBOX_SAMPLE          = 10
+__C.NUM_ALEATORIC_SAMPLE     = 40
+__C.NUM_MC_RUNS              = 40
 __C.DRAW_UNCERTAINTIES       = 'custom'
 
 __C.NUM_BBOX_SAMPLE_DRAW     = 10

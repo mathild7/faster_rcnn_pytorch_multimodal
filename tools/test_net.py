@@ -102,7 +102,7 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.imdb_name = 'waymo'
-        args.weights_file = 'weights/bbox_var/{}_faster_rcnn_iter_80000_all.pth'.format(args.net)
+        args.weights_file = 'weights/{}_faster_rcnn_iter_40001_all_UC.pth'.format(args.net)
         args.out_dir = 'output/'
         args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
     print('Called with args:')
@@ -129,7 +129,8 @@ if __name__ == '__main__':
     elif(args.imdb_name == 'nuscenes'):
         imdb = nuscenes_imdb(mode='val',limiter=1000)
     elif(args.imdb_name == 'waymo'):
-        imdb = waymo_imdb(mode='val',limiter=1000, shuffle_en=True,tod_filter_list=cfg.TEST.TOD_FILTER_LIST,draw_uncertainties=cfg.DRAW_UNCERTAINTIES,num_bbox_sample=cfg.NUM_BBOX_SAMPLE_DRAW)
+        imdb = waymo_imdb(mode='val',limiter=100, shuffle_en=True,tod_filter_list=cfg.TEST.TOD_FILTER_LIST,draw_uncertainties=cfg.DRAW_UNCERTAINTIES,num_bbox_samples
+        =cfg.NUM_BBOX_SAMPLE_DRAW)
 
     # load network
     if args.net == 'vgg16':

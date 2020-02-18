@@ -218,8 +218,19 @@ def waymo_eval(detpath,
     #All detections for specific class
     BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
     #TODO: Add variance read here
-    BB_var = np.array([[float(z) for z in x[7:11]] for x in splitlines])
-    cls_var = np.array([[float(z) for z in x[11]] for x in splitlines])
+    u_start = 7
+    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+        a_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
+        u_start += 4
+    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+        e_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
+        u_start += 4
+    if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+        a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
+        u_start += 4
+    if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+        e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
+        u_start += 4
     #Repeated for X detections along every image presented
     idx = len(image_idx)
     #3 types, easy medium hard
@@ -272,7 +283,7 @@ def waymo_eval(detpath,
             #R = class_recs[image_ids[d]]
             bb = BB[det_idx, :].astype(float)
             #Variance extraction, collect on a per scene basis
-            bb_var = BB_var[det_idx, :].astype(float)
+            bb_var = a_bbox_var[det_idx, :].astype(float)
             avg_scene_var[R['scene_idx']][R['img_idx']] += np.average(bb_var)
             #print('setting mask to true for: {}-{}-{}'.format(R['scene_idx'],R['img_idx'],det_idx))
             img_det_cnt[R['scene_idx']][R['img_idx']] += 1

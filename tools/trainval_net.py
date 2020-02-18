@@ -107,7 +107,7 @@ def get_training_validation_roidb(mode,imdb,draw_and_save=False):
     else:
         return None
 
-def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0,tod_filter_list=None):
+def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
     """
   Combine multiple roidbs
   """
@@ -117,7 +117,7 @@ def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0,tod_filt
         elif(dataset == 'nuscenes'):
             imdb = nuscenes_imdb(mode,limiter)
         elif(dataset == 'waymo'):
-            imdb = waymo_imdb(mode,limiter,tod_filter_list=tod_filter_list)
+            imdb = waymo_imdb(mode,limiter,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST,draw_uncertainties=cfg.DRAW_UNCERTAINTIES,num_bbox_samples=cfg.NUM_BBOX_SAMPLE)
         else:
             print('Requested dataset is not available')
             return
@@ -155,8 +155,8 @@ if __name__ == '__main__':
 
     np.random.seed(cfg.RNG_SEED)
     # train set
-    imdb, roidb = combined_roidb('train',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,None,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
-    _ , val_roidb = combined_roidb('val',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,imdb,limiter=0,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST)
+    imdb, roidb = combined_roidb('train',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,None,limiter=0)
+    _ , val_roidb = combined_roidb('val',args.imdb_name,cfg.TRAIN.DRAW_ROIDB_GEN,imdb,limiter=0)
     #TODO: Shuffle images
     #print(roidb[0])
     print('{:d} roidb entries'.format(len(roidb)))

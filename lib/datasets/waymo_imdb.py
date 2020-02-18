@@ -220,36 +220,43 @@ class waymo_imdb(imdb):
             out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
-        if(dets.size == 0):
+        if(len(dets) == 0):
             print('draw and save: No detections for image {}'.format(imfile))
         else:
-            for class_dets in dets:
+            #TODO: Swap axes of dets
+            for j,class_dets in enumerate(dets):
                 #Set of detections, one for each class
-                for det in class_dets:
-                    det = det[:,np.newaxis]
-                    bbox = det[:4]
-                    if(self._draw_uncertainties == 'aleatoric' and cfg.ENABLE_ALEATORIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                        entropy = uncertainties['a_cls_entropy']
-                        det_width = min(int((entropy-1)*100),-1)+2
-                        bbox_var = uncertainties['a_bbox_var']
-                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
-                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                    elif(self._draw_uncertainties == 'epistemic' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_EPISTEMIC_BBOX_VAR):
-                        entropy = uncertainties['e_cls_entropy']
-                        det_width = min(int((entropy-1)*100),-1)+2
-                        bbox_var = uncertainties['e_bbox_var']
-                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
-                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                    elif(self._draw_uncertainties == 'custom' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                        entropy = uncertainties['e_cls_entropy']
-                        det_width = min(int((entropy-1)*100),-1)+2
-                        bbox_var = uncertainties['a_bbox_var']
-                        det[0:3][:] = np.random.normal(bbox,np.sqrt(bbox_var),self._num_bbox_samples)
-                        det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                    else:
-                        det_width = 2
-                    for i in range(0,det.shape[1]):
-                        draw.rectangle([(det[0][i],det[1][i]),(det[2][i],det[3][i])],outline=(0,int(det[4][i]*255),0),width=det_width)
+                #Ignore background
+                if(j > 0):
+                    for i,det in enumerate(class_dets):
+                        bbox = det[:4]
+                        sampled_det = np.zeros((5,self._num_bbox_samples))
+                        if(self._draw_uncertainties == 'aleatoric' and cfg.ENABLE_ALEATORIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                            entropy = uncertainties[j]['a_cls_entropy']
+                            det_width = max(int((entropy)*10),-1)+2
+                            bbox_var = uncertainties[j]['a_bbox_var']
+                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
+                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                        elif(self._draw_uncertainties == 'epistemic' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+                            entropy = uncertainties[j]['e_cls_mutual_info'][i]
+                            det_width = max(int((entropy)*10),-1)+2
+                            bbox_var = uncertainties[j]['e_bbox_var'][i]
+                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
+                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                        elif(self._draw_uncertainties == 'custom' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                            mi = np.mean(uncertainties[j]['e_cls_mutual_info'][i])
+                            det_width = max(int((mi)*100),0)+1
+                            bbox_var = uncertainties[j]['a_bbox_var'][i]
+                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var)/10,size=(self._num_bbox_samples,4))
+                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
+                        else:
+                            det_width = 2
+                            sampled_det = det[:,np.newaxis]
+                        for i in range(0,sampled_det.shape[1]):
+                            draw.rectangle([(sampled_det[0][i],sampled_det[1][i]),(sampled_det[2][i],sampled_det[3][i])],outline=(0,int(sampled_det[4][i]*255),0),width=det_width)
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -500,12 +507,15 @@ class waymo_imdb(imdb):
                     #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}'.format(
                                 im_ind, img, dets[k, 4], 
                                 dets[k, 0], dets[k, 1], 
-                                dets[k, 2], dets[k, 3], 
-                                dets[k, 5], dets[k, 6], 
-                                dets[k, 7], dets[k, 8], dets[k, 9]))
+                                dets[k, 2], dets[k, 3]))
+                        #Write uncertainties
+                        for l in range(4,dets.shape[1]):
+                            f.write(' {:.2f}'.format(dets[k,l]))
+                        f.write('\n')
+
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files
