@@ -41,7 +41,7 @@ class class_enum(Enum):
     CYCLIST = 4
 
 class waymo_imdb(imdb):
-    def __init__(self, mode='test',limiter=0, shuffle_en=True,tod_filter_list=None,draw_uncertainties='none',num_bbox_samples=1):
+    def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
         imdb.__init__(self, name)
         self._train_scenes = []
@@ -51,9 +51,12 @@ class waymo_imdb(imdb):
         self._val_image_index = []
         self._test_image_index = []
         self._devkit_path = self._get_default_path()
-        self._tod_filter_list = tod_filter_list
-        self._num_bbox_samples = num_bbox_samples
-        self._draw_uncertainties = draw_uncertainties
+        if(mode == 'test'):
+            self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
+        else:
+            self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
+        self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
+        self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
 
         self._imwidth  = 1920
         self._imheight = 730
@@ -220,43 +223,39 @@ class waymo_imdb(imdb):
             out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
-        if(len(dets) == 0):
-            print('draw and save: No detections for image {}'.format(imfile))
-        else:
-            #TODO: Swap axes of dets
-            for j,class_dets in enumerate(dets):
-                #Set of detections, one for each class
-                #Ignore background
-                if(j > 0):
-                    for i,det in enumerate(class_dets):
-                        bbox = det[:4]
-                        sampled_det = np.zeros((5,self._num_bbox_samples))
-                        if(self._draw_uncertainties == 'aleatoric' and cfg.ENABLE_ALEATORIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                            entropy = uncertainties[j]['a_cls_entropy']
-                            det_width = max(int((entropy)*10),-1)+2
-                            bbox_var = uncertainties[j]['a_bbox_var']
-                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
-                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                        elif(self._draw_uncertainties == 'epistemic' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_EPISTEMIC_BBOX_VAR):
-                            entropy = uncertainties[j]['e_cls_mutual_info'][i]
-                            det_width = max(int((entropy)*10),-1)+2
-                            bbox_var = uncertainties[j]['e_bbox_var'][i]
-                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
-                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                        elif(self._draw_uncertainties == 'custom' and cfg.ENABLE_EPISTEMIC_CLS_VAR and cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                            mi = np.mean(uncertainties[j]['e_cls_mutual_info'][i])
-                            det_width = max(int((mi)*100),0)+1
-                            bbox_var = uncertainties[j]['a_bbox_var'][i]
-                            bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var)/10,size=(self._num_bbox_samples,4))
-                            sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-                            sampled_det[4][:] = np.repeat(det[4],self._num_bbox_samples)
-                        else:
-                            det_width = 2
-                            sampled_det = det[:,np.newaxis]
-                        for i in range(0,sampled_det.shape[1]):
-                            draw.rectangle([(sampled_det[0][i],sampled_det[1][i]),(sampled_det[2][i],sampled_det[3][i])],outline=(0,int(sampled_det[4][i]*255),0),width=det_width)
+        #TODO: Magic numbers
+        limiter = 15
+        y_start = self._imheight - 10*(limiter+2)
+        #TODO: Swap axes of dets
+        for j,class_dets in enumerate(dets):
+            #Set of detections, one for each class
+            #Ignore background
+            if(j > 0):
+                if(len(class_dets) > 0):
+                    cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
+                    avg_det_string = 'image average: '
+                    for i,idx in enumerate(det_idx):
+                        det = class_dets[idx]
+                        draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),int(i/len(det_idx)*255.0)),width=2)
+                        det_string = '{:02} '.format(i)
+                        if(i < limiter):
+                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),int(i/len(det_idx)*255.0),255))
+                        for key,val in cls_uncertainties.items():
+                            if('cls' in key):
+                                if(i == 0):
+                                    avg_det_string += '{}: {:5.4f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.4f} '.format(key,np.mean(val[idx]))
+                            else:
+                                if(i == 0):
+                                    avg_det_string += '{}: {:6.2f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:6.2f} '.format(key,np.mean(val[idx]))
+                        det_string += 'confidence: {:5.4f} '.format(det[4])
+                        if(i < limiter):
+                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),int(i/len(det_idx)*255.0),255))
+                    draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
+                else:
+                    print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -266,6 +265,44 @@ class waymo_imdb(imdb):
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)    
 
+    def _normalize_uncertainties(self,dets,uncertainties):
+        normalized_uncertainties = {}
+        for key,uc in uncertainties.items():
+            if('bbox' in key):
+                bbox_width  = dets[:,2] - dets[:,0]
+                bbox_height = dets[:,3] - dets[:,1]
+                uc[:,0] = uc[:,0]/bbox_width
+                uc[:,2] = uc[:,2]/bbox_width
+                uc[:,1] = uc[:,1]/bbox_height
+                uc[:,3] = uc[:,3]/bbox_height
+                normalized_uncertainties[key] = np.mean(uc,axis=1)
+            else:
+                normalized_uncertainties[key] = uc.squeeze(1)*10*(-np.log(dets[:,4]))
+        return normalized_uncertainties
+                
+    def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
+        sampled_det = np.zeros((5,self._num_bbox_samples))
+        det_width = max(int((entropy)*10),-1)+2
+        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
+        sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+        sampled_det[4][:] = np.repeat(softmax,self._num_bbox_samples)
+        return sampled_det
+
+    def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
+        if(cfg.ENABLE_ALEATORIC_BBOX_VAR and self._uncertainty_sort_type == 'a_bbox_var'):
+            sortable = uncertainties['a_bbox_var']
+        elif(cfg.ENABLE_EPISTEMIC_BBOX_VAR and self._uncertainty_sort_type == 'e_bbox_var'):
+            sortable = uncertainties['e_bbox_var']
+        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_entropy'):
+            sortable = uncertainties['a_cls_entropy']
+        elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
+            sortable = uncertainties['e_cls_mutual_info']
+        else:
+            sortable = range(0,len(dets))
+        if(descending is True):
+            return np.argsort(-sortable)
+        else:
+            return np.argsort(sortable)
 
     def get_class(self,idx):
        return self._classes[idx]

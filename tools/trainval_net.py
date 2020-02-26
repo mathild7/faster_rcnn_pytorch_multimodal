@@ -117,7 +117,7 @@ def combined_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
         elif(dataset == 'nuscenes'):
             imdb = nuscenes_imdb(mode,limiter)
         elif(dataset == 'waymo'):
-            imdb = waymo_imdb(mode,limiter,tod_filter_list=cfg.TRAIN.TOD_FILTER_LIST,draw_uncertainties=cfg.DRAW_UNCERTAINTIES,num_bbox_samples=cfg.NUM_BBOX_SAMPLE)
+            imdb = waymo_imdb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return

@@ -28,7 +28,7 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.00001
+__C.TRAIN.WEIGHT_DECAY = 0.001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.1
@@ -338,6 +338,7 @@ __C.ENABLE_ALEATORIC_BBOX_VAR          = True
 __C.ENABLE_ALEATORIC_CLS_VAR           = True
 __C.ENABLE_EPISTEMIC_BBOX_VAR          = True
 __C.ENABLE_EPISTEMIC_CLS_VAR           = True
+__C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
@@ -346,7 +347,7 @@ __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 __C.NUM_BBOX_SAMPLE          = 10
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
-__C.DRAW_UNCERTAINTIES       = 'custom'
+__C.UNCERTAINTY_SORT_TYPE    = 'e_cls_mutual_info'
 
 __C.NUM_BBOX_SAMPLE_DRAW     = 10
 #Need to turn this on in order to debug
@@ -383,7 +384,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}'.format(mode,train_filter)
+    weights_filename = '{}train_{}_7'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -420,7 +421,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}'.format(mode,train_filter)
+    weights_filename = '{}train_{}_7'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
