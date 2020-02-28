@@ -344,15 +344,14 @@ __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
-__C.NUM_BBOX_SAMPLE          = 10
+__C.NUM_BBOX_SAMPLE          = 50
+__C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
-__C.UNCERTAINTY_SORT_TYPE    = 'e_cls_mutual_info'
-
-__C.NUM_BBOX_SAMPLE_DRAW     = 10
+__C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Need to turn this on in order to debug
 #Slows
-__C.DEBUG_EN                 = True
+__C.DEBUG_EN                 = False
 
 
 def get_output_dir(imdb, weights_filename):
@@ -384,7 +383,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_7'.format(mode,train_filter)
+    weights_filename = '{}train_{}_9'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -421,7 +420,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_7'.format(mode,train_filter)
+    weights_filename = '{}train_{}_9'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

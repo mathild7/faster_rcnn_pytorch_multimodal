@@ -27,6 +27,12 @@ def nms_hstack_var_torch(var_type,var,inds,keep,c):
         #cls_var = var[inds,c]
         cls_var = cls_var[keep].unsqueeze(1)
         return cls_var.cpu().numpy()
+    elif(var_type == 'cls_var'):
+        cls_var = var[inds,c]
+        #Removed dependency on class, as entropy is measured across all classes
+        #cls_var = var[inds,c]
+        cls_var = cls_var[keep].unsqueeze(1)
+        return cls_var.cpu().numpy()
     elif(var_type == 'bbox'):
         cls_bbox_var = var[inds, c * 4:(c + 1) * 4]
         cls_bbox_var = cls_bbox_var[keep, :].cpu().numpy()
@@ -57,7 +63,7 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c):
 
 
 #TODO: Could use original imwidth/imheight
-def filter_pred(rois, cls_score, a_cls_entropy, e_cls_mutual_info, bbox_pred, a_bbox_var, e_bbox_var, imheight, imwidth, imscale, num_classes,thresh=0.1):
+def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bbox_pred, a_bbox_var, e_bbox_var, imheight, imwidth, imscale, num_classes,thresh=0.1):
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
     rois = rois[:, 1:5].detach().cpu().numpy()
     #Deleting extra dim
@@ -107,6 +113,7 @@ def filter_pred(rois, cls_score, a_cls_entropy, e_cls_mutual_info, bbox_pred, a_
             if(cfg.ENABLE_ALEATORIC_CLS_VAR):
                 #uncertainties['a_cls_entropy'] = a_cls_entropy
                 uncertainties['a_cls_entropy'] = nms_hstack_var_torch('cls',a_cls_entropy,inds,keep,j)
+                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',a_cls_var,inds,keep,j)
             else:
                 a_cls_var = [0]
             if(cfg.ENABLE_EPISTEMIC_CLS_VAR):

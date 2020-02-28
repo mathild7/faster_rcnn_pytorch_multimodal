@@ -233,14 +233,20 @@ class waymo_imdb(imdb):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
-                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
                     avg_det_string = 'image average: '
+                    num_det = len(det_idx)
+                    if(num_det < limiter):
+                        limiter = num_det
+                    else:
+                        limiter = 15
                     for i,idx in enumerate(det_idx):
+                        uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
-                        draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),int(i/len(det_idx)*255.0)),width=2)
+                        draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),uc_gradient),width=2)
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
-                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),int(i/len(det_idx)*255.0),255))
+                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
                                 if(i == 0):
@@ -248,11 +254,11 @@ class waymo_imdb(imdb):
                                 det_string += '{}: {:5.4f} '.format(key,np.mean(val[idx]))
                             else:
                                 if(i == 0):
-                                    avg_det_string += '{}: {:6.2f} '.format(key,np.mean(np.mean(val)))
-                                det_string += '{}: {:6.2f} '.format(key,np.mean(val[idx]))
+                                    avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
                         det_string += 'confidence: {:5.4f} '.format(det[4])
                         if(i < limiter):
-                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),int(i/len(det_idx)*255.0),255))
+                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
                     print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
@@ -271,13 +277,16 @@ class waymo_imdb(imdb):
             if('bbox' in key):
                 bbox_width  = dets[:,2] - dets[:,0]
                 bbox_height = dets[:,3] - dets[:,1]
-                uc[:,0] = uc[:,0]/bbox_width
-                uc[:,2] = uc[:,2]/bbox_width
-                uc[:,1] = uc[:,1]/bbox_height
-                uc[:,3] = uc[:,3]/bbox_height
+                bbox_size = (bbox_width*bbox_height)
+                uc[:,0] = uc[:,0]/bbox_size
+                uc[:,2] = uc[:,2]/bbox_size
+                uc[:,1] = uc[:,1]/bbox_size
+                uc[:,3] = uc[:,3]/bbox_size
                 normalized_uncertainties[key] = np.mean(uc,axis=1)
-            else:
+            elif('mutual_info' in key):
                 normalized_uncertainties[key] = uc.squeeze(1)*10*(-np.log(dets[:,4]))
+            else:
+                normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties
                 
     def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
@@ -295,6 +304,8 @@ class waymo_imdb(imdb):
             sortable = uncertainties['e_bbox_var']
         elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_entropy'):
             sortable = uncertainties['a_cls_entropy']
+        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_var'):
+            sortable = uncertainties['a_cls_var']
         elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
             sortable = uncertainties['e_cls_mutual_info']
         else:

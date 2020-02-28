@@ -226,11 +226,13 @@ def waymo_eval(detpath,
         e_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
         u_start += 4
     if(cfg.ENABLE_ALEATORIC_CLS_VAR):
-        a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += 4
+        a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
+        a_cls_var = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
     if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
-        e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += 4
+        e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
     #Repeated for X detections along every image presented
     idx = len(image_idx)
     #3 types, easy medium hard

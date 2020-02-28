@@ -378,11 +378,16 @@ class SolverWrapper(object):
                     self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
                         bbox_pred_val, a_bbox_var_val, e_bbox_var_val, \
-                        cls_prob_val, a_cls_entropy_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                        cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
                     #Add ability to do filter_pred on rois_val and pass to draw&save
-                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, e_cls_mutual_info_val,
+                    #torch.set_printoptions(profile="full")
+                    #print(bbox_pred_val)
+                    #print(cls_prob_val)
+                    #print(a_cls_var_val)
+                    #torch.set_printoptions(profile="default")   
+                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
                                                                              bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
                                                                              blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
                                                                              self.imdb.num_classes,self.val_im_thresh)

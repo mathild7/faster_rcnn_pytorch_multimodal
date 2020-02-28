@@ -107,7 +107,7 @@ def im_detect(net, im, num_classes, thresh):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     net.set_num_mc_run(cfg.NUM_MC_RUNS)
-    _, probs, a_cls_entropy,\
+    _, probs, a_cls_entropy, a_cls_var,\
         e_cls_mutual_info, bbox_pred,\
         a_bbox_var, e_bbox_var, rois = net.test_image(blobs['data'],blobs['im_info'])
     net.set_num_mc_run(1)
@@ -118,7 +118,7 @@ def im_detect(net, im, num_classes, thresh):
     #e^(x) where x = log(bbox_var) 
 
 
-    rois, bbox_pred, uncertainties = filter_pred(boxes, probs, a_cls_entropy, e_cls_mutual_info,
+    rois, bbox_pred, uncertainties = filter_pred(boxes, probs, a_cls_entropy, a_cls_var, e_cls_mutual_info,
                                                  bbox_pred, a_bbox_var, e_bbox_var,
                                                  blobs['im_info'][0],blobs['im_info'][1],blobs['im_info'][2],
                                                  num_classes,thresh)
@@ -250,20 +250,6 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
         if(draw_det):
             image_boxes = []
-            #for j in range(1, imdb.num_classes):
-                #Re-extract just class dets from 'all boxes' blob. Honestly, this might be cleaner as a dict of numpy arrays.
-            #    if(all_boxes[j][i].size != 0):
-                    #first new axis is to be hstacked in parallel with bbox (4 corners + 1(newaxis)pred), second new axis is for the sampled bboxes multiplier (this will be 1 without var)
-            #        cls_dets = (all_boxes[j][i][:,-1])[:,np.newaxis,np.newaxis]
-            #        cls_dets = np.repeat(cls_dets,boxes_per_cls[j].shape[2],axis=2)
-            #        cls_var  = (all_cls_var[j][i][-1])[:,np.newaxis,np.newaxis]
-            #        cls_var  = np.repeat(cls_var,boxes_per_cls[j].shape[2],axis=2)
-                    #Per image boxes
-            #        image_boxes.append(np.hstack((boxes_per_cls[j],cls_dets,cls_var)))
-            #    else:
-            #        image_boxes.append(np.empty(0))
-            #Try to convert lists to numpy as often as possible.
-            #image_boxes = np.array(image_boxes)
             gt_boxes = imdb.find_gt_for_img(imfile,'val')
             if(gt_boxes is None):
                 #print('Draw and save: image {} had no GT boxes'.format(imfile))
@@ -272,9 +258,6 @@ def test_net(net, imdb, out_dir, max_per_image=100, thresh=0.1, mode='test',draw
                 imdb.draw_and_save_eval(imfile,gt_boxes['boxes'],gt_boxes['gt_classes'],bbox,uncertainties,0,mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
-    #Transform uncertainties dict into array
-    #bbox            = np.array(bbox)
-    #all_boxes = np.hstack((bbox,all_uncertainty))
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
     if(eval_det):
