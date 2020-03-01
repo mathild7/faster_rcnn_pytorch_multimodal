@@ -383,7 +383,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_9'.format(mode,train_filter)
+    weights_filename = '{}train_{}_11'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -420,7 +420,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_9'.format(mode,train_filter)
+    weights_filename = '{}train_{}_11'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

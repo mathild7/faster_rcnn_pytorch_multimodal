@@ -277,7 +277,7 @@ class waymo_imdb(imdb):
             if('bbox' in key):
                 bbox_width  = dets[:,2] - dets[:,0]
                 bbox_height = dets[:,3] - dets[:,1]
-                bbox_size = (bbox_width*bbox_height)
+                bbox_size = np.sqrt(bbox_width*bbox_height)
                 uc[:,0] = uc[:,0]/bbox_size
                 uc[:,2] = uc[:,2]/bbox_size
                 uc[:,1] = uc[:,1]/bbox_size
