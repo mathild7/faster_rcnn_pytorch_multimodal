@@ -342,26 +342,30 @@ __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
-__C.TRAIN.DRAW_ROIDB_GEN     = False
+__C.TRAIN.DRAW_ROIDB_GEN     = True
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 __C.NUM_BBOX_SAMPLE          = 50
 __C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
+__C.NET_TYPE                 = 'lidar'
+__C.LIDAR_X_RANGE            = [0,70]
+__C.LIDAR_Y_RANGE            = [-40,40]
+__C.LIDAR_Z_RANGE            = [0,10]
 #Need to turn this on in order to debug
 #Slows
 __C.DEBUG_EN                 = False
 
 
-def get_output_dir(imdb, weights_filename):
+def get_output_dir(db, weights_filename):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.
 
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
     mode = ''
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
@@ -390,14 +394,14 @@ def get_output_dir(imdb, weights_filename):
   return outdir
 
 
-def get_output_tb_dir(imdb, weights_filename):
+def get_output_tb_dir(db, weights_filename):
   """Return the directory where tensorflow summaries are placed.
   If the directory does not exist, it is created.
 
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
   if weights_filename is None:
     mode = ''
     if __C.ENABLE_ALEATORIC_BBOX_VAR:

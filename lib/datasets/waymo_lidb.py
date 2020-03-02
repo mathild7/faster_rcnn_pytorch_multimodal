@@ -10,7 +10,7 @@ from __future__ import print_function
 import shutil
 import os
 import json
-from datasets.imdb import imdb
+from datasets.lidb import lidb
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -40,17 +40,17 @@ class class_enum(Enum):
     SIGN = 3
     CYCLIST = 4
 
-class waymo_imdb(imdb):
+class waymo_lidb(lidb):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
-        imdb.__init__(self, name)
-        self.type = 'image'
+        self.type = 'lidar'
+        lidb.__init__(self, name)
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_image_index = []
-        self._val_image_index = []
-        self._test_image_index = []
+        self._train_pc_index = []
+        self._val_pc_index = []
+        self._test_pc_index = []
         self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
@@ -61,9 +61,12 @@ class waymo_imdb(imdb):
 
         self._imwidth  = 1920
         self._imheight = 730
+        self._num_slices = 7
+        self._bev_slice_locations = [1,2,3,4,5,7]
+        self._filetype   = 'BIN'
         self._imtype   = 'PNG'
         self._mode = mode
-        print('imdb mode: {}'.format(mode))
+        print('lidb mode: {}'.format(mode))
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
@@ -80,28 +83,28 @@ class waymo_imdb(imdb):
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
 
-        self._train_image_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
-        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
-        self._val_image_index.sort(key=natural_keys)
+        self._train_pc_index = os.listdir(os.path.join(self._devkit_path,'train','point_clouds'))
+        self._val_pc_index   = os.listdir(os.path.join(self._devkit_path,'val','point_clouds'))
+        self._val_pc_index.sort(key=natural_keys)
         rand = SystemRandom()
         if(shuffle_en):
-            print('shuffling image indices')
-            rand.shuffle(self._val_image_index)
-            rand.shuffle(self._train_image_index)
+            print('shuffling pc indices')
+            rand.shuffle(self._train_pc_index)
+            rand.shuffle(self._val_pc_index)
         if(limiter != 0):
-            self._val_image_index   = self._val_image_index[:limiter]
-            self._train_image_index = self._train_image_index[:limiter]
+            self._train_pc_index = self._train_pc_index[:limiter]
+            self._val_pc_index   = self._val_pc_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 
-    def image_path_from_index(self, mode, index):
+    def point_cloud_path_from_index(self, mode, index):
         """
-    Construct an image path from the image's "index" identifier.
+    Construct an pc path from the pc's "index" identifier.
     """
-        image_path = os.path.join(self._devkit_path, mode, 'images', index)
-        assert os.path.exists(image_path), \
-            'Path does not exist: {}'.format(image_path)
-        return image_path
+        pc_path = os.path.join(self._devkit_path, mode, 'point_cloud', index)
+        assert os.path.exists(pc_path), \
+            'Path does not exist: {}'.format(pc_path)
+        return pc_path
 
     def _get_default_path(self):
         """
@@ -115,7 +118,7 @@ class waymo_imdb(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_lidar_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -124,26 +127,26 @@ class waymo_imdb(imdb):
                     roidb = pickle.load(fid, encoding='bytes')
             print('{} gt roidb loaded from {}'.format(self._name, cache_file))
             return roidb
-        labels_filename = os.path.join(self._devkit_path, mode,'labels/labels.json')
+        labels_filename = os.path.join(self._devkit_path, mode,'labels/lidar_labels.json')
         gt_roidb = []
         with open(labels_filename,'r') as labels_file:
             data = labels_file.read()
             #print(data)
             #print(data)
             labels = json.loads(data)
-            image_index = None
+            pc_index = None
             sub_total   = 0
             if(mode == 'train'):
-                image_index = self._train_image_index
+                pc_index = self._train_pc_index
             elif(mode == 'val'):
-                image_index = self._val_image_index
-            for img in image_index:
-                #print(img)
-                for img_labels in labels:
+                pc_index = self._val_pc_index
+            for pc in pc_index:
+                #print(pc)
+                for pc_labels in labels:
                     #print(img_labels['assoc_frame'])
-                    if(img_labels['assoc_frame'] == img.replace('.{}'.format(self._imtype.lower()),'')):
-                        img = os.path.join(mode,'images',img)
-                        roi = self._load_waymo_annotation(img,img_labels,tod_filter_list=self._tod_filter_list)
+                    if(pc_labels['assoc_frame'] == pc.replace('.{}'.format(self._filetype.lower()),'')):
+                        pc_file_path = os.path.join(mode,'point_clouds',pc)
+                        roi = self._load_waymo_lidar_annotation(pc_file_path,pc_labels,tod_filter_list=self._tod_filter_list)
                         if(roi is None):
                             sub_total += 1
                         else:
@@ -154,30 +157,30 @@ class waymo_imdb(imdb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_img(self,imfile,mode):
+    def find_gt_for_pc(self,pcfile,mode):
         if(mode == 'train'):
             roidb = self.roidb
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['imagefile'] == imfile):
+            if(roi['pcfile'] == pcfile):
                 return roi
         return None
 
     def scene_from_index(self,idx,mode='train'):
         if(mode == 'train'):
-            return self._train_image_index[i]
+            return self._train_pc_index[i]
         elif(mode == 'val'):
-            return self._val_image_index[i]
+            return self._val_pc_index[i]
         elif(mode == 'test'):
-            return self._test_image_index[i]
+            return self._test_pc_index[i]
         else:
             return None
 
 
-    def draw_and_save(self,mode,image_token=None):
+    def draw_and_save(self,mode,pc_token=None):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
-        out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
+        out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
         print('deleting files in dir {}'.format(out_file))
         shutil.rmtree(out_file)
         os.makedirs(out_file)
@@ -187,27 +190,128 @@ class waymo_imdb(imdb):
             roidb = self.roidb
         #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
         for i, roi in enumerate(roidb):
-            if(i % 250 == 0):
+            if(i % 1 == 0):
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
-                    outfile = roi['imagefile'].replace('/images','/drawn')
+                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
-                    if(roi['flipped'] is True):
-                        source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
-                        text = "Flipped"
-                    else:
-                        text = "Normal"
-                    draw = ImageDraw.Draw(source_img)
-                    draw.text((0,0),text)
-                    for roi_box,cat in zip(roi['boxes'],roi['cat']):
-                        draw.text((roi_box[0],roi_box[1]),cat)
-                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
-                    for roi_box in roi['boxes_dc']:
-                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-                    print('Saving drawn file at location {}'.format(outfile))
-                    source_img.save(outfile,self._imtype)
+                    source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,3))
+                    bev_img    = self.point_cloud_to_bev(source_bin)
+                    for slice_idx, bev_slice in enumerate(bev_img):
+                        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+                        draw = ImageDraw.Draw(draw_file)
+                        if(roi['flipped'] is True):
+                            #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
+                            text = "Flipped"
+                        else:
+                            text = "Normal"
+                        draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
+                        draw.text((0,0),text)
+                        for roi_box, cat in zip(roi['boxes'],roi['cat']):
+                            self.draw_bev_bbox(draw,roi_box,slice_idx)
+                            #draw.text((roi_box[0],roi_box[1]),cat)
+                        #for roi_box in roi['boxes_dc']:
+                        #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
+                        print('Saving drawn file at location {}'.format(outfile))
+                        draw_file.save(outfile,self._imtype)
+
+    def draw_bev_bbox(self,draw,bbox,slice_idx):
+        p = []
+        p.append([bbox[0],bbox[1]])
+        p.append([bbox[0],bbox[4]])
+        p.append([bbox[3],bbox[1]])
+        p.append([bbox[3],bbox[4]])
+        x_c = (bbox[3]-bbox[0])/2
+        y_c = (bbox[4]-bbox[1])/2
+        p_c = [x_c,y_c]
+        #Only need 2x z coord
+        z1 = bbox[2]
+        z2 = bbox[5]
+        heading = bbox[6]
+        z_max, z_min = self._slice_height(slice_idx) 
+        if(z1 < z_max or z2 >= z_min):
+            c = int(z2/z_max*255)
+            coords = self._rotate_in_bev(p, p_c, heading, [cfg.LIDAR_X_RANGE,cfg.LIDAR_Y_RANGE])
+            pixel_coords = []
+            for coord_pair in coords:
+                pixel_coords.append(self._transform_to_pixel_coords(coord_pair))
+            draw.polygon(pixel_coords,fill=c)
+
+    def _transform_to_pixel_coords(self,coords):
+        x = (coords[1]-cfg.LIDAR_Y_RANGE[0])*self._imwidth/(cfg.LIDAR_Y_RANGE[1] - cfg.LIDAR_Y_RANGE[0])
+        y = (coords[0]-cfg.LIDAR_X_RANGE[0])*self._imheight/(cfg.LIDAR_X_RANGE[1] - cfg.LIDAR_X_RANGE[0])
+        return (int(x), int(y))
+        
+    def draw_bev_slice(self,bev_slice,bev_idx,draw):
+        coord = []
+        color = []
+        for i,point in enumerate(bev_slice):
+            z_max, z_min = self._slice_height(bev_idx)
+            #Point is contained within slice
+            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
+            if(point[2] > z_max or point[2] <= z_min):
+                coords = self._transform_to_pixel_coords(point)
+                c = int((point[2]-z_min)*255/(z_max - z_min))
+                draw.point(coords, fill=int(c))
+        return draw
+
+    def point_cloud_to_bev(self,pc):
+        pc_slices = []
+        for i in range(0,self._num_slices):
+            z_max, z_min = self._slice_height(i)
+            pc_min_thresh = pc[(pc[:,2] >= z_min)]
+            pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,2] < z_max)]
+            pc_slices.append(pc_min_and_max_thresh)
+        bev_img = np.array(pc_slices)
+        return bev_img
+
+
+    def _slice_height(self,i):
+        if(i == 0):
+            z_min = cfg.LIDAR_Z_RANGE[0]
+            z_max = self._bev_slice_locations[i]
+        elif(i == self._num_slices-1):
+            z_min = self._bev_slice_locations[i-1]
+            z_max = cfg.LIDAR_Z_RANGE[1]
+        else:
+            z_min = self._bev_slice_locations[i-1]
+            z_max = self._bev_slice_locations[i]
+        return z_max, z_min
+
+    #STOLEN FROM AVOD :-)
+    def _rotate_in_bev(self, p, p_c, rot, bev_extents):
+        p0 = p[0]
+        p1 = p[1]
+        p2 = p[2]
+        p3 = p[3]
+
+        rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],
+                            [-np.sin(rot), np.cos(rot)]],
+                            (2, 2))
+
+        box_xy = p_c
+
+        box_p0 = (np.dot(rot_mat, p0) + box_xy)
+        box_p1 = (np.dot(rot_mat, p1) + box_xy)
+        box_p2 = (np.dot(rot_mat, p2) + box_xy)
+        box_p3 = (np.dot(rot_mat, p3) + box_xy)
+
+        box_points = np.array([box_p0, box_p1, box_p2, box_p3])
+
+        # Calculate normalized box corners for ROI pooling
+        x_extents_min = bev_extents[0][0]
+        y_extents_min = bev_extents[1][1]  # z axis is reversed
+        points_shifted = box_points - [x_extents_min, y_extents_min]
+
+        x_extents_range = bev_extents[0][1] - bev_extents[0][0]
+        y_extents_range = bev_extents[1][0] - bev_extents[1][1]
+        box_points_norm = points_shifted / [x_extents_range, y_extents_range]
+
+        box_points = np.asarray(box_points, dtype=np.float32)
+        box_points_norm = np.asarray(box_points_norm, dtype=np.float32)
+
+        return box_points
 
     def delete_eval_draw_folder(self,im_folder,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
@@ -219,9 +323,9 @@ class waymo_imdb(imdb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
 
         if(iter != 0):
-            out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
+            out_file = imfile.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
-            out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
+            out_file = imfile.replace('_','').replace('/point_clouds/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
         #TODO: Magic numbers
@@ -235,7 +339,7 @@ class waymo_imdb(imdb):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
                     det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
-                    avg_det_string = 'image average: '
+                    avg_det_string = 'pc average: '
                     num_det = len(det_idx)
                     if(num_det < limiter):
                         limiter = num_det
@@ -262,7 +366,7 @@ class waymo_imdb(imdb):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
-                    print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
+                    print('draw and save: No detections for pc {}, class: {}'.format(imfile,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -270,7 +374,7 @@ class waymo_imdb(imdb):
                 color = 255
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
         print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,self._imtype)    
+        source_img.save(out_file,self._filetype)    
 
     def _normalize_uncertainties(self,dets,uncertainties):
         normalized_uncertainties = {}
@@ -324,7 +428,7 @@ class waymo_imdb(imdb):
             #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
             gt_roidb = self.gt_roidb()
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
-            roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
+            roidb = lidb.merge_roidbs(gt_roidb, rpn_roidb)
         else:
             roidb = self._load_rpn_roidb(None)
 
@@ -340,36 +444,37 @@ class waymo_imdb(imdb):
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
-        filename = os.path.join(self._devkit_path, img)
-        num_objs = len(img_labels['box'])
+    def _load_waymo_lidar_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
+        filename = os.path.join(self._devkit_path, pc_file_path)
+        num_objs = len(pc_labels['box'])
 
-        boxes      = np.zeros((num_objs, 4), dtype=np.uint16)
-        boxes_dc   = np.zeros((num_objs, 4), dtype=np.uint16)
+        boxes      = np.zeros((num_objs, 7), dtype=np.float32)
+        boxes_dc   = np.zeros((num_objs, 7), dtype=np.float32)
         cat        = []
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
-        weather = img_labels['scene_type'][0]['weather']
-        tod = img_labels['scene_type'][0]['tod']
-        scene_desc = json.dumps(img_labels['scene_type'][0])
+        weather = pc_labels['scene_type'][0]['weather']
+        tod = pc_labels['scene_type'][0]['tod']
+        pc_id = pc_labels['id']
+        scene_desc = json.dumps(pc_labels['scene_type'][0])
         #TODO: Magic number
-        scene_idx  = int(int(img_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
-        img_idx    = int(int(img_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
+        scene_idx  = int(int(pc_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
+        pc_idx    = int(int(pc_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
         #Removing night-time/day-time ROI's
         if(tod not in tod_filter_list):
             print('TOD {} not in specified filter list'.format(tod))
             return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
-        camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
-        camera_intrinsic = img_labels['calibration'][0]['intrinsic']
+        camera_extrinsic = pc_labels['calibration'][0]['extrinsic_transform']
+        #camera_intrinsic = pc_labels['calibration'][0]['intrinsic']
         # Load object bounding boxes into a data frame.
         ix = 0
         ix_dc = 0
-        for i, bbox in enumerate(img_labels['box']):
-            difficulty = img_labels['difficulty'][i]
-            anno_cat   = img_labels['class'][i]
+        for i, bbox in enumerate(pc_labels['box']):
+            difficulty = pc_labels['difficulty'][i]
+            anno_cat   = pc_labels['class'][i]
             if(class_enum(anno_cat) == class_enum.SIGN):
                 anno_cat = class_enum.UNKNOWN.value
             elif(class_enum(anno_cat) == class_enum.CYCLIST):
@@ -381,33 +486,39 @@ class waymo_imdb(imdb):
                 anno_cat = class_enum.UNKNOWN.value
             #Change to string 
             anno_cat = self._classes[anno_cat]
-            x1 = int(float(bbox['x1']))
-            y1 = int(float(bbox['y1']))
-            x2 = int(float(bbox['x2']))
-            y2 = int(float(bbox['y2']))
-            if(y1 < 0):
-                print('y1: {}'.format(y1))
-            if(x1 < 0):
-                print('x1: {}'.format(x1))
-            if(x2 >= self._imwidth):
-                x2 = self._imwidth - 1
-            if(y2 >= self._imheight):
-                y2 = self._imheight - 1
+            x1 = float(bbox['x1'])
+            y1 = float(bbox['y1'])
+            z1 = float(bbox['z1'])
+            x2 = float(bbox['x2'])
+            y2 = float(bbox['y2'])
+            z2 = float(bbox['z2'])
+            heading = float(bbox['heading'])
+            #Clip bboxes
+            #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
+            #TODO: Put numbers in config
+            if(z1 < 0 or z2 > 10):
+                print('z1: {} z2: {}'.format(z1,z2))
+            if(x1 < 0 or x2 > 70):
+                print('x1: {} x2: {}'.format(x1,x2))
+            if(y1 < -40 or y2 > 40):
+                print('y1: {} y2: {}'.format(y1,y2))
+
             if(anno_cat != 'dontcare'):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
-                boxes[ix, :] = [x1, y1, x2, y2]
-                if(anno_cat == 'vehicle.car' and self._mode == 'train'):
+                boxes[ix, :] = [x1, y1, z2, x2, y2, z2, heading]
+                #TODO: Not sure what to filter these to yet.
+                #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
-                    if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
-                        continue
-                if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
-                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
-                        continue
-                if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
-                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
-                        continue
+                    #if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
+                #        continue
+                #if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
+                #    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
+                #        continue
+                #if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
+                #    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
+                #        continue
                 cat.append(anno_cat)
                 gt_classes[ix] = cls
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -417,20 +528,20 @@ class waymo_imdb(imdb):
             if(anno_cat == 'dontcare'):
                 #print(line)
                 #ignore[ix] = True
-                boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
+                boxes_dc[ix_dc, :] = [x1, y1, z1, x2, y2, z2, heading]
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):
-            print('removing image {} with no GT boxes specified'.format(img))
+            print('removing pc {} with no GT boxes specified'.format(pc_labels['assoc_frame']))
             return None
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'imgname':     img,
-            'img_idx':     img_idx,
+            'pcname':      pc_id,
+            'pc_idx':      pc_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
-            'imagefile':   filename,
+            'pcfile':      filename,
             'ignore':      ignore[0:ix],
             'det':         ignore[0:ix].copy(),
             'cat':         cat,
@@ -493,7 +604,7 @@ class waymo_imdb(imdb):
                 #    ix_filter = ix_filter + 1
 
             #if(ix_filter == 0 and remove_without_gt is True):
-            #    print('removing element {}'.format(img['token']))
+            #    print('removing element {}'.format(pc['token']))
             #    return None
         #else:
         #    ix_filter = ix
@@ -505,11 +616,11 @@ class waymo_imdb(imdb):
         #filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         #return {
-        #    'imgname':     img,
-        #    'img_idx':     img_idx,
+        #    'pcname':     pc,
+        #    'pc_idx':     pc_idx,
         #    'scene_idx':   scene_idx,
         #    'scene_desc':  scene_desc,
-        #    'imagefile': filename,
+        #    'pcfile': filename,
         #    'ignore': ignore[0:ix_filter],
         #    'det': ignore[0:ix_filter].copy(),
         #    'cat': filtered_cat,
@@ -523,6 +634,7 @@ class waymo_imdb(imdb):
         #}
 
 
+
     def _get_waymo_results_file_template(self, mode,class_name):
         # data/waymo/results/<comp_id>_test_aeroplane.txt
         filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
@@ -531,11 +643,11 @@ class waymo_imdb(imdb):
 
     def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            img_idx = self._val_image_index
+            img_idx = self._val_pc_index
         elif(mode == 'train'):
-            img_idx = self._train_image_index
+            img_idx = self._train_pc_index
         elif(mode == 'test'):
-            img_idx = self._test_image_index
+            img_idx = self._test_pc_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -567,14 +679,14 @@ class waymo_imdb(imdb):
 
 
     def _do_python_eval(self, output_dir='output',mode='val'):
-        #Not needed anymore, self._image_index has all files
-        #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
+        #Not needed anymore, self._pc_index has all files
+        #pcsetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
         if(mode == 'train'):
-            imageset = self._train_image_index
+            pcset = self._train_pc_index
         elif(mode == 'val'):
-            imageset = self._val_image_index
+            pcset = self._val_pc_index
         elif(mode == 'test'):
-            imageset = self._test_image_index
+            pcset = self._test_pc_index
         cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
@@ -589,11 +701,11 @@ class waymo_imdb(imdb):
                 ovt = 0.5
             #waymo/results/comp_X_testing_class.txt
             detfile = self._get_waymo_results_file_template(mode,cls)
-            #Run waymo evaluation metrics on each image
+            #Run waymo evaluation metrics on each pc
             rec, prec, ap = waymo_eval(
                 detfile,
                 self,
-                imageset,
+                pcset,
                 cls,
                 cachedir,
                 mode,
