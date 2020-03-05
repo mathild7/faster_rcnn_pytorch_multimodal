@@ -223,7 +223,7 @@ class mobilenetv1(Network):
         normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
-    def _image_to_head(self):
+    def _input_to_head(self):
         net_conv = self._layers['head'](self._image)
         self._act_summaries['conv'] = net_conv
 

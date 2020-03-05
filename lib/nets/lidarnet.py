@@ -23,6 +23,7 @@ import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck
 
 
+
 class ResNet(torchvision.models.resnet.ResNet):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
@@ -94,26 +95,23 @@ def resnet152(pretrained=False):
     return model
 
 
-class resnetv1(Network):
+
+class lidarnet(Network):
     def __init__(self, num_layers=50):
         Network.__init__(self)
-        self._feat_stride = [
-            16,
-        ]
-        self._feat_compress = [
-            1. / float(self._feat_stride[0]),
-        ]
         self._num_layers = num_layers
         self._net_conv_channels = 1024
         self._fc7_channels = 2048
+        self.inplanes = 64
         self._roi_pooling_channels = 1024
+        self.num_lidar_channels = cfg.LIDAR.NUM_CHANNEL
 
     def _crop_pool_layer(self, bottom, rois):
         return Network._crop_pool_layer(self, bottom, rois,
                                         cfg.RESNET.MAX_POOL)
 
     def _input_to_head(self):
-        net_conv = self._layers['head'](self._image)
+        net_conv = self._layers['head'](self._voxel_grid)
         self._act_summaries['conv'] = net_conv
 
         return net_conv
@@ -144,6 +142,7 @@ class resnetv1(Network):
             # other numbers are not supported
             raise NotImplementedError
 
+        self.resnet.conv1 = nn.Conv2d(self.num_lidar_channels, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         # Fix blocks
         for p in self.resnet.bn1.parameters():
             p.requires_grad = False
@@ -167,7 +166,6 @@ class resnetv1(Network):
                     p.requires_grad = False
 
         self.resnet.apply(set_bn_fix)
-
         # Build resnet.
         self._layers['head'] = nn.Sequential(
             self.resnet.conv1, self.resnet.bn1, self.resnet.relu,
@@ -196,6 +194,7 @@ class resnetv1(Network):
                     m.eval()
 
             self.resnet.apply(set_bn_eval)
+            
     def key_transform(self, key):
         #if('resnet.' in key):
         #    new_key = key.replace('resnet.', '')
@@ -209,20 +208,27 @@ class resnetv1(Network):
         else:
             return None
 
-    def load_trimmed_pretrained_cnn(self, state_dict):
+    def load_pretrained_cnn(self, state_dict):
         new_state_dict = OrderedDict()
         own_state = self.state_dict()
-        print(state_dict.keys())
-        sys.exit('test_ended')
-        resnet_state_dict = (state_dict['model'])
+        #print(state_dict.keys())
+        #sys.exit('test_ended')
+        resnet_state_dict = state_dict
         for key, param in resnet_state_dict.items():
-            new_key = self.key_transform(key)
-            if(new_key is not None):
-                new_state_dict[new_key] = param
-        self.load_pretrained_cnn(new_state_dict)
+            #new_key = self.key_transform(key)
+            if(key == 'conv1.weight'):
+                new_param = torch.zeros((param.shape[0],cfg.LIDAR.NUM_CHANNEL,param.shape[2],param.shape[3]))
+                r = param[:,0,:,:].unsqueeze(1)
+                new_param[:,0:cfg.LIDAR.NUM_SLICES,:,:] = r.repeat(1,cfg.LIDAR.NUM_SLICES,1,1)
+                new_param[:,cfg.LIDAR.NUM_SLICES,:,:] = param[:,1,:,:]
+                new_param[:,cfg.LIDAR.NUM_SLICES+1,:,:] = param[:,2,:,:]
+            else:
+                new_param = param
+            #if(new_key is not None):
+            new_state_dict[key] = new_param
+        self._load_pretrained_cnn(new_state_dict)
 
-
-    def load_pretrained_cnn(self, state_dict):
+    def _load_pretrained_cnn(self, state_dict):
         self.resnet.load_state_dict({
             k: v
             for k, v in state_dict.items() if k in self.resnet.state_dict()

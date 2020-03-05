@@ -76,8 +76,8 @@ __C.TRAIN.SCALES  = (730,)
 #__C.TRAIN.MAX_SIZE  = 450
 #WAYMO 1/2
 __C.TRAIN.MAX_SIZE  = 1920
-# Images to use per minibatch
-__C.TRAIN.IMS_PER_BATCH = 1
+# Images/Lidar frames to use per minibatch
+__C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
 __C.TRAIN.BATCH_SIZE = 128
@@ -298,6 +298,9 @@ __C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
 __C.PIXEL_ARRANGE = [0,1,2]
 __C.PIXEL_ARRANGE_BGR = [2,1,0]
 
+__C.PIXEL_MEANS = np.array([[[0, 0]]])
+__C.PIXEL_STDDEVS = np.array([[[1, 1]]])
+
 __C.RNG_SEED = 3
 
 # Root directory of project
@@ -342,7 +345,7 @@ __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
-__C.TRAIN.DRAW_ROIDB_GEN     = True
+__C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 __C.NUM_BBOX_SAMPLE          = 50
 __C.NUM_CE_SAMPLE            = 300
@@ -350,12 +353,16 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 __C.NET_TYPE                 = 'lidar'
-__C.LIDAR_X_RANGE            = [0,70]
-__C.LIDAR_Y_RANGE            = [-40,40]
-__C.LIDAR_Z_RANGE            = [0,10]
+__C.LIDAR = edict()
+__C.LIDAR.X_RANGE            = [0,70]
+__C.LIDAR.Y_RANGE            = [-40,40]
+__C.LIDAR.Z_RANGE            = [0,10]
+__C.LIDAR.VOXEL_LEN          = 0.1
+__C.LIDAR.NUM_SLICES         = 6
+__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
 #Need to turn this on in order to debug
 #Slows
-__C.DEBUG_EN                 = False
+__C.DEBUG_EN                 = True
 
 
 def get_output_dir(db, weights_filename):
@@ -365,7 +372,7 @@ def get_output_dir(db, weights_filename):
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name, __C.NET_TYPE))
   if weights_filename is None:
     mode = ''
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
@@ -401,7 +408,7 @@ def get_output_tb_dir(db, weights_filename):
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name, __C.NET_TYPE))
   if weights_filename is None:
     mode = ''
     if __C.ENABLE_ALEATORIC_BBOX_VAR:

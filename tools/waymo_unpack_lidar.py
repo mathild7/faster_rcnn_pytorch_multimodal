@@ -1,3 +1,4 @@
+import _init_paths
 import tensorflow as tf
 tf.enable_eager_execution()
 import os
@@ -12,6 +13,7 @@ from waymo_open_dataset import dataset_pb2 as open_dataset
 from multiprocessing import Process, Pool
 import multiprocessing.managers
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from model.config import cfg
 voxel_size = 0.1
 x_range = [0,70]
 y_range = [-40,40]
@@ -50,7 +52,10 @@ def main():
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                     proc_data = (i,j,frame,mypath)
-                    json_struct.append(frame_loop(proc_data))
+                    #print('frame: {}'.format(i*1000+j))
+                    labels = frame_loop(proc_data)
+                    #print(len(labels['box']))
+                    json_struct.append(labels)
         json.dump(json_struct,json_file)
 
 
@@ -75,59 +80,52 @@ def frame_loop(proc_data):
             #print(calib)
     #TODO: Output calibration to JSON array file.
     k_l = 0
+    json_labels                = {}
+    json_labels['box']         = []
+    json_labels['class']       = []
+    json_labels['meta']        = []
+    json_labels['difficulty']  = []
+    json_labels['id']          = []
+    json_labels['assoc_frame'] = '{0:05d}'.format(i*1000+j) 
+    json_labels['scene_name']  = frame.context.name
+    json_labels['scene_type']  = []
+    json_labels['scene_type'].append({'weather': frame.context.stats.weather,
+                                        'tod': frame.context.stats.time_of_day})
+    #print(json_calib)
+    json_labels['calibration'] = []
+    json_labels['calibration'].append(json_calib)
     for label in frame.laser_labels:
-        #print(label)
-        json_labels                = {}
-        json_labels['box']         = []
-        json_labels['class']       = []
-        json_labels['meta']        = []
-        json_labels['difficulty']  = []
-        json_labels['id']          = []
-        json_labels['assoc_frame'] = '{0:05d}'.format(i*1000+j) 
-        json_labels['scene_name']  = frame.context.name
-        json_labels['scene_type']  = []
-        json_labels['scene_type'].append({'weather': frame.context.stats.weather,
-                                            'tod': frame.context.stats.time_of_day})
-        #print(json_calib)
-        json_labels['calibration'] = []
-        json_labels['calibration'].append(json_calib)
         #point 1 is near(x) left(y) bottom(z)
         #length: dim x
-        x1 = float(label.box.center_x) - float(label.box.length)/2
+        x_c = float(label.box.center_x)
         #width: dim y
-        y1 = float(label.box.center_y) - float(label.box.width)/2
+        y_c = float(label.box.center_y)
         #height: dim z
-        z1 = float(label.box.center_z) - float(label.box.height)/2
+        z_c = float(label.box.center_z)
         #Second point is far(x) right(y) top(z)
-        x2 = float(label.box.center_x) + float(label.box.length)/2
-        y2 = float(label.box.center_y) + float(label.box.width)/2
-        z2 = float(label.box.center_z) + float(label.box.height)/2
+        delta_x = float(label.box.length)/2.0
+        delta_y = float(label.box.width)/2.0
+        delta_z = float(label.box.height)/2.0
         heading = float(label.box.heading)
-        #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
-        x1 = np.maximum(x1,0)
-        x2 = np.minimum(x2,70)
-        y1 = np.maximum(x1,-40)
-        y2 = np.minimum(x2,40)
-        z1 = np.maximum(z1,0)
-        z2 = np.minimum(z2,10)
-        if(x2-x1 < voxel_size):
-            print('x delta too small {}'.format(x2-x1))
+        #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10] as per config
+        if(x_c + delta_x < cfg.LIDAR.X_RANGE[0] or x_c - delta_x > cfg.LIDAR.X_RANGE[1]):
+            #print('object not infront of car')
             continue
-        if(y2-y1 < voxel_size):
-            print('y delta too small {}'.format(y2-y1))
+        if(y_c + delta_y < cfg.LIDAR.Y_RANGE[0] or y_c - delta_y > cfg.LIDAR.Y_RANGE[1]):
+            #print('object too far to left/right side')
             continue
-        if(z2-z1 < voxel_size):
-            print('z delta too small {}'.format(z2-z1))
+        if(z_c + delta_z < cfg.LIDAR.Z_RANGE[0] or z_c - delta_z > cfg.LIDAR.Z_RANGE[1]):
+            #print('object either too high or below car')
             continue
         #if(y2-y1 <= bbox_top_min and y1 == 0):
         #    continue
         json_labels['box'].append({
-            'x1': '{:.3f}'.format(x1),
-            'y1': '{:.3f}'.format(y1),
-            'z1': '{:.3f}'.format(z1),
-            'x2': '{:.3f}'.format(x2),
-            'y2': '{:.3f}'.format(y2),
-            'z2': '{:.3f}'.format(z2),
+            'xc': '{:.3f}'.format(x_c),
+            'yc': '{:.3f}'.format(y_c),
+            'zc': '{:.3f}'.format(z_c),
+            'delta_x': '{:.3f}'.format(delta_x),
+            'delta_y': '{:.3f}'.format(delta_y),
+            'delta_z': '{:.3f}'.format(delta_z),
             'heading': '{:.3f}'.format(heading),
         })
         json_labels['meta'].append({
@@ -146,11 +144,11 @@ def frame_loop(proc_data):
     if(not skip_binaries):
         (range_images, range_image_top_pose) = parse_range_image(frame,tfp)
         points     = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)
-        points_2   = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
+        #points_2   = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
         #Top extraction
         points_top       = points[laser_enum.TOP.value-1]
         #cp_points_top    = cp_points[laser_enum.TOP.value-1]
-        points_top_2     = points_2[laser_enum.TOP.value-1]
+        #points_top_2     = points_2[laser_enum.TOP.value-1]
         points_top_filtered = filter_points(points_top)
         #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
         bin_filename = '{0:05d}.bin'.format(i*1000+j)
@@ -167,8 +165,8 @@ def frame_loop(proc_data):
     return json_labels
 
 def filter_points(pc):
-    pc_min_thresh = pc[(pc[:,0] > x_range[0]) & (pc[:,1] > y_range[0]) & (pc[:,2] > z_range[0])]
-    pc_min_and_max_thresh = pc[(pc[:,0] < x_range[1]) & (pc[:,1] < y_range[1]) & (pc[:,2] < z_range[1])]
+    pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
+    pc_min_and_max_thresh = pc[(pc[:,0] < cfg.LIDAR.X_RANGE[1]) & (pc[:,1] < cfg.LIDAR.Y_RANGE[1]) & (pc[:,2] < cfg.LIDAR.Z_RANGE[1])]
     return pc_min_and_max_thresh
 
 
@@ -227,6 +225,11 @@ def convert_range_image_to_point_cloud(frame,
     range_image_top_pose: range image pixel pose for top lidar.
     ri_index: 0 for the first return, 1 for the second return.
 
+  //   * channel 0: range
+  //   * channel 1: intensity
+  //   * channel 2: elongation
+  //   * channel 3: is in any no label zone.
+
   Returns:
     points: {[N, 3]} list of 3d lidar points of length 5 (number of lidars).
     cp_points: {[N, 6]} list of camera projections of length 5
@@ -280,9 +283,13 @@ def convert_range_image_to_point_cloud(frame,
 
     range_image_cartesian = tfp.squeeze(range_image_cartesian, axis=0)
     points_tensor = tfp.gather_nd(range_image_cartesian,
-                                 tfp.compat.v1.where(range_image_mask))
-
-    points.append(points_tensor.numpy())
+                                  tfp.compat.v1.where(range_image_mask))
+    intensity_tensor = tfp.gather_nd(tfp.expand_dims(range_image_tensor[..., 1], axis=2),
+                                     tfp.compat.v1.where(range_image_mask)) 
+    elongation_tensor = tfp.gather_nd(tfp.expand_dims(range_image_tensor[..., 2], axis=2),
+                                      tfp.compat.v1.where(range_image_mask)) 
+    stacked_tensor = np.hstack((points_tensor.numpy(),intensity_tensor.numpy(),elongation_tensor.numpy()))
+    points.append(stacked_tensor)
 
   return points
 

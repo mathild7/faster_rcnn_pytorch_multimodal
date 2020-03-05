@@ -25,6 +25,7 @@ import roi_data_layer.roidb as rdl_roidb
 from copy import deepcopy
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
+from nets.lidarnet  import lidarnet
 from nets.mobilenet_v1 import mobilenetv1
 
 
@@ -114,7 +115,7 @@ def get_training_validation_roidb(mode,db,draw_and_save=False):
     else:
         return None
 
-def combined_lidb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
+def combined_lidb_roidb(mode,dataset,draw_and_save=False,lidb=None,limiter=0):
     """
   Combine multiple roidbs
   """
@@ -205,20 +206,24 @@ if __name__ == '__main__':
     #cfg.TRAIN.USE_FLIPPED = orgflipqua
 
     # load network
-    if args.net == 'vgg16':
-        net = vgg16()
-    elif args.net == 'res34':
-        net = resnetv1(num_layers=34)
-    elif args.net == 'res50':
-        net = resnetv1(num_layers=50)
-    elif args.net == 'res101':
-        net = resnetv1(num_layers=101)
-    elif args.net == 'res152':
-        net = resnetv1(num_layers=152)
-    elif args.net == 'mobile':
-        net = mobilenetv1()
-    else:
-        raise NotImplementedError
+    if(cfg.NET_TYPE == 'image'):
+        if args.net == 'vgg16':
+            net = vgg16()
+        elif args.net == 'res34':
+            net = resnetv1(num_layers=34)
+        elif args.net == 'res50':
+            net = resnetv1(num_layers=50)
+        elif args.net == 'res101':
+            net = resnetv1(num_layers=101)
+        elif args.net == 'res152':
+            net = resnetv1(num_layers=152)
+        elif args.net == 'mobile':
+            net = mobilenetv1()
+        else:
+            raise NotImplementedError
+    elif(cfg.NET_TYPE == 'lidar'):
+        net = lidarnet(num_layers=101)
+        
     train_net(
         net,
         db,
@@ -229,6 +234,6 @@ if __name__ == '__main__':
         sum_size=256,
         val_sum_size=1000,
         batch_size=16,
-        val_im_thresh=0.4,
+        val_thresh=0.4,
         augment_en=True,
         val_augment_en=False)

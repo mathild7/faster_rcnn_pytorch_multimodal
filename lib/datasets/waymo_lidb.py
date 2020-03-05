@@ -41,7 +41,7 @@ class class_enum(Enum):
     CYCLIST = 4
 
 class waymo_lidb(lidb):
-    def __init__(self, mode='test',limiter=0, shuffle_en=True):
+    def __init__(self, mode='test',limiter=0, shuffle_en=False):
         name = 'waymo'
         self.type = 'lidar'
         lidb.__init__(self, name)
@@ -59,8 +59,8 @@ class waymo_lidb(lidb):
         self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
         self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
 
-        self._imwidth  = 1920
-        self._imheight = 730
+        self._imwidth  = 1300
+        self._imheight = 1200
         self._num_slices = 7
         self._bev_slice_locations = [1,2,3,4,5,7]
         self._filetype   = 'BIN'
@@ -143,7 +143,7 @@ class waymo_lidb(lidb):
             for pc in pc_index:
                 #print(pc)
                 for pc_labels in labels:
-                    #print(img_labels['assoc_frame'])
+                    #print(pc_labels['assoc_frame'])
                     if(pc_labels['assoc_frame'] == pc.replace('.{}'.format(self._filetype.lower()),'')):
                         pc_file_path = os.path.join(mode,'point_clouds',pc)
                         roi = self._load_waymo_lidar_annotation(pc_file_path,pc_labels,tod_filter_list=self._tod_filter_list)
@@ -191,58 +191,100 @@ class waymo_lidb(lidb):
         #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
         for i, roi in enumerate(roidb):
             if(i % 1 == 0):
-                if(roi['flipped']):
-                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_flipped.{}'.format(self._imtype.lower()))
-                else:
-                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
                 if(roi['boxes'].shape[0] != 0):
-                    source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,3))
+                    source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,5))
                     bev_img    = self.point_cloud_to_bev(source_bin)
-                    for slice_idx, bev_slice in enumerate(bev_img):
-                        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
-                        draw = ImageDraw.Draw(draw_file)
-                        if(roi['flipped'] is True):
-                            #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
-                            text = "Flipped"
-                        else:
-                            text = "Normal"
-                        draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
-                        draw.text((0,0),text)
-                        for roi_box, cat in zip(roi['boxes'],roi['cat']):
-                            self.draw_bev_bbox(draw,roi_box,slice_idx)
-                            #draw.text((roi_box[0],roi_box[1]),cat)
-                        #for roi_box in roi['boxes_dc']:
-                        #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-                        print('Saving drawn file at location {}'.format(outfile))
-                        draw_file.save(outfile,self._imtype)
+                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+                    draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+                    draw = ImageDraw.Draw(draw_file)
+                    self.draw_bev(source_bin,draw)
+                    for roi_box, cat in zip(roi['boxes'],roi['cat']):
+                        self.draw_bev_bbox(draw,roi_box,None)
+                    print('Saving entire BEV drawn file at location {}'.format(outfile))
+                    draw_file.save(outfile,self._imtype)
+                    #for slice_idx, bev_slice in enumerate(bev_img):
+                    #    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_{}.{}'.format(slice_idx,self._imtype.lower()))
+                    #    draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+                    #    draw = ImageDraw.Draw(draw_file)
+                    #    if(roi['flipped'] is True):
+                    #        #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
+                    #        text = "Flipped"
+                    #    else:
+                    #        text = "Normal"
+                    #    draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
+                    #    draw.text((0,0),text)
+                    #    for roi_box, cat in zip(roi['boxes'],roi['cat']):
+                    #        self.draw_bev_bbox(draw,roi_box,slice_idx)
+                    #        #draw.text((roi_box[0],roi_box[1]),cat)
+                    #    #for roi_box in roi['boxes_dc']:
+                    #    #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
+                    #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
+                    #    draw_file.save(outfile,self._imtype)
 
     def draw_bev_bbox(self,draw,bbox,slice_idx):
         p = []
-        p.append([bbox[0],bbox[1]])
-        p.append([bbox[0],bbox[4]])
-        p.append([bbox[3],bbox[1]])
-        p.append([bbox[3],bbox[4]])
-        x_c = (bbox[3]-bbox[0])/2
-        y_c = (bbox[4]-bbox[1])/2
+        x_c, y_c, z_c = bbox[0:3]
+        x_d, y_d, z_d = bbox[3:6]
+        heading       = bbox[6]
+        #p0 -> bottom, left
+        p.append([x_c-x_d,y_c-y_d])
+        #p1 -> bottom, right
+        p.append([x_c-x_d,y_c+y_d])
+        #p2 -> top, right
+        p.append([x_c+x_d,y_c+y_d])
+        #p3 -> top, left
+        p.append([x_c+x_d,y_c-y_d])
+        #x_c = (bbox[3]-bbox[0])/2
+        #y_c = (bbox[4]-bbox[1])/2
         p_c = [x_c,y_c]
         #Only need 2x z coord
-        z1 = bbox[2]
-        z2 = bbox[5]
-        heading = bbox[6]
-        z_max, z_min = self._slice_height(slice_idx) 
-        if(z1 < z_max or z2 >= z_min):
-            c = int(z2/z_max*255)
-            coords = self._rotate_in_bev(p, p_c, heading, [cfg.LIDAR_X_RANGE,cfg.LIDAR_Y_RANGE])
-            pixel_coords = []
-            for coord_pair in coords:
-                pixel_coords.append(self._transform_to_pixel_coords(coord_pair))
-            draw.polygon(pixel_coords,fill=c)
+        z1 = z_c-z_d
+        z2 = z_c+z_d
 
-    def _transform_to_pixel_coords(self,coords):
-        x = (coords[1]-cfg.LIDAR_Y_RANGE[0])*self._imwidth/(cfg.LIDAR_Y_RANGE[1] - cfg.LIDAR_Y_RANGE[0])
-        y = (coords[0]-cfg.LIDAR_X_RANGE[0])*self._imheight/(cfg.LIDAR_X_RANGE[1] - cfg.LIDAR_X_RANGE[0])
+        if(slice_idx is None):
+            z_max = cfg.LIDAR.Z_RANGE[1]
+            z_min = cfg.LIDAR.Z_RANGE[0]
+        else:
+            z_max, z_min = self._slice_height(slice_idx) 
+        #if(z1 >= z_min or z2 < z_max):
+        c = int(z2/z_max*255)
+        coords = self._rotate_in_bev(p, p_c, heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
+        pixel_coords = []
+        for coord_pair in coords:
+            pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=True,inv_y=True))
+        self._draw_polygon(draw,pixel_coords,c)
+
+    def _draw_polygon(self,draw,pixel_coords,c):
+        for i in range(len(pixel_coords)):
+            if(i == 0):
+                draw.line((pixel_coords[i],pixel_coords[len(pixel_coords)-1]),fill=(c,0,0),width=2)
+            else:
+                draw.line((pixel_coords[i],pixel_coords[i-1]),fill=(c,0,0),width=2)
+            draw.point(pixel_coords[i],fill=(c,0,0))
+
+    def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
+        x = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imwidth/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
+        y = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._imheight/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
+        if(inv_x):
+            x = self._imwidth - x
+        if(inv_y):
+            y = self._imheight - y
         return (int(x), int(y))
-        
+
+    def draw_bev(self,bev_img,draw):
+        coord = []
+        color = []
+        for i,point in enumerate(bev_img):
+            z_max = cfg.LIDAR.Z_RANGE[1]
+            z_min = cfg.LIDAR.Z_RANGE[0]
+            #Point is contained within slice
+            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
+            if(point[2] < z_max or point[2] >= z_min):
+                coords = self._transform_to_pixel_coords(point,inv_x=True,inv_y=True)
+                c = int((point[2]-z_min)*255/(z_max - z_min))
+                draw.point(coords, fill=(int(c),0,0))
+        return draw
+       
     def draw_bev_slice(self,bev_slice,bev_idx,draw):
         coord = []
         color = []
@@ -250,7 +292,7 @@ class waymo_lidb(lidb):
             z_max, z_min = self._slice_height(bev_idx)
             #Point is contained within slice
             #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
-            if(point[2] > z_max or point[2] <= z_min):
+            if(point[2] < z_max or point[2] >= z_min):
                 coords = self._transform_to_pixel_coords(point)
                 c = int((point[2]-z_min)*255/(z_max - z_min))
                 draw.point(coords, fill=int(c))
@@ -269,11 +311,11 @@ class waymo_lidb(lidb):
 
     def _slice_height(self,i):
         if(i == 0):
-            z_min = cfg.LIDAR_Z_RANGE[0]
+            z_min = cfg.LIDAR.Z_RANGE[0]
             z_max = self._bev_slice_locations[i]
         elif(i == self._num_slices-1):
             z_min = self._bev_slice_locations[i-1]
-            z_max = cfg.LIDAR_Z_RANGE[1]
+            z_max = cfg.LIDAR.Z_RANGE[1]
         else:
             z_min = self._bev_slice_locations[i-1]
             z_max = self._bev_slice_locations[i]
@@ -281,35 +323,36 @@ class waymo_lidb(lidb):
 
     #STOLEN FROM AVOD :-)
     def _rotate_in_bev(self, p, p_c, rot, bev_extents):
-        p0 = p[0]
-        p1 = p[1]
-        p2 = p[2]
-        p3 = p[3]
-
+        points = np.asarray(p,dtype=np.float32)
+        rot = -rot
+        center = np.asarray(p_c)
+        pts    = np.asarray(p)
         rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],
                             [-np.sin(rot), np.cos(rot)]],
                             (2, 2))
+        box_p = []
+        for coords in pts:
+            rotated = np.dot(rot_mat,coords-center) + center
+            box_p.append(rotated)
+        #rot_points = np.dot(rot_mat,points) + box_xy
+        #box_p0 = (np.dot(rot_mat, p0) + box_xy)
+        #box_p1 = (np.dot(rot_mat, p1) + box_xy)
+        #box_p2 = (np.dot(rot_mat, p2) + box_xy)
+        #box_p3 = (np.dot(rot_mat, p3) + box_xy)
 
-        box_xy = p_c
-
-        box_p0 = (np.dot(rot_mat, p0) + box_xy)
-        box_p1 = (np.dot(rot_mat, p1) + box_xy)
-        box_p2 = (np.dot(rot_mat, p2) + box_xy)
-        box_p3 = (np.dot(rot_mat, p3) + box_xy)
-
-        box_points = np.array([box_p0, box_p1, box_p2, box_p3])
+        #box_points = np.array([box_p0, box_p1, box_p2, box_p3])
 
         # Calculate normalized box corners for ROI pooling
-        x_extents_min = bev_extents[0][0]
-        y_extents_min = bev_extents[1][1]  # z axis is reversed
-        points_shifted = box_points - [x_extents_min, y_extents_min]
+        #x_extents_min = bev_extents[0][0]
+        #y_extents_min = bev_extents[1][1]  # z axis is reversed
+        #points_shifted = box_points - [x_extents_min, y_extents_min]
 
-        x_extents_range = bev_extents[0][1] - bev_extents[0][0]
-        y_extents_range = bev_extents[1][0] - bev_extents[1][1]
-        box_points_norm = points_shifted / [x_extents_range, y_extents_range]
+        #x_extents_range = bev_extents[0][1] - bev_extents[0][0]
+        #y_extents_range = bev_extents[1][0] - bev_extents[1][1]
+        #box_points_norm = points_shifted / [x_extents_range, y_extents_range]
 
-        box_points = np.asarray(box_points, dtype=np.float32)
-        box_points_norm = np.asarray(box_points_norm, dtype=np.float32)
+        box_points = np.asarray(box_p, dtype=np.float32)
+        #box_points_norm = np.asarray(box_points_norm, dtype=np.float32)
 
         return box_points
 
@@ -466,8 +509,8 @@ class waymo_lidb(lidb):
         if(tod not in tod_filter_list):
             print('TOD {} not in specified filter list'.format(tod))
             return None
-        seg_areas  = np.zeros((num_objs), dtype=np.float32)
-        camera_extrinsic = pc_labels['calibration'][0]['extrinsic_transform']
+        #seg_areas  = np.zeros((num_objs), dtype=np.float32)
+        extrinsic = pc_labels['calibration'][0]['extrinsic_transform']
         #camera_intrinsic = pc_labels['calibration'][0]['intrinsic']
         # Load object bounding boxes into a data frame.
         ix = 0
@@ -486,28 +529,27 @@ class waymo_lidb(lidb):
                 anno_cat = class_enum.UNKNOWN.value
             #Change to string 
             anno_cat = self._classes[anno_cat]
-            x1 = float(bbox['x1'])
-            y1 = float(bbox['y1'])
-            z1 = float(bbox['z1'])
-            x2 = float(bbox['x2'])
-            y2 = float(bbox['y2'])
-            z2 = float(bbox['z2'])
+            x_c = float(bbox['xc'])
+            y_c = float(bbox['yc'])
+            z_c = float(bbox['zc'])
+            delta_x = float(bbox['delta_x'])
+            delta_y = float(bbox['delta_y'])
+            delta_z = float(bbox['delta_z'])
             heading = float(bbox['heading'])
-            #Clip bboxes
+            #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
-            #TODO: Put numbers in config
-            if(z1 < 0 or z2 > 10):
-                print('z1: {} z2: {}'.format(z1,z2))
-            if(x1 < 0 or x2 > 70):
-                print('x1: {} x2: {}'.format(x1,x2))
-            if(y1 < -40 or y2 > 40):
-                print('y1: {} y2: {}'.format(y1,y2))
+            #if(x1 < cfg.LIDAR.X_RANGE[0] or x2 > cfg.LIDAR.X_RANGE[1]):
+            #    print('x1: {} x2: {}'.format(x1,x2))
+            #if(y1 < cfg.LIDAR.Y_RANGE[0] or y2 > cfg.LIDAR.Y_RANGE[1]):
+            #    print('y1: {} y2: {}'.format(y1,y2))
+            #if(z1 < cfg.LIDAR.Z_RANGE[0] or z2 > cfg.LIDAR.Z_RANGE[1]):
+            #    print('z1: {} z2: {}'.format(z1,z2))
 
             if(anno_cat != 'dontcare'):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
-                boxes[ix, :] = [x1, y1, z2, x2, y2, z2, heading]
+                boxes[ix, :] = [x_c, y_c, z_c, delta_x, delta_y, delta_z, heading]
                 #TODO: Not sure what to filter these to yet.
                 #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
@@ -523,12 +565,12 @@ class waymo_lidb(lidb):
                 gt_classes[ix] = cls
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
-                seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
+                #seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
                 ix = ix + 1
             if(anno_cat == 'dontcare'):
                 #print(line)
                 #ignore[ix] = True
-                boxes_dc[ix_dc, :] = [x1, y1, z1, x2, y2, z2, heading]
+                boxes_dc[ix_dc, :] = [x_c, y_c, z_c, delta_x, delta_y, delta_z, heading]
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):
@@ -541,7 +583,7 @@ class waymo_lidb(lidb):
             'pc_idx':      pc_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
-            'pcfile':      filename,
+            'filename':    filename,
             'ignore':      ignore[0:ix],
             'det':         ignore[0:ix].copy(),
             'cat':         cat,
@@ -550,8 +592,7 @@ class waymo_lidb(lidb):
             'boxes_dc':    boxes_dc[0:ix_dc],
             'gt_classes':  gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
-            'flipped':     False,
-            'seg_areas':   seg_areas[0:ix]
+            'flipped':     False
         }
 
         #Post Process Step

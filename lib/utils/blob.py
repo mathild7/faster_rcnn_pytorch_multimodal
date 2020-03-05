@@ -54,3 +54,28 @@ def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, target_size, 
     # Prevent the biggest axis from being more than MAX_SIZE
 
     return im, im_scale
+
+
+def voxel_grid_list_to_blob(voxel_grids):
+    """Convert a list of images into a network input.
+
+  Assumes images are already prepared (means subtracted, BGR order, ...).
+  """
+    max_shape = np.array([voxel_grids.shape for vg in voxel_grids]).max(axis=0)
+    num_voxel_grids = len(voxel_grids)
+    blob = np.zeros((num_voxel_grids, max_shape[0], max_shape[1], max_shape[2]),
+                    dtype=np.float32)
+    for i in range(num_voxel_grids):
+        voxel_grid = voxel_grids[i]
+        blob[i, 0:voxel_grid.shape[0], 0:voxel_grid.shape[1], 0:voxel_grid.shape[2]] = voxel_grid
+
+    return blob
+
+
+def prep_voxel_grid_for_blob(voxel_grid, means, vars, scale):
+    voxel_grid = np.resize(voxel_grid,voxel_grid.shape*scale)
+    voxel_grid = voxel_grid/np.sqrt(vars)
+    voxel_grid = voxel_grid-means
+    # Prevent the biggest axis from being more than MAX_SIZE
+
+    return voxel_grid

@@ -62,7 +62,7 @@ class SolverWrapper(object):
 
     def __init__(self,
                  network,
-                 imdb,
+                 db,
                  roidb,
                  val_roidb,
                  output_dir,
@@ -71,24 +71,24 @@ class SolverWrapper(object):
                  val_sum_size,
                  epoch_size,
                  batch_size,
-                 val_im_thresh,
+                 val_thresh,
                  augment_en,
                  val_augment_en,
                  pretrained_model=None):
-        self.net = network
-        self.imdb = imdb
-        self.roidb = roidb
-        self.val_roidb = val_roidb
-        self.output_dir = output_dir
-        self.tbdir = tbdir
-        self.sum_size = sum_size
-        self.val_sum_size = val_sum_size
-        self.epoch_size = epoch_size
-        self.batch_size = batch_size
-        self.val_batch_size = batch_size
+        self.net             = network
+        self.db              = db
+        self.roidb           = roidb
+        self.val_roidb       = val_roidb
+        self.output_dir      = output_dir
+        self.tbdir           = tbdir
+        self.sum_size        = sum_size
+        self.val_sum_size    = val_sum_size
+        self.epoch_size      = epoch_size
+        self.batch_size      = batch_size
+        self.val_batch_size  = batch_size
         self._val_augment_en = val_augment_en
         self._augment_en     = augment_en
-        self.val_im_thresh = val_im_thresh
+        self.val_thresh      = val_thresh
         # Simply put '_val' at the end to save the summaries from the validation set
         self.tbvaldir = tbdir + '_val'
         if not os.path.exists(self.tbvaldir):
@@ -167,7 +167,7 @@ class SolverWrapper(object):
         torch.manual_seed(cfg.RNG_SEED)
         # Build the main computation graph
         self.net.create_architecture(
-            self.imdb.num_classes,
+            self.db.num_classes,
             tag='default',
             anchor_scales=cfg.ANCHOR_SCALES,
             anchor_ratios=cfg.ANCHOR_RATIOS)
@@ -203,7 +203,7 @@ class SolverWrapper(object):
         return lr, self.optimizer
 
     def find_previous(self):
-        sfiles = os.path.join(self.output_dir,
+        sfiles = os.path.join(self.output_dir,cfg.NET_TYPE + '_' +
                               cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_*.pth')
         sfiles = glob.glob(sfiles)
         sfiles.sort(key=os.path.getmtime)
@@ -216,7 +216,7 @@ class SolverWrapper(object):
                     '_iter_{:d}.pth'.format(stepsize + 1)))
         sfiles = [ss for ss in sfiles if ss not in redfiles]
 
-        nfiles = os.path.join(self.output_dir,
+        nfiles = os.path.join(self.output_dir,cfg.NET_TYPE + '_' +
                               cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_*.pkl')
         nfiles = glob.glob(nfiles)
         nfiles.sort(key=os.path.getmtime)
@@ -290,10 +290,10 @@ class SolverWrapper(object):
         val_augment_en = self._val_augment_en
         augment_en     = self._augment_en
         val_batch_size = self.batch_size
-        #self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
-        #self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)    
-        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.imdb.num_classes)
-        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.imdb.num_classes)
+        #self.data_layer = RoIDataLayer(self.roidb, self.db.num_classes, 'train')
+        #self.data_layer_val = RoIDataLayer(self.val_roidb, self.db.num_classes, 'val', random=True)    
+        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.db.num_classes)
+        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.db.num_classes)
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -319,26 +319,30 @@ class SolverWrapper(object):
         #Switch to train mode
         self.net.train()
         self.net.to(self.net._device)
+        #TEST CODE TO TRY TO EXTRACT ONNX MODEL
         #self.net.eval()
         #dummy_input = torch.randn(1, 3, 1920, 730, device='cuda')
-        #torch.onnx.export(self.net, dummy_input, '{}.onnx'.format(self.imdb.name), verbose=True)
-# Providing input and output names sets the display names for values
-# within the model's graph. Setting these does not change the semantics
-# of the graph; it is only for readability.
-#
-# The inputs to the network consist of the flat list of inputs (i.e.
-# the values you would pass to the forward() method) followed by the
-# flat list of parameters. You can partially specify names, i.e. provide
-# a list here shorter than the number of inputs to the model, and we will
-# only set that subset of names, starting from the beginning.
+        #torch.onnx.export(self.net, dummy_input, '{}.onnx'.format(self.db.name), verbose=True)
+
+        # Providing input and output names sets the display names for values
+        # within the model's graph. Setting these does not change the semantics
+        # of the graph; it is only for readability.
+        #
+        # The inputs to the network consist of the flat list of inputs (i.e.
+        # the values you would pass to the forward() method) followed by the
+        # flat list of parameters. You can partially specify names, i.e. provide
+        # a list here shorter than the number of inputs to the model, and we will
+        # only set that subset of names, starting from the beginning.
         t = utils.timer.timer
         t_net = utils.timer.timer
         loss_cumsum = 0
         killer = GracefulKiller()
         if(iter < 10):
-            self.imdb.delete_eval_draw_folder('val','trainval')
+            self.db.delete_eval_draw_folder('val','trainval')
         #    scale_lr(self.optimizer,0.1)
         self.data_gen.start()
+        while(1):
+            test = 1
         self.data_gen_val.start()
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
@@ -381,28 +385,15 @@ class SolverWrapper(object):
                         cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
-                    #Add ability to do filter_pred on rois_val and pass to draw&save
-                    #torch.set_printoptions(profile="full")
-                    #print(bbox_pred_val)
-                    #print(cls_prob_val)
-                    #print(a_cls_var_val)
-                    #torch.set_printoptions(profile="default")   
                     rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
                                                                              bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
                                                                              blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
-                                                                             self.imdb.num_classes,self.val_im_thresh)
+                                                                             self.db.num_classes,self.val_thresh)
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     bbox_pred_val = np.array(bbox_pred_val)
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
-
-                    #for obj in gc.get_objects():
-                    #    try:
-                    #        if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                    #            print(type(obj), obj.size())
-                    #    except:
-                    #        pass
+                    self.db.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
@@ -508,7 +499,7 @@ def filter_roidb(roidb):
 
 
 def train_net(network,
-              imdb,
+              db,
               output_dir,
               tb_dir,
               pretrained_model=None,
@@ -516,26 +507,26 @@ def train_net(network,
               sum_size=128,
               val_sum_size=1000,
               batch_size=16,
-              val_im_thresh=0.1,
+              val_thresh=0.1,
               augment_en=True,
               val_augment_en=False):
     """Train a Faster R-CNN network."""
-    #roidb = filter_roidb(imdb.roidb)
-    epoch_size = len(imdb.roidb)
-    #val_roidb = filter_roidb(imdb.val_roidb)
+    #roidb = filter_roidb(db.roidb)
+    epoch_size = len(db.roidb)
+    #val_roidb = filter_roidb(db.val_roidb)
     #TODO: merge with train_val as one entire object
     sw = SolverWrapper(
         network,
-        imdb,
-        imdb.roidb,
-        imdb.val_roidb,
+        db,
+        db.roidb,
+        db.val_roidb,
         output_dir,
         tb_dir,
         sum_size,
         val_sum_size,
         epoch_size,
         batch_size,
-        val_im_thresh,
+        val_thresh,
         augment_en,
         val_augment_en,
         pretrained_model=pretrained_model)

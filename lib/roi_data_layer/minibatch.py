@@ -16,10 +16,12 @@ import imgaug as ia
 from copy import deepcopy
 import imgaug.augmenters as iaa
 from model.config import cfg
-from utils.blob import prep_im_for_blob, im_list_to_blob
+from utils.blob import prep_im_for_blob, im_list_to_blob, prep_voxel_grid_for_blob, voxel_grid_list_to_blob
 import matplotlib.pyplot as plt
 from PIL import Image,ImageDraw, ImageEnhance
 import os
+import pandas as pd
+from pyntcloud import PyntCloud
 from scipy.ndimage.filters import gaussian_filter
 
 def draw_and_save_minibatch(im,roidb):
@@ -38,14 +40,74 @@ def draw_and_save_minibatch(im,roidb):
     source_img.save(out_file,'PNG')    
 
 def get_minibatch(roidb, num_classes, augment_en):
+    if(cfg.NET_TYPE == 'image'):
+        return get_image_minibatch(roidb,num_classes,augment_en)
+    elif(cfg.NET_TYPE == 'lidar'):
+        return get_lidar_minibatch(roidb,num_classes,augment_en)
+    else:
+        print('getting minibatch failed. Invalid NET TYPE in cfg')
+        return None
+
+
+def get_lidar_minibatch(roidb, num_classes, augment_en):
     """Given a roidb, construct a minibatch sampled from it."""
+
     num_images = len(roidb)
+    gt_box_size = 7+1
+
+    #Removed input scaling capability. Unused.
+    # Sample random scales to use for each image in this batch
+    #random_scale_inds = npr.randint(
+    #    0, high=len(cfg.TRAIN.SCALES), size=num_images)
+
+    assert(cfg.TRAIN.BATCH_SIZE % num_images == 0), 'num_images ({}) must divide BATCH_SIZE ({})'.format(num_images, cfg.TRAIN.BATCH_SIZE)
+
+    # Get the input image blob, formatted for caffe
+    dummy_scale_value = 1
+    pc_blob, local_roidb = _get_lidar_blob(roidb, dummy_scale_value, augment_en)
+
+    #Create numpy array storage for bounding boxes (enforce type)
+    gt_len  = local_roidb[0]['boxes'].shape[0]
+    dc_len  = local_roidb[0]['boxes_dc'].shape[0]
+    gt_boxes = np.empty((gt_len, gt_box_size), dtype=np.float32)
+    gt_boxes_dc = np.empty((dc_len, gt_box_size), dtype=np.float32)
+
+    #Contains point cloud tensor
+    blobs = {'data': pc_blob}
+
+    #assert len(pc_scales) == 1, "Single batch only"
+    assert len(roidb) == 1, "Single batch only"
+
+    # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
+    gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
+    blobs['filename'] = local_roidb[0]['filename']
+    gt_boxes[:, 0:-1] = local_roidb[0]['boxes'][gt_inds, :]
+    gt_boxes[:, -1] = local_roidb[0]['gt_classes'][gt_inds]
+    blobs['gt_boxes'] = gt_boxes
+    #Do we include don't care areas, so we ignore certain ground truth boxes (Might be kitti only, even tho waymo has NLZ)
+    if cfg.TRAIN.IGNORE_DC:
+        gt_ind_dc = np.arange(dc_len)
+        gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
+        gt_boxes_dc[:, -1] = np.zeros(dc_len)
+    blobs['gt_boxes_dc'] = gt_boxes_dc
+    blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
+
+    if(len(blobs['gt_boxes']) == 0):
+        #print('No GT boxes for augmented image. Skipping')
+        return None
+
+    return blobs
+
+
+def get_image_minibatch(roidb, num_classes, augment_en):
+    """Given a roidb, construct a minibatch sampled from it."""
+    num_frames = len(roidb)
     # Sample random scales to use for each image in this batch
     random_scale_inds = npr.randint(
-        0, high=len(cfg.TRAIN.SCALES), size=num_images)
-    assert(cfg.TRAIN.BATCH_SIZE % num_images == 0), \
+        0, high=len(cfg.TRAIN.SCALES), size=num_frames)
+    assert(cfg.TRAIN.BATCH_SIZE % num_frames == 0), \
       'num_images ({}) must divide BATCH_SIZE ({})'. \
-      format(num_images, cfg.TRAIN.BATCH_SIZE)
+      format(num_frames, cfg.TRAIN.BATCH_SIZE)
 
     # Get the input image blob, formatted for caffe
     im_blob, im_scales, local_roidb = _get_image_blob(roidb, random_scale_inds, augment_en)
@@ -85,6 +147,125 @@ def get_minibatch(roidb, num_classes, augment_en):
     #assert((item is False for item in roidb[0]['ignore']).any(), 'All GT boxes are set to ignore.')
     return blobs
 
+
+def _get_lidar_blob(roidb, scale, augment_en=False):
+    """Builds an input blob from the images in the roidb at the specified
+  scales.
+  """
+    num_frame = len(roidb)
+    processed_frames = []
+
+    for i in range(num_frame):
+        source_bin = np.fromfile(roidb[i]['filename'], dtype='float32').reshape((-1,5))
+
+        #img_arr  = im
+        mean     = 0
+        sigma    = 2
+        local_roidb = deepcopy(roidb)
+        if(augment_en):
+            #print('augmenting image {}'.format(roidb[i]['imgname']))
+            #shape 0 -> height
+            #shape 1 -> width
+            flip_num = np.random.normal(1.0, 2.0)
+            if(local_roidb[i]['flipped'] is True):
+                print('something wrong has happened')
+            if(flip_num > 1.0):
+                #Flip source binary across Y plane
+                source_bin[:,1]       = -source_bin[:,1]
+                local_roidb[i]['flipped'] = True
+                oldy_c = local_roidb[i]['boxes'][:, 1].copy()
+                y_mean = (cfg.LIDAR.Y_RANGE[0]+cfg.LIDAR.Y_RANGE[1])/2
+                local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
+            else:
+                local_roidb[i]['flipped'] = False
+
+            num_x_voxel = (cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
+            num_y_voxel = (cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
+            num_z_voxel = (cfg.LIDAR.NUM_SLICES)
+            source_xyz = source_bin[:,0:3]
+            points = pd.DataFrame(source_xyz)
+            points.columns = ['x','y','z']
+            cloud = PyntCloud(points)
+            #cloud.add_scalar_field("hsv")
+            voxelgrid_id = cloud.add_structure("voxelgrid", n_x=int(num_x_voxel), n_y=int(num_y_voxel), n_z=int(num_z_voxel))
+            voxel_grid = cloud.get_sample("voxelgrid_highest", voxelgrid_id=voxelgrid_id, as_PyntCloud=True)
+
+            #img_arr = images_aug[0]
+            #local_roidb[i]['boxes'] = bboxes_aug[0]
+            #gaussian   = np.random.normal(mean, sigma, (img_arr.shape[0],img_arr.shape[1],3))
+            #blur_amt   = np.random.normal(0.7, 0.1)
+            #blur_amt   = np.maximum(blur_amt,0.4)
+            #blur_amt   = np.minimum(blur_amt,1.0)
+            orig_height = num_x_voxel
+            orig_width  = num_y_voxel
+            #brightness = np.random.normal(mean,sigma*4)
+            #Up and left shift by 20px
+            #right_shift = int(np.random.normal(mean,sigma*3))
+            #down_shift  = int(np.random.normal(mean,sigma*3))
+            #right_shift = 0
+            #down_shift  = 0
+            #img_arr     = img_arr.astype('float')
+            #img_arr    += gaussian
+            #img_arr    += brightness
+            voxel_grid     = np.maximum(voxel_grid,0)
+            #img = Image.fromarray(img_arr)
+            #contrast_enhancer = ImageEnhance.Contrast(img)
+            #img               = contrast_enhancer.enhance(1.2)
+            #blur_enhancer     = ImageEnhance.Sharpness(img)
+            #img               = (blur_enhancer.enhance(blur_amt))
+            #img               = img.crop((c_left,c_top,c_right,c_bottom))
+            #img               = img.resize((1280,730))
+            #img_arr            = np.array(img)
+            #if(down_shift < 0):
+            #    img_arr = np.pad(img_arr,((0,abs(down_shift)), (0,0), (0,0)), mode='constant',constant_values=(127))[abs(down_shift):,:,:]
+            #elif(down_shift > 0):
+            #    img_arr = np.pad(img_arr,((abs(down_shift),0), (0,0), (0,0)), mode='constant',constant_values=(127))[:-down_shift,:,:]
+            #if(right_shift < 0):
+            #    img_arr = np.pad(img_arr,((0,0), (0,abs(right_shift)), (0,0)), mode='constant',constant_values=(127))[:,abs(right_shift):,:]
+            #elif(right_shift > 0):
+            #    img_arr = np.pad(img_arr,((0,0), (abs(right_shift),0), (0,0)), mode='constant',constant_values=(127))[:,:-right_shift,:]
+            #for j, roi in enumerate(local_roidb[i]['boxes']):
+                #boxes[ix, :] = [x1, y1, x2, y2]
+                #orig = roi
+                #roi[0] = np.minimum(np.maximum(roi[0],0),orig_width-1)
+                #roi[2] = np.minimum(np.maximum(roi[2],0),orig_width-1)
+                #roi[1] = np.minimum(np.maximum(roi[1],0),orig_height-1)
+                #roi[3] = np.minimum(np.maximum(roi[3],0),orig_height-1)
+                #TODO: magic number
+                #if(roi[3] - roi[1] < 12 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
+                #    #print('removing box y0 {} y1 {}'.format(roi[1],roi[3]))
+                #    local_roidb[i]['ignore'][j] = True
+                #TODO: magic number
+                #if(roi[2] - roi[0] < 12 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
+                #    #print('removing box  x0 {} x1 {}'.format(roi[0],roi[2]))
+                #    local_roidb[i]['ignore'][j] = True
+
+                #w = roi[2] - roi[0]
+                #h = roi[3] - roi[1]
+                #if(h < 0.1):
+                #    local_roidb[i]['ignore'][j] = True
+                #elif(w < 0.1):
+                #    local_roidb[i]['ignore'][j] = True
+                #elif(h/w > 3.5 or w/h > 5.0):
+                #    local_roidb[i]['ignore'][j] = True
+
+                #if(local_roidb[i]['ignore'][j] is False and roi[2] < roi[0]):
+                #    print('x2 is smaller than x1')
+                #if(local_roidb[i]['ignore'][j] is False and roi[3] < roi[1]):
+                #    print('y2 is smaller than y1')
+                #if(local_roidb[i]['ignore'][j] is False and roi[2] - roi[0] > orig[2] - orig[0]):
+                #    print('new x is larger than old x diff')
+                #if(local_roidb[i]['ignore'][j] is False and roi[3] - roi[1] > orig[3] - orig[1]):
+                #    print('new y diff is larger than old y diff')
+            #im = img_arr
+        #draw_and_save_minibatch(im,local_roidb[0])
+        #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
+        voxel_grid = prep_voxel_grid_for_blob(voxel_grid, cfg.LIDAR_MEANS, cfg.LIDAR_STDDEVS, scale)
+        processed_frames.append(voxel_grid)
+    # Create a blob to hold the input images
+    blob = im_list_to_blob(processed_frames)
+
+    return blob, local_roidb
 
 def _get_image_blob(roidb, scale_inds, augment_en=False):
     """Builds an input blob from the images in the roidb at the specified
