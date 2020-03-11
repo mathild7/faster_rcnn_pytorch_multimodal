@@ -298,9 +298,6 @@ __C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
 __C.PIXEL_ARRANGE = [0,1,2]
 __C.PIXEL_ARRANGE_BGR = [2,1,0]
 
-__C.PIXEL_MEANS = np.array([[[0, 0]]])
-__C.PIXEL_STDDEVS = np.array([[[1, 1]]])
-
 __C.RNG_SEED = 3
 
 # Root directory of project
@@ -337,10 +334,10 @@ __C.RPN_CHANNELS = 512
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
 __C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_ALEATORIC_BBOX_VAR          = True
-__C.ENABLE_ALEATORIC_CLS_VAR           = True
-__C.ENABLE_EPISTEMIC_BBOX_VAR          = True
-__C.ENABLE_EPISTEMIC_CLS_VAR           = True
+__C.ENABLE_ALEATORIC_BBOX_VAR          = False
+__C.ENABLE_ALEATORIC_CLS_VAR           = False
+__C.ENABLE_EPISTEMIC_BBOX_VAR          = False
+__C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
@@ -356,10 +353,18 @@ __C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
-__C.LIDAR.Z_RANGE            = [0,10]
+__C.LIDAR.Z_RANGE            = [0,3]
 __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.NUM_SLICES         = 6
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
+__C.LIDAR.MAX_PTS_PER_VOXEL  = 64
+__C.LIDAR.MAX_NUM_VOXEL      = 40000
+#height -> R, Intensity -> G, Elongation/Density -> B
+__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
+__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1]]])
+#(l,w,h) corresponding to (x,y,z)
+__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
+__C.LIDAR.ANCHOR_STRIDE = np.array([0.5,0.5,0.5])
 #Need to turn this on in order to debug
 #Slows
 __C.DEBUG_EN                 = True

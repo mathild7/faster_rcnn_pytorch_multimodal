@@ -15,7 +15,7 @@ import numpy.random as npr
 import torch
 
 
-def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, im_info, _feat_stride,
+def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, info, _feat_stride,
                        anchors, num_anchors):
     """A layer that just selects the top region proposals
      without using non-maximal suppression,
@@ -49,7 +49,7 @@ def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, im_info, _feat_stride,
     proposals = bbox_transform_inv(anchors, rpn_bbox_pred)
 
     # Clip predicted boxes to image
-    proposals = clip_boxes(proposals, im_info[:2])
+    proposals = clip_boxes(proposals, info)
 
     # Output rois blob
     # Our RPN implementation only supports a single input image, so all

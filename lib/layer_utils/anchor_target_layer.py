@@ -12,34 +12,33 @@ import os
 from model.config import cfg
 import numpy as np
 import numpy.random as npr
-from utils.bbox import bbox_overlaps
+from utils.bbox import bbox_overlaps, bbox_overlaps_3d
 from model.bbox_transform import bbox_transform
 import torch
 
 #From generated anchor boxes, select subset that have a large overlap with GT_Boxes
-def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_stride,
-                        all_anchors, num_anchors):
+#Info is now [min_x, max_x, min_y, max_y, scale]
+def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
+                        all_anchors, num_anchors, height, width):
     """Same as the anchor target layer in original Fast/er RCNN """
     A = num_anchors
     #print('num anchors')
     #print(num_anchors)
-    #print(im_info[1])
-    #print(im_info[0])
+    #print(info[1])
+    #print(info[0])
     total_anchors = all_anchors.shape[0]
     K = total_anchors / num_anchors
 
     # allow boxes to sit over the edge by a small amount
     _allowed_border = 0
 
-    # map of shape (..., H, W)
-    height, width = rpn_cls_score.shape[1:3]
-
-    # only keep anchors inside the image
+    # only keep anchors inside the frame
+    #TODO: Torchify
     inds_inside = np.where(
-        (all_anchors[:, 0] >= -_allowed_border) &
-        (all_anchors[:, 1] >= -_allowed_border) &
-        (all_anchors[:, 2] < im_info[1] + _allowed_border) &  # width
-        (all_anchors[:, 3] < im_info[0] + _allowed_border)  # height
+        (all_anchors[:, 0] >= info[0] - _allowed_border) &  #width_max
+        (all_anchors[:, 1] >= info[2] - _allowed_border) &  #height_min
+        (all_anchors[:, 2] < info[1]  + _allowed_border) &  # width_max
+        (all_anchors[:, 3] < info[3]  + _allowed_border)  # height_max
     )[0]
 
     # keep only inside anchors
@@ -63,13 +62,16 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
         overlaps_dc_idx = np.argwhere(overlaps_dc > cfg.TRAIN.DC_THRESH)
         labels[overlaps_dc_idx[:, 0]] = -1
     #overlaps: (N, K) overlap between boxes and query_boxes
-    argmax_overlaps = overlaps.argmax(axis=1)
+    argmax_overlaps = overlaps.argmax(axis=1) #Best fiting GT for each anchor (1,N)
+    gt_argmax_overlaps = overlaps.argmax(axis=0) #Best fitting anchor for each GT box (K,1)
     #grab subset of 2D array to only get [:,max_overlap_index] 
-    max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
-    gt_argmax_overlaps = overlaps.argmax(axis=0)
+    max_overlaps = overlaps[:, argmax_overlaps]
+    #max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
     #grab same subset of 2D array to get corresponding GT boxes with their max overlap counterpart
-    gt_max_overlaps = overlaps[gt_argmax_overlaps,
-                               np.arange(overlaps.shape[1])]
+    #gt_max_overlaps = overlaps[gt_argmax_overlaps,
+    #                           np.arange(overlaps.shape[1])]
+    #TODO: How the fuck does this work
+    gt_max_overlaps = overlaps[gt_argmax_overlaps,:]
     gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
 
     if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
@@ -83,6 +85,7 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
 
     # fg label: above threshold IOU
     #anything else needs a large overlap as well
+    #TODO: Distance based overlap threshold?
     labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1
 
     if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
@@ -111,14 +114,15 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
     #print('GT BOXES')
     #print(bbox_targets.shape)
     bbox_inside_weights = np.zeros((len(inds_inside), 4), dtype=np.float32)
-    # only the positive ones have regression targets
+    #Create a mask where labels == 1
     bbox_inside_weights[labels == 1, :] = np.array(
         cfg.TRAIN.RPN_BBOX_INSIDE_WEIGHTS)
 
     bbox_outside_weights = np.zeros((len(inds_inside), 4), dtype=np.float32)
-    if cfg.TRAIN.RPN_POSITIVE_WEIGHT < 0:
+    #Sample weighting is turned off
+    if int(cfg.TRAIN.RPN_POSITIVE_WEIGHT) == -1:
         # uniform weighting of examples (given non-uniform sampling) num_examples is a max of 256 by default
-        num_examples = np.sum(labels >= 0)
+        num_examples = np.sum(labels != -1)
         positive_weights = np.ones((1, 4)) * 1.0 / num_examples
         negative_weights = np.ones((1, 4)) * 1.0 / num_examples
     else:

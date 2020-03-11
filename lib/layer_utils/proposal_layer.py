@@ -15,7 +15,7 @@ from torchvision.ops import nms
 import torch
 
 
-def proposal_layer(rpn_cls_prob, rpn_bbox_pred, im_info, cfg_key, _feat_stride,
+def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key, _feat_stride,
                    anchors, num_anchors):
     """A simplified version compared to fast/er RCNN
      For details please see the technical report
@@ -33,7 +33,7 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, im_info, cfg_key, _feat_stride,
     rpn_bbox_pred = rpn_bbox_pred.view((-1, 4)) #rpn_bbox_pred are adjustment factors to existing anchors
     scores = scores.contiguous().view(-1, 1) #Collapse into a single vector
     proposals = bbox_transform_inv(anchors, rpn_bbox_pred)
-    proposals = clip_boxes(proposals, im_info[:2]) #Make sure they are within bounds
+    proposals = clip_boxes(proposals, info) #Make sure they are within bounds
 
     # Pick the top 'pre_nms_topN' # of region proposals
     scores, order = scores.view(-1).sort(descending=True)

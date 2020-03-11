@@ -25,7 +25,7 @@ from shapely.geometry import MultiPoint, box
 #import traceback
 from .waymo_eval import waymo_eval
 from model.config import cfg
-
+import utils.bbox as bbox_utils
 
 import re
 def atoi(text):
@@ -248,7 +248,7 @@ class waymo_lidb(lidb):
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
         c = int(z2/z_max*255)
-        coords = self._rotate_in_bev(p, p_c, heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
+        coords = bbox_utils.rotate_in_bev(p, p_c, heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
         pixel_coords = []
         for coord_pair in coords:
             pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=True,inv_y=True))
@@ -320,41 +320,6 @@ class waymo_lidb(lidb):
             z_min = self._bev_slice_locations[i-1]
             z_max = self._bev_slice_locations[i]
         return z_max, z_min
-
-    #STOLEN FROM AVOD :-)
-    def _rotate_in_bev(self, p, p_c, rot, bev_extents):
-        points = np.asarray(p,dtype=np.float32)
-        rot = -rot
-        center = np.asarray(p_c)
-        pts    = np.asarray(p)
-        rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],
-                            [-np.sin(rot), np.cos(rot)]],
-                            (2, 2))
-        box_p = []
-        for coords in pts:
-            rotated = np.dot(rot_mat,coords-center) + center
-            box_p.append(rotated)
-        #rot_points = np.dot(rot_mat,points) + box_xy
-        #box_p0 = (np.dot(rot_mat, p0) + box_xy)
-        #box_p1 = (np.dot(rot_mat, p1) + box_xy)
-        #box_p2 = (np.dot(rot_mat, p2) + box_xy)
-        #box_p3 = (np.dot(rot_mat, p3) + box_xy)
-
-        #box_points = np.array([box_p0, box_p1, box_p2, box_p3])
-
-        # Calculate normalized box corners for ROI pooling
-        #x_extents_min = bev_extents[0][0]
-        #y_extents_min = bev_extents[1][1]  # z axis is reversed
-        #points_shifted = box_points - [x_extents_min, y_extents_min]
-
-        #x_extents_range = bev_extents[0][1] - bev_extents[0][0]
-        #y_extents_range = bev_extents[1][0] - bev_extents[1][1]
-        #box_points_norm = points_shifted / [x_extents_range, y_extents_range]
-
-        box_points = np.asarray(box_p, dtype=np.float32)
-        #box_points_norm = np.asarray(box_points_norm, dtype=np.float32)
-
-        return box_points
 
     def delete_eval_draw_folder(self,im_folder,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))

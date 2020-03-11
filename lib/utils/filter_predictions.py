@@ -63,8 +63,11 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c):
 
 
 #TODO: Could use original imwidth/imheight
-def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bbox_pred, a_bbox_var, e_bbox_var, imheight, imwidth, imscale, num_classes,thresh=0.1):
+def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bbox_pred, a_bbox_var, e_bbox_var, info, num_classes,thresh=0.1):
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
+    frame_width = info[1] - info[0]
+    frame_height = info[3] - info[2]
+    scale = info[4]
     rois = rois[:, 1:5].detach().cpu().numpy()
     #Deleting extra dim
     #cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
@@ -81,10 +84,10 @@ def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bb
     pred_boxes[:, 1::4] = torch.clamp_min(pred_boxes[:, 1::4], 0)
     # x2 < imwidth
     #pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.tensor([imwidth/imscale - 1]).cuda(),dim=1)[0]
-    pred_boxes[:, 2::4] = torch.clamp_max(pred_boxes[:, 2::4],imwidth/imscale - 1)
+    pred_boxes[:, 2::4] = torch.clamp_max(pred_boxes[:, 2::4],frame_width/scale - 1)
     # y2 < imheight 3::4 means start at 3 then jump every 4
     #pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.tensor([imheight/imscale - 1]).cuda(),dim=1)[0]
-    pred_boxes[:, 3::4] = torch.clamp_max(pred_boxes[:, 3::4],imheight/imscale - 1)
+    pred_boxes[:, 3::4] = torch.clamp_max(pred_boxes[:, 3::4],frame_height/scale - 1)
     all_boxes = []
     all_uncertainties = []
     #print('----------------')

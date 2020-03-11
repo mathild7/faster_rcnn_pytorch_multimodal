@@ -11,13 +11,13 @@ from __future__ import print_function
 import numpy as np
 import numpy.random as npr
 from model.config import cfg
-from model.bbox_transform import bbox_transform
+from model.bbox_transform import bbox_transform, lidar_bbox_transform
 from utils.bbox import bbox_overlaps
 
 import torch
 
 
-def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, gt_boxes_dc, _num_classes):
+def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, _num_classes):
     """
   Assign object detection proposals to ground-truth targets. Produces proposal
   classification labels and bounding-box regression targets.
@@ -39,24 +39,58 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, gt_boxes_dc, _num_clas
     num_images = 1
     rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images
     fg_rois_per_image = int(round(cfg.TRAIN.FG_FRACTION * rois_per_image))
-
+    num_bbox_target_elem = true_gt_boxes.shape[1] - 1
     # Sample rois with classification labels and bounding box regression
     # targets
     labels, rois, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
-        all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
-        _num_classes)
+        all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
+        _num_classes, num_bbox_target_elem)
 
-    rois = rois.view(-1, 5)
+
+    rois = rois.view(-1, num_bbox_target_elem)
     roi_scores = roi_scores.view(-1)
     labels = labels.view(-1, 1)
-    bbox_targets = bbox_targets.view(-1, _num_classes * 4)
-    bbox_inside_weights = bbox_inside_weights.view(-1, _num_classes * 4)
+    bbox_targets = bbox_targets.view(-1, _num_classes * num_bbox_target_elem)
+    bbox_inside_weights = bbox_inside_weights.view(-1, _num_classes * num_bbox_target_elem)
     bbox_outside_weights = (bbox_inside_weights > 0).float()
 
     return labels, rois, roi_scores, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 
-def _get_bbox_regression_labels(bbox_target_data, num_classes):
+def _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_elem):
+    """Bounding-box regression targets (bbox_target_data) are stored in a
+  compact form N x (class, tx, ty, tz, tl, tw, th, try)
+
+  This function expands those targets into the 7-of-7*K representation used
+  by the network (i.e. only one class has non-zero targets).
+
+  Returns:
+      bbox_target (ndarray): N x 7K blob of regression targets
+      bbox_inside_weights (ndarray): N x 7K blob of loss weights
+  """
+    # Inputs are tensor
+    clss = bbox_target_data[:, 0]
+    bbox_targets = clss.new_zeros(clss.numel(), num_bbox_elem * num_classes)
+    bbox_inside_weights = clss.new_zeros(bbox_targets.shape)
+    inds = (clss > 0).nonzero().view(-1)
+    #numel -> number of elements
+    if inds.numel() > 0:
+        clss = clss[inds].contiguous().view(-1, 1)
+        dim1_inds = inds.unsqueeze(1).expand(inds.size(0), num_bbox_elem)
+        #TODO: Very hacky, try to fix.
+        if(num_bbox_elem == 7):
+            dim2_inds = torch.cat([num_bbox_elem * clss, num_bbox_elem * clss + 1, num_bbox_elem * clss + 2, num_bbox_elem * clss + 3, num_bbox_elem * clss + 4, num_bbox_elem * clss + 5, num_bbox_elem * clss + 6], 1).long()
+        elif(num_bbox_elem == 4):
+            dim2_inds = torch.cat([4 * clss, 4 * clss + 1, 4 * clss + 2, 4 * clss + 3], 1).long()
+        else:
+            print('ERROR: Invalid dim2_inds specified in get_bbox_regression_labels')
+        bbox_targets[dim1_inds, dim2_inds] = bbox_target_data[inds][:, 1:]
+        bbox_inside_weights[dim1_inds, dim2_inds] = bbox_targets.new(
+            cfg.TRAIN.BBOX_INSIDE_WEIGHTS).view(-1, num_bbox_elem).expand_as(dim1_inds)
+
+    return bbox_targets, bbox_inside_weights
+
+def _get_image_bbox_regression_labels(bbox_target_data, num_classes):
     """Bounding-box regression targets (bbox_target_data) are stored in a
   compact form N x (class, tx, ty, tw, th)
 
@@ -85,6 +119,21 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
 
     return bbox_targets, bbox_inside_weights
 
+def _compute_lidar_targets(ex_rois, roi_height, roi_zc, gt_rois, labels):
+    """Compute bounding-box regression targets for a 3d bbox."""
+    # Inputs are tensor
+
+    assert ex_rois.shape[0] == gt_rois.shape[0]
+    assert ex_rois.shape[1] == 4
+    assert gt_rois.shape[1] == 7
+
+    targets = lidar_bbox_transform(ex_rois, roi_height, roi_zc, gt_rois)
+    if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
+        # Optionally normalize targets by a precomputed mean and stdev
+        targets = ((targets - targets.new(cfg.TRAIN.BBOX_NORMALIZE_MEANS)) /
+                   targets.new(cfg.TRAIN.BBOX_NORMALIZE_STDS))
+    return torch.cat([labels.unsqueeze(1), targets], 1)
+
 #ex_rois are pre-computed proposal ROI's to be compared against the GT_ROI's
 def _compute_targets(ex_rois, gt_rois, labels):
     """Compute bounding-box regression targets for an image."""
@@ -102,8 +151,8 @@ def _compute_targets(ex_rois, gt_rois, labels):
     return torch.cat([labels.unsqueeze(1), targets], 1)
 
 
-def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
-                 rois_per_image, num_classes):
+def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image,
+                 rois_per_image, num_classes, num_bbox_target_elem):
     """Generate a random sample of RoIs comprising foreground and background
   examples. This will provide the 'best-case scenario' for the proposal layer to act as a target 
   """
@@ -113,6 +162,7 @@ def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
     max_overlaps_dc = torch.tensor([])
     dc_filtered_rois = all_rois
     dc_filtered_scores = all_scores
+    #Remove all indices that cover dc areas
     if(cfg.TRAIN.IGNORE_DC and list(gt_boxes_dc.size())[0] > 0):
         overlaps_dc = bbox_overlaps(all_rois[:, 1:5].data, gt_boxes_dc[:, :4].data)  #NxK Output N= num roi's k = num gt entries on image
         max_overlaps_dc, _ = overlaps_dc.max(1)  #Returns max value of all input elements along dimension and their index
@@ -128,7 +178,6 @@ def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
     # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
     bg_inds = ((max_overlaps < cfg.TRAIN.BG_THRESH_HI) + (
         max_overlaps >= cfg.TRAIN.BG_THRESH_LO) == 2).nonzero().view(-1) #.nonzero() returns all elements that are non zero in array
-    #Remove all indices that cover dc areas
     # Small modification to the original version where we ensure a fixed number of regions are sampled
     if fg_inds.numel() > 0 and bg_inds.numel() > 0: #numel() returns number of elements in tensor
         fg_rois_per_image = min(fg_rois_per_image, fg_inds.numel())
@@ -176,11 +225,20 @@ def _sample_rois(all_rois, all_scores, gt_boxes, gt_boxes_dc, fg_rois_per_image,
     roi_scores = dc_filtered_scores[keep_inds].contiguous()
 
     #Right here, bbox_target_data is actually the delta.
-    bbox_target_data = _compute_targets(
-        rois[:, 1:5].data, gt_boxes[gt_assignment[keep_inds]][:, :4].data,
-        labels.data)
+    if(cfg.NET_TYPE == 'lidar'):
+        #TODO: Multiple anchors??
+        roi_height = cfg.LIDAR.ANCHORS[2]
+        roi_zc     = cfg.LIDAR.ANCHORS[2]/2
+        bbox_target_data = _compute_lidar_targets(
+            rois[:, 1:5].data, roi_height, roi_zc, true_gt_boxes[gt_assignment[keep_inds]][:, :-1].data,
+            labels.data)
+
+    elif(cfg.NET_TYPE == 'image'):
+        bbox_target_data = _compute_targets(
+            rois[:, 1:5].data, gt_boxes[gt_assignment[keep_inds]][:, :4].data,
+            labels.data)
 
     bbox_targets, bbox_inside_weights = \
-        _get_bbox_regression_labels(bbox_target_data, num_classes)
+        _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_target_elem)
 
     return labels, rois, roi_scores, bbox_targets, bbox_inside_weights

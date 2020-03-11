@@ -341,9 +341,8 @@ class SolverWrapper(object):
             self.db.delete_eval_draw_folder('val','trainval')
         #    scale_lr(self.optimizer,0.1)
         self.data_gen.start()
-        while(1):
-            test = 1
         self.data_gen_val.start()
+        #Wait for samples to be pre-buffered
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
 
@@ -387,7 +386,7 @@ class SolverWrapper(object):
                     #im info 0 -> H 1 -> W 2 -> scale
                     rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
                                                                              bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
-                                                                             blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
+                                                                             blobs_val['info'],
                                                                              self.db.num_classes,self.val_thresh)
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     bbox_pred_val = np.array(bbox_pred_val)

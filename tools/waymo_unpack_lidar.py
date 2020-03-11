@@ -14,10 +14,7 @@ from multiprocessing import Process, Pool
 import multiprocessing.managers
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from model.config import cfg
-voxel_size = 0.1
-x_range = [0,70]
-y_range = [-40,40]
-z_range = [0,10]
+
 skip_binaries = False
 class laser_enum(Enum):
     UNKNOWN     = 0
@@ -27,7 +24,7 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data/waymo/train'
+    mypath = '/home/mat/thesis/data/waymo/val'
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
     #top_crop = 550

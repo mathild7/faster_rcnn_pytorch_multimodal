@@ -16,13 +16,14 @@ import imgaug as ia
 from copy import deepcopy
 import imgaug.augmenters as iaa
 from model.config import cfg
-from utils.blob import prep_im_for_blob, im_list_to_blob, prep_voxel_grid_for_blob, voxel_grid_list_to_blob
+from utils.blob import prep_im_for_blob, im_list_to_blob, prep_bev_map_for_blob, bev_map_list_to_blob
 import matplotlib.pyplot as plt
 from PIL import Image,ImageDraw, ImageEnhance
 import os
 import pandas as pd
 from pyntcloud import PyntCloud
 from scipy.ndimage.filters import gaussian_filter
+import spconv
 
 def draw_and_save_minibatch(im,roidb):
     datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
@@ -53,7 +54,7 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     """Given a roidb, construct a minibatch sampled from it."""
 
     num_images = len(roidb)
-    gt_box_size = 7+1
+    gt_box_size = 8
 
     #Removed input scaling capability. Unused.
     # Sample random scales to use for each image in this batch
@@ -76,7 +77,7 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     blobs = {'data': pc_blob}
 
     #assert len(pc_scales) == 1, "Single batch only"
-    assert len(roidb) == 1, "Single batch only"
+    assert len(local_roidb) == 1, "Single batch only"
 
     # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
@@ -90,7 +91,8 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
         gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
         gt_boxes_dc[:, -1] = np.zeros(dc_len)
     blobs['gt_boxes_dc'] = gt_boxes_dc
-    blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
+    blobs['info'] = np.array([cfg.LIDAR.X_RANGE[0], cfg.LIDAR.X_RANGE[1], cfg.LIDAR.Y_RANGE[0], cfg.LIDAR.Y_RANGE[1], dummy_scale_value], dtype=np.float32)
+    #blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
 
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
@@ -137,8 +139,9 @@ def get_image_minibatch(roidb, num_classes, augment_en):
         gt_boxes_dc[:, 0:4] = local_roidb[0]['boxes_dc'][gt_ind_dc, :] * im_scales[0]
         gt_boxes_dc[:, 4] = np.zeros(dc_len)
     blobs['gt_boxes_dc'] = gt_boxes_dc
-    blobs['im_info'] = np.array(
-        [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
+    #x_min, x_max, y_min, y_max, scale
+    blobs['info'] = np.array(
+        [0, im_blob.shape[1]-1, 0, im_blob.shape[2]-1, im_scales[0]], dtype=np.float32)
     #print('gt boxes')
     #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['imagefile'])
     if(len(blobs['gt_boxes']) == 0):
@@ -182,88 +185,47 @@ def _get_lidar_blob(roidb, scale, augment_en=False):
             num_x_voxel = (cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
             num_y_voxel = (cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
             num_z_voxel = (cfg.LIDAR.NUM_SLICES)
-            source_xyz = source_bin[:,0:3]
-            points = pd.DataFrame(source_xyz)
-            points.columns = ['x','y','z']
-            cloud = PyntCloud(points)
-            #cloud.add_scalar_field("hsv")
-            voxelgrid_id = cloud.add_structure("voxelgrid", n_x=int(num_x_voxel), n_y=int(num_y_voxel), n_z=int(num_z_voxel))
-            voxel_grid = cloud.get_sample("voxelgrid_highest", voxelgrid_id=voxelgrid_id, as_PyntCloud=True)
+            vertical_voxel_size = (cfg.LIDAR.Z_RANGE[1] - cfg.LIDAR.Z_RANGE[0])/(cfg.LIDAR.NUM_SLICES+0.0)
+            area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
+            voxel_generator = spconv.utils.VoxelGenerator(
+                voxel_size=[cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_LEN, vertical_voxel_size], 
+                point_cloud_range=area_extents,
+                max_num_points=cfg.LIDAR.MAX_PTS_PER_VOXEL,
+                max_voxels=cfg.LIDAR.MAX_NUM_VOXEL,
+                full_mean=False
+            )
+            #Coords returns zyx format
+            voxels, coords, num_points_per_voxel = voxel_generator.generate(source_bin)
+            bev_map = np.zeros((int(num_x_voxel),int(num_y_voxel),(cfg.LIDAR.NUM_CHANNEL)),dtype=np.float32)
+            coords[:,[2,1,0]] = coords[:,[0,1,2]]
+            coord_inds = np.argsort(coords)
+            xy_coords = coords[:,0:2]
+            voxel_max_height = np.max(voxels[:,:,2], axis=1)
+            voxel_intensity = np.average(voxels[:,:,3], axis=1)
+            voxel_elongation = np.average(voxels[:,:,4], axis=1)
+            voxel_density    = np.count_nonzero(np.sum(voxels,axis=2),axis=1)/cfg.LIDAR.MAX_PTS_PER_VOXEL
+            maxheight_tuple = tuple(zip(*coords))
 
-            #img_arr = images_aug[0]
-            #local_roidb[i]['boxes'] = bboxes_aug[0]
-            #gaussian   = np.random.normal(mean, sigma, (img_arr.shape[0],img_arr.shape[1],3))
-            #blur_amt   = np.random.normal(0.7, 0.1)
-            #blur_amt   = np.maximum(blur_amt,0.4)
-            #blur_amt   = np.minimum(blur_amt,1.0)
-            orig_height = num_x_voxel
-            orig_width  = num_y_voxel
-            #brightness = np.random.normal(mean,sigma*4)
-            #Up and left shift by 20px
-            #right_shift = int(np.random.normal(mean,sigma*3))
-            #down_shift  = int(np.random.normal(mean,sigma*3))
-            #right_shift = 0
-            #down_shift  = 0
-            #img_arr     = img_arr.astype('float')
-            #img_arr    += gaussian
-            #img_arr    += brightness
-            voxel_grid     = np.maximum(voxel_grid,0)
-            #img = Image.fromarray(img_arr)
-            #contrast_enhancer = ImageEnhance.Contrast(img)
-            #img               = contrast_enhancer.enhance(1.2)
-            #blur_enhancer     = ImageEnhance.Sharpness(img)
-            #img               = (blur_enhancer.enhance(blur_amt))
-            #img               = img.crop((c_left,c_top,c_right,c_bottom))
-            #img               = img.resize((1280,730))
-            #img_arr            = np.array(img)
-            #if(down_shift < 0):
-            #    img_arr = np.pad(img_arr,((0,abs(down_shift)), (0,0), (0,0)), mode='constant',constant_values=(127))[abs(down_shift):,:,:]
-            #elif(down_shift > 0):
-            #    img_arr = np.pad(img_arr,((abs(down_shift),0), (0,0), (0,0)), mode='constant',constant_values=(127))[:-down_shift,:,:]
-            #if(right_shift < 0):
-            #    img_arr = np.pad(img_arr,((0,0), (0,abs(right_shift)), (0,0)), mode='constant',constant_values=(127))[:,abs(right_shift):,:]
-            #elif(right_shift > 0):
-            #    img_arr = np.pad(img_arr,((0,0), (abs(right_shift),0), (0,0)), mode='constant',constant_values=(127))[:,:-right_shift,:]
-            #for j, roi in enumerate(local_roidb[i]['boxes']):
-                #boxes[ix, :] = [x1, y1, x2, y2]
-                #orig = roi
-                #roi[0] = np.minimum(np.maximum(roi[0],0),orig_width-1)
-                #roi[2] = np.minimum(np.maximum(roi[2],0),orig_width-1)
-                #roi[1] = np.minimum(np.maximum(roi[1],0),orig_height-1)
-                #roi[3] = np.minimum(np.maximum(roi[3],0),orig_height-1)
-                #TODO: magic number
-                #if(roi[3] - roi[1] < 12 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
-                #    #print('removing box y0 {} y1 {}'.format(roi[1],roi[3]))
-                #    local_roidb[i]['ignore'][j] = True
-                #TODO: magic number
-                #if(roi[2] - roi[0] < 12 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
-                #    #print('removing box  x0 {} x1 {}'.format(roi[0],roi[2]))
-                #    local_roidb[i]['ignore'][j] = True
+            intensity_loc = np.full((xy_coords.shape[0],1),6)
+            intensity_coords = np.hstack((xy_coords,intensity_loc))
+            intensity_tuple = tuple(zip(*intensity_coords))
 
-                #w = roi[2] - roi[0]
-                #h = roi[3] - roi[1]
-                #if(h < 0.1):
-                #    local_roidb[i]['ignore'][j] = True
-                #elif(w < 0.1):
-                #    local_roidb[i]['ignore'][j] = True
-                #elif(h/w > 3.5 or w/h > 5.0):
-                #    local_roidb[i]['ignore'][j] = True
+            elongation_loc = np.full((xy_coords.shape[0],1),7)
+            elongation_coords = np.hstack((xy_coords,elongation_loc))
+            elongation_tuple = tuple(zip(*elongation_coords))
 
-                #if(local_roidb[i]['ignore'][j] is False and roi[2] < roi[0]):
-                #    print('x2 is smaller than x1')
-                #if(local_roidb[i]['ignore'][j] is False and roi[3] < roi[1]):
-                #    print('y2 is smaller than y1')
-                #if(local_roidb[i]['ignore'][j] is False and roi[2] - roi[0] > orig[2] - orig[0]):
-                #    print('new x is larger than old x diff')
-                #if(local_roidb[i]['ignore'][j] is False and roi[3] - roi[1] > orig[3] - orig[1]):
-                #    print('new y diff is larger than old y diff')
-            #im = img_arr
+            bev_map[intensity_tuple] = voxel_intensity
+            bev_map[elongation_tuple] = voxel_elongation
+            bev_map[maxheight_tuple] = voxel_max_height
+            #np.set_printoptions(threshold=np.inf)
+            #print(bev_map[0:20,200:300,:])
+            #np.set_printoptions(threshold=1000)
         #draw_and_save_minibatch(im,local_roidb[0])
         #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
-        voxel_grid = prep_voxel_grid_for_blob(voxel_grid, cfg.LIDAR_MEANS, cfg.LIDAR_STDDEVS, scale)
-        processed_frames.append(voxel_grid)
+        proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)
+        processed_frames.append(proc_bev_map)
     # Create a blob to hold the input images
-    blob = im_list_to_blob(processed_frames)
+    blob = bev_map_list_to_blob(processed_frames)
 
     return blob, local_roidb
 

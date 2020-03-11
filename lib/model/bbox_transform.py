@@ -11,6 +11,28 @@ from __future__ import print_function
 import numpy as np
 import torch
 
+def lidar_bbox_transform(ex_rois, roi_height, roi_zc, gt_rois):
+
+    ex_lengths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
+    ex_widths = ex_rois[:, 3] - ex_rois[:, 1] + 1.0
+    ex_ctr_x = ex_rois[:, 0] + 0.5 * ex_lengths
+    ex_ctr_y = ex_rois[:, 1] + 0.5 * ex_widths
+
+    targets_dx = (gt_rois[:,0] - ex_ctr_x) / ex_lengths
+    targets_dl = torch.log(gt_rois[:,3] / ex_lengths)
+
+    targets_dy = (gt_rois[:,1] - ex_ctr_y) / ex_widths
+    targets_dw = torch.log(gt_rois[:,4] / ex_widths)
+
+    targets_dz = (gt_rois[:,2] - roi_zc) / roi_height
+    targets_dh = torch.log(gt_rois[:,5] / roi_height)
+
+    targets_ry = gt_rois[:, 6]
+
+    targets = torch.stack((targets_dx, targets_dy, targets_dz, targets_dl, targets_dw, targets_dh, targets_ry), 1)
+    return targets
+
+
 
 def bbox_transform(ex_rois, gt_rois):
     ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
@@ -33,6 +55,7 @@ def bbox_transform(ex_rois, gt_rois):
 
 
 #Box defines original ROI and then is adjusted by the regression deltas
+#Box (x1,y1,x2,y2)
 def bbox_transform_inv(boxes, deltas, scales=None):
     # Input should be both tensor or both Variable and on the same device
     if(scales is not None):
@@ -93,22 +116,60 @@ def bbox_transform_inv_all_boxes(boxes, deltas):
 
     return pred_boxes
 
+#Undo a delta transform
+#targets: (dx,dy,dz,dl,dw,dh,try)
+#boxes:   (xc,yc,dz,l,w,h,ry)
+def bbox_3d_transform_inv_all_boxes(boxes, deltas):
+    # Input should be both tensor or both Variable and on the same device
+    if len(boxes) == 0:
+        return deltas.detach() * 0
+
+    widths = boxes[:, 2] - boxes[:, 0] + 1.0
+    heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    #Re-centering top left hand corner
+    ctr_x = boxes[:, 0] + 0.5 * widths
+    ctr_y = boxes[:, 1] + 0.5 * heights
+    #e.g. 16 elements for 4 classes
+    dx = deltas[:, 0::4]
+    dy = deltas[:, 1::4]
+    dw = deltas[:, 2::4]
+    dh = deltas[:, 3::4]
+
+    pred_ctr_x = dx * widths.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * heights.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_w = torch.exp(dw) * widths.unsqueeze(1)
+    pred_h = torch.exp(dh) * heights.unsqueeze(1)
+
+    pred_boxes = torch.cat(\
+      [_.unsqueeze(2) for _ in [pred_ctr_x - 0.5 * pred_w,\
+                                pred_ctr_y - 0.5 * pred_h,\
+                                pred_ctr_x + 0.5 * pred_w,\
+                                pred_ctr_y + 0.5 * pred_h]], 2).view(len(boxes), -1)
+
+    return pred_boxes
 
 
-def clip_boxes(boxes, im_shape):
+
+def clip_boxes(boxes, shape):
     """
   Clip boxes to image boundaries.
-  boxes must be tensor or Variable, im_shape can be anything but Variable
+  boxes must be tensor or Variable, shape can be anything but Variable
   """
 
     if not hasattr(boxes, 'data'):
         boxes_ = boxes.numpy()
 
     boxes = boxes.view(boxes.size(0), -1, 4)
-    boxes = torch.stack(\
-      [boxes[:,:,0].clamp(0, im_shape[1] - 1),
-       boxes[:,:,1].clamp(0, im_shape[0] - 1),
-       boxes[:,:,2].clamp(0, im_shape[1] - 1),
-       boxes[:,:,3].clamp(0, im_shape[0] - 1)], 2).view(boxes.size(0), -1)
+    #TODO: Have i just broken clip boxes? Or was it broken already? It used to be
+    #boxes = torch.stack(\
+    #  [boxes[:,:,0].clamp(0, shape[0]),
+    #   boxes[:,:,1].clamp(0, shape[1]),
+    #   boxes[:,:,2].clamp(0, shape[0]),
+    #   boxes[:,:,3].clamp(0, shape[1])], 2).view(boxes.size(0), -1)
+
+    boxes = torch.stack([boxes[:,:,0].clamp(shape[0], shape[1]),
+                         boxes[:,:,1].clamp(shape[2], shape[3]),
+                         boxes[:,:,2].clamp(shape[0], shape[1]),
+                         boxes[:,:,3].clamp(shape[2], shape[3])], 2).view(boxes.size(0), -1)
 
     return boxes

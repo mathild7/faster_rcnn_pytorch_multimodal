@@ -78,16 +78,16 @@ def _get_blobs(im):
     return blobs, im_scale_factors
 
 
-def _clip_boxes(boxes, im_shape):
+def _clip_boxes(boxes, frame_shape):
     """Clip boxes to image boundaries."""
     # x1 >= 0
-    boxes[:, 0::4] = np.maximum(boxes[:, 0::4], 0)
+    boxes[:, 0::4] = np.maximum(boxes[:, 0::4], frame_shape[0])
     # y1 >= 0
-    boxes[:, 1::4] = np.maximum(boxes[:, 1::4], 0)
+    boxes[:, 1::4] = np.maximum(boxes[:, 1::4], frame_shape[2])
     # x2 < im_shape[1]
-    boxes[:, 2::4] = np.minimum(boxes[:, 2::4], im_shape[1] - 1)
+    boxes[:, 2::4] = np.minimum(boxes[:, 2::4], frame_shape[1])
     # y2 < im_shape[0]
-    boxes[:, 3::4] = np.minimum(boxes[:, 3::4], im_shape[0] - 1)
+    boxes[:, 3::4] = np.minimum(boxes[:, 3::4], frame_shape[3])
     return boxes
 
 
@@ -104,12 +104,12 @@ def im_detect(net, im, num_classes, thresh):
     assert len(im_scales) == 1, "Only single-image batch implemented"
 
     im_blob = blobs['data']
-    blobs['im_info'] = np.array(
+    blobs['info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     net.set_num_mc_run(cfg.NUM_MC_RUNS)
     _, probs, a_cls_entropy, a_cls_var,\
         e_cls_mutual_info, bbox_pred,\
-        a_bbox_var, e_bbox_var, rois = net.test_image(blobs['data'],blobs['im_info'])
+        a_bbox_var, e_bbox_var, rois = net.test_frame(blobs['data'],blobs['info'])
     net.set_num_mc_run(1)
     boxes = rois[:, 1:5]
     #TODO: Useless??
@@ -120,7 +120,7 @@ def im_detect(net, im, num_classes, thresh):
 
     rois, bbox_pred, uncertainties = filter_pred(boxes, probs, a_cls_entropy, a_cls_var, e_cls_mutual_info,
                                                  bbox_pred, a_bbox_var, e_bbox_var,
-                                                 blobs['im_info'][0],blobs['im_info'][1],blobs['im_info'][2],
+                                                 blobs['info'],
                                                  num_classes,thresh)
     #TODO: Fix all this bullshit
     #REPLACED BY - filter_pred()
