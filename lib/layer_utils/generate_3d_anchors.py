@@ -4,6 +4,7 @@ STOLEN FROM AVOD: https://github.com/kujason/avod/blob/master/avod/core/anchor_g
 """
 
 import numpy as np
+import math
 from model.config import cfg
 
 class GridAnchor3dGenerator(object):
@@ -11,7 +12,7 @@ class GridAnchor3dGenerator(object):
     def name_scope(self):
         return 'GridAnchor3dGenerator'
 
-    def _generate(self, area_3d, anchor_3d_sizes, anchor_stride):
+    def _generate(self):
         """
         Generates 3D anchors in a grid in the provided 3d area and places
         them on the ground_plane.
@@ -19,13 +20,17 @@ class GridAnchor3dGenerator(object):
         Args:
             **params:
                 area_3d: [[min_x, max_x], [min_y, max_y], [min_z, max_z]]
+                This area describes the BEV in a 800x700x8 pixel image view.
 
         Returns:
             list of 3D anchors in the form N x [x, y, z, l, w, h, ry]
+            These describe the space that RoI's are collected from.
         """
-
-        area_3d = [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE,cfg.LIDAR.Z_RANGE]
-        anchor_3d_sizes = cfg.LIDAR.ANCHOR_SIZES
+        x_max = math.ceil((cfg.LIDAR.X_RANGE[1]-cfg.LIDAR.X_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
+        y_max = math.ceil((cfg.LIDAR.Y_RANGE[1]-cfg.LIDAR.Y_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
+        z_max = math.ceil((cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0])/cfg.LIDAR.VOXEL_HEIGHT) - 1
+        area_3d = [[0,x_max],[0,y_max],[0,z_max]]
+        anchor_3d_sizes = int(cfg.LIDAR.ANCHOR_SIZES/([cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_HEIGHT]))
         anchor_stride = cfg.LIDAR.ANCHOR_STRIDE
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF
 

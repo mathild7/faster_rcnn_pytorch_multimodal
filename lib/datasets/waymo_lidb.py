@@ -248,7 +248,7 @@ class waymo_lidb(lidb):
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
         c = int(z2/z_max*255)
-        coords = bbox_utils.rotate_in_bev(p, p_c, heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
+        coords = bbox_utils.rotate_in_bev(p, p_c, -heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
         pixel_coords = []
         for coord_pair in coords:
             pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=True,inv_y=True))
@@ -327,15 +327,13 @@ class waymo_lidb(lidb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
-
-        if(iter != 0):
-            out_file = imfile.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter))
-        else:
-            out_file = imfile.replace('_','').replace('/point_clouds/','/{}_drawn/img-'.format(mode))
-        source_img = Image.open(imfile)
-        draw = ImageDraw.Draw(source_img)
+        out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        source_bin = np.fromfile(filename, dtype='float32').reshape((-1,5))
+        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+        draw = ImageDraw.Draw(draw_file)
+        self.draw_bev(source_bin,draw)
         #TODO: Magic numbers
         limiter = 15
         y_start = self._imheight - 10*(limiter+2)
@@ -356,7 +354,7 @@ class waymo_lidb(lidb):
                     for i,idx in enumerate(det_idx):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
-                        draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),uc_gradient),width=2)
+                        self.draw_bev_bbox(draw,det,None)
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
                             draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
@@ -374,15 +372,16 @@ class waymo_lidb(lidb):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
-                    print('draw and save: No detections for pc {}, class: {}'.format(imfile,j))
+                    print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
             else:
                 color = 255
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
-        print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,self._filetype)    
+            #draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+            self.draw_bev_bbox(draw,det,None)
+        print('Saving BEV map file at location {}'.format(out_file))
+        draw_file.save(out_file,self._imtype)
 
     def _normalize_uncertainties(self,dets,uncertainties):
         normalized_uncertainties = {}

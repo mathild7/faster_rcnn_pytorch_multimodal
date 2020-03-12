@@ -52,15 +52,15 @@ def rotated_4p_to_axis_aligned_2p(points):
     bottomright = points[1]
     topright    = points[2]
     topleft     = points[3]
-    x1 = np.min(bottomleft[0],topleft[0])
-    x2 = np.max(bottomright[0],topright[0])
-    y1 = np.min(bottomleft[1],bottomright[1])
-    y2 = np.max(topleft[1],topright[1])
+    x1 = min(bottomleft[0],topleft[0])
+    x2 = max(bottomright[0],topright[0])
+    y1 = min(bottomleft[1],bottomright[1])
+    y2 = max(topleft[1],topright[1])
     return [x1,y1,x2,y2]
 
 #Input is (xc,yc,zc,l,w,h,ry)
 #This creates a BEV box that contains an entire rotated object (Birdnet Fig 2)
-def bbox_3d_to_bev_axis_aligned(bboxes, bev_extents):
+def bbox_3d_to_bev_axis_aligned(bboxes):
     bev_bboxes = []
     for bbox in bboxes:
         x1 = bbox[0] - bbox[3]/2
@@ -69,13 +69,22 @@ def bbox_3d_to_bev_axis_aligned(bboxes, bev_extents):
         y2 = bbox[2] + bbox[4]/2
         points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
         p_c    = [bbox[0], bbox[1]]
-        rot_points = rotate_in_bev(points, p_c, bbox[6], bev_extents)
+        rot_points = rotate_in_bev(points, p_c, bbox[6])
         axis_aligned_points = rotated_4p_to_axis_aligned_2p(rot_points)
         bev_bboxes.append(axis_aligned_points)
-    return bev_bboxes
+    return np.asarray(bev_bboxes)
+#(xc,yc,zc,l,w,h,ry)
+def bbox_to_voxel_grid(bboxes,bev_extants,info):
+    bboxes[:,0] = np.clip((bboxes[:,0]-bev_extants[0])*(bev_extants[3]-bev_extants[0])/(info[1]-info[0]),info[0],info[1])
+    bboxes[:,1] = np.clip((bboxes[:,0]-bev_extants[1])*(bev_extants[4]-bev_extants[1])/(info[1]-info[0]),info[2],info[3])
+    bboxes[:,2] = np.clip((bboxes[:,1]-bev_extants[2])*(bev_extants[5]-bev_extants[2])/(info[3]-info[2]),info[4],info[5])
+    bboxes[:,3] = np.clip((bboxes[:,3])*(bev_extants[3]-bev_extants[0])/(info[1]-info[0]),info[0],info[1])
+    bboxes[:,4] = np.clip((bboxes[:,3])*(bev_extants[4]-bev_extants[1])/(info[1]-info[0]),info[0],info[1])
+    bboxes[:,5] = np.clip((bboxes[:,3])*(bev_extants[5]-bev_extants[2])/(info[3]-info[2]),info[2],info[3])
+    return bboxes
 
 #Input is (xc,yc,zc,l,w,h,ry)
-def bbox_3d_to_bev(bboxes, bev_extents):
+def bbox_3d_to_bev_4pt(bboxes):
     bev_bboxes = []
     for bbox in bboxes:
         x1 = bbox[0] - bbox[3]/2
@@ -84,10 +93,9 @@ def bbox_3d_to_bev(bboxes, bev_extents):
         y2 = bbox[2] + bbox[4]/2
         points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
         p_c    = [bbox[0], bbox[1]]
-        rot_points = rotate_in_bev(points, p_c, bbox[6], bev_extents)
+        rot_points = rotate_in_bev(points, p_c, bbox[6])
         bev_bboxes.append(rot_points)
-    return bev_bboxes
-
+    return np.asarray(bev_bboxes)
 
 def bbox_overlaps_3d(boxes, query_boxes):
     overlaps = np.zeros((boxes.shape[0],query_boxes.shape[0]))
@@ -150,9 +158,8 @@ def three_d_iou(box, boxes):
     return iou
 
 #STOLEN FROM AVOD :-)
-def rotate_in_bev(p, p_c, rot, bev_extents):
+def rotate_in_bev(p, p_c, rot):
     points = np.asarray(p,dtype=np.float32)
-    rot = -rot
     center = np.asarray(p_c)
     pts    = np.asarray(p)
     rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],

@@ -13,6 +13,7 @@ import sys
 import utils.timer
 import matplotlib.pyplot as plt
 import torch
+from torchvision.ops import RoIAlign, RoIPool
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -100,20 +101,78 @@ class lidarnet(Network):
     def __init__(self, num_layers=50):
         Network.__init__(self)
         self._num_layers = num_layers
-        self._net_conv_channels = 1024
-        self._fc7_channels = 2048
-        self.inplanes = 64
+        if(cfg.LIDAR.USE_FPN):
+            self._feat_stride       = 4
+            self._net_conv_channels = 256
+            self._fc7_channels      = 2048
+            self.inplanes = 64
+        else:
+            self._feat_stride       = 16
+            self._net_conv_channels = 1024
+            self._fc7_channels = 2048
+            self.inplanes = 64
         self._roi_pooling_channels = 1024
         self.num_lidar_channels = cfg.LIDAR.NUM_CHANNEL
+
+    def _init_modules(self):
+        self._init_head_tail()
+
+        # rpn
+        self.rpn_net = nn.Conv2d(
+            self._net_conv_channels, cfg.RPN_CHANNELS, [3, 3], padding=1)
+        self.rpn_cls_score_net = nn.Conv2d(cfg.RPN_CHANNELS, self._num_anchors * 2, [1, 1])
+
+        self.rpn_bbox_pred_net = nn.Conv2d(cfg.RPN_CHANNELS,
+                                           self._num_anchors * 7, [1, 1])
+        if(cfg.ENABLE_CUSTOM_TAIL):
+            self.t_fc1           = nn.Linear(self._roi_pooling_channels,self._fc7_channels*8)
+            self.t_fc2           = nn.Linear(self._fc7_channels*8,self._fc7_channels*4)
+            self.t_fc3           = nn.Linear(self._fc7_channels*4,self._fc7_channels*2)
+        self.cls_score_net       = nn.Linear(int(self._fc7_channels/4), self._num_classes)
+        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels/2), self._num_classes * 4)
+        if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+            self.bbox_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
+            self.bbox_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
+            self.bbox_fc3        = nn.Linear(int(self._fc7_channels/2), int(self._fc7_channels/4))
+            #self.bbox_dropout         = nn.Dropout(0.4)
+            #self.bbox_post_dropout_fc = nn.Linear(self._fc7_channels*2, self._fc7_channels)
+        if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+            self.bbox_al_var_net  = nn.Linear(int(self._fc7_channels), self._num_classes * 4)
+        if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+            self.cls_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
+            self.cls_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
+            self.cls_fc3        = nn.Linear(int(self._fc7_channels/2), int(self._fc7_channels/4))
+            #self.cls_dropout         = nn.Dropout(0.4)
+            #self.cls_post_dropout_fc = nn.Linear(self._fc7_channels*2, self._fc7_channels)
+        if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+            self.cls_al_var_net   = nn.Linear(int(self._fc7_channels/4),self._num_classes)
+        self.init_weights()
+
+    #FYI this is a fancy way of instantiating a class and calling its main function
+    def _roi_pool_layer(self, bottom, rois):
+        #Has restriction on batch, only one dim allowed
+        return RoIPool((cfg.POOLING_SIZE, cfg.POOLING_SIZE),
+                       1.0 / 4.0)(bottom, rois)
+
+    #torchvision.ops.RoIAlign(output_size, spatial_scale, sampling_ratio)
+    def _roi_align_layer(self, bottom, rois):
+        return RoIAlign((cfg.POOLING_SIZE, cfg.POOLING_SIZE), 1.0 / 4.0,
+                        0)(bottom, rois)
 
     def _crop_pool_layer(self, bottom, rois):
         return Network._crop_pool_layer(self, bottom, rois,
                                         cfg.RESNET.MAX_POOL)
 
-    def _input_to_head(self):
-        net_conv = self._layers['head'](self._voxel_grid)
-        self._act_summaries['conv'] = net_conv
+    def _input_to_head(self,voxel_grid):
+        if(cfg.LIDAR.USE_FPN):
+            c2 = self._layers['head'][0](voxel_grid)
+            c3 = self._layers['head'][1](c2)
+            c4 = self._layers['head'][2](c3)
+            net_conv = self._layers['fpn'](c2, c3, c4)
+        else:   
+            net_conv = self._layers['head'](voxel_grid)
 
+        self._act_summaries['conv'] = net_conv
         return net_conv
 
     def _head_to_tail(self, pool5, dropout_en):
@@ -123,6 +182,52 @@ class lidarnet(Network):
         fc7 = self.resnet.layer4(pool5).mean(3).mean(
             2)  # average pooling after layer4
         return fc7
+
+    def init_weights(self):
+        def uniform_init(m, min_v, max_v,bias=0.0):
+            """
+      weight initalizer: truncated normal and random normal.
+      """
+            m.weight.data.uniform_(min_v, max_v)
+            #m.bias.data.zero_()
+            m.bias.data.fill_(bias)
+
+        def normal_init(m, mean, stddev, truncated=False,bias=0.0):
+            """
+      weight initalizer: truncated normal and random normal.
+      """
+            # x is a parameter
+            if truncated:
+                #In-place functions to save GPU mem
+                m.weight.data.normal_().fmod_(2).mul_(stddev).add_(
+                    mean)  # not a perfect approximation
+            else:
+                m.weight.data.normal_(mean, stddev)
+            #m.bias.data.zero_()
+            m.bias.data.fill_(bias)
+        
+        normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if(cfg.ENABLE_CUSTOM_TAIL):
+            normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.t_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+
+        normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+            normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+            normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.cls_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.cls_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+            normal_init(self.bbox_al_var_net, 0, 0.05, cfg.TRAIN.TRUNCATED)
+        if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+            normal_init(self.cls_al_var_net, 0, 0.04,cfg.TRAIN.TRUNCATED)
 
     def _init_head_tail(self):
         # choose different blocks for different number of layers
@@ -166,11 +271,112 @@ class lidarnet(Network):
                     p.requires_grad = False
 
         self.resnet.apply(set_bn_fix)
+        if(cfg.LIDAR.USE_FPN):
+            self.fpn_block = BuildBlock()
+            self._layers['fpn'] = self.fpn_block
         # Build resnet.
         self._layers['head'] = nn.Sequential(
             self.resnet.conv1, self.resnet.bn1, self.resnet.relu,
             self.resnet.maxpool, self.resnet.layer1, self.resnet.layer2,
             self.resnet.layer3)
+
+    def _region_classification(self, fc7):
+        #fc7 = fc7.unsqueeze(0).repeat(self._num_mc_run,1,1)
+        if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+            cls_score_in = self._cls_tail(fc7,True)
+        else:
+            cls_score_in = fc7
+        cls_score = self.cls_score_net(cls_score_in)
+        if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+            bbox_pred_in = self._bbox_tail(fc7,True)
+        else:
+            bbox_pred_in = fc7
+        bbox_pred = self.bbox_pred_net(bbox_pred_in)
+
+        cls_score_mean = torch.mean(cls_score,dim=0)
+        cls_pred = torch.max(cls_score_mean, 1)[1]
+        cls_prob = torch.mean(F.softmax(cls_score, dim=2),dim=0)
+        self._mc_run_output['bbox_pred'] = bbox_pred
+        self._mc_run_output['cls_score'] = cls_score
+        self._predictions['cls_score'] = cls_score_mean
+        self._predictions['cls_pred'] = cls_pred
+        self._predictions['cls_prob'] = cls_prob
+        #TODO: Make domain shift here
+        self._predictions['bbox_pred'] = torch.mean(bbox_pred,dim=0)
+        if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+            bbox_var  = self.bbox_al_var_net(fc7)
+            self._predictions['a_bbox_var']  = torch.mean(bbox_var,dim=0)
+        if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+            a_cls_var   = self.cls_al_var_net(cls_score_in)
+            a_cls_var = torch.exp(torch.mean(a_cls_var,dim=0))
+            self._predictions['a_cls_var']   = a_cls_var
+
+    def _cls_tail(self,fc7,dropout_en):
+        if(dropout_en):
+            fc_dropout_rate   = 0.5
+        else:
+            fc_dropout_rate   = 0.0
+        fc_dropout1   = nn.Dropout(fc_dropout_rate)
+        fc_dropout2   = nn.Dropout(fc_dropout_rate)
+        fc_dropout3   = nn.Dropout(fc_dropout_rate)
+        fc_relu      = nn.ReLU(inplace=True)
+        fc1     = self.cls_fc1(fc7)
+        fc1_r   = fc_relu(fc1)
+        fc1_d   = fc_dropout1(fc1_r)
+        fc2     = self.cls_fc2(fc1_d)
+        fc2_r   = fc_relu(fc2)
+        fc2_d   = fc_dropout2(fc2_r)
+        fc3     = self.cls_fc3(fc2_d)
+        fc3_r   = fc_relu(fc3)
+        fc3_d   = fc_dropout2(fc3_r)
+        return fc3_d
+
+    def _bbox_tail(self,fc7,dropout_en):
+        if(dropout_en):
+            fc_dropout_rate   = 0.4
+        else:
+            fc_dropout_rate   = 0.0
+        fc_dropout1   = nn.Dropout(fc_dropout_rate)
+        fc_dropout2   = nn.Dropout(fc_dropout_rate)
+        fc_dropout3   = nn.Dropout(fc_dropout_rate)
+        fc_relu      = nn.ReLU(inplace=True)
+        fc1     = self.bbox_fc1(fc7)
+        fc1_r   = fc_relu(fc1)
+        fc1_d   = fc_dropout1(fc1_r)
+        fc2     = self.bbox_fc2(fc1_d)
+        fc2_r   = fc_relu(fc2)
+        fc2_d   = fc_dropout2(fc2_r)
+        fc3     = self.bbox_fc3(fc2_d)
+        fc3_r   = fc_relu(fc3)
+        fc3_d   = fc_dropout2(fc3_r)
+        return fc2_d
+
+    def _custom_tail(self,pool5,dropout_en):
+        pool5 = pool5.mean(3).mean(2).unsqueeze(0).repeat(self._num_mc_run,1,1)
+        if(dropout_en):
+            conv_dropout_rate = 0.2
+            fc_dropout_rate   = 0.5
+        else:
+            conv_dropout_rate = 0.0
+            fc_dropout_rate   = 0.0
+        pool_dropout = nn.Dropout(conv_dropout_rate)
+        fc_dropout1   = nn.Dropout(fc_dropout_rate)
+        fc_dropout2   = nn.Dropout(fc_dropout_rate)
+        fc_dropout3   = nn.Dropout(fc_dropout_rate)
+        fc_dropout4   = nn.Dropout(fc_dropout_rate)
+        fc_relu      = nn.ReLU(inplace=True)
+        pool5_d = pool_dropout(pool5)
+        fc1     = self.t_fc1(pool5_d)
+        fc1_r   = fc_relu(fc1)
+        fc1_d   = fc_dropout1(fc1_r)
+        fc2     = self.t_fc2(fc1_d)
+        fc2_r   = fc_relu(fc2)
+        fc2_d   = fc_dropout2(fc2_r)
+        fc3     = self.t_fc3(fc2_d)
+        fc3_r   = fc_relu(fc3)
+        fc3_d   = fc_dropout3(fc3_r)
+        return fc3_d
+
 
     def train(self, mode=True):
         # Override train so that the training mode is set as we want
@@ -233,3 +439,37 @@ class lidarnet(Network):
             k: v
             for k, v in state_dict.items() if k in self.resnet.state_dict()
         })
+
+class BuildBlock(nn.Module):
+  def __init__(self, planes=256):
+    super(BuildBlock, self).__init__()
+    # Top-down layers, use nn.ConvTranspose2d to replace nn.Conv2d+F.upsample?
+    #self.toplayer1 = nn.Conv2d(2048, planes, kernel_size=1, stride=1, padding=0)  # Reduce channels
+    self.toplayer2 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
+    self.toplayer3 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
+    self.toplayer4 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
+
+    # Lateral layers
+    self.latlayer1 = nn.Conv2d(1024, planes, kernel_size=1, stride=1, padding=0)
+    self.latlayer2 = nn.Conv2d( 512, planes, kernel_size=1, stride=1, padding=0)
+    self.latlayer3 = nn.Conv2d( 256, planes, kernel_size=1, stride=1, padding=0)
+
+    self.subsample = nn.AvgPool2d(2, stride=2)
+
+  def _upsample_add(self, x, y):
+    _,_,H,W = y.size()
+    print('fpn upsample dims H: {} W: {}'.format(H,W))
+    return F.upsample(x, size=(H,W), mode='bilinear') + y
+
+  def forward(self, c2, c3, c4):
+    # Top-down
+    #p5 = self.toplayer1(c5)
+    #p6 = self.subsample(p5)
+    #p4 = self._upsample_add(p5, self.latlayer1(c4))
+    p4 = self.toplayer2(p4)
+    p3 = self._upsample_add(p4, self.latlayer2(c3))
+    p3 = self.toplayer3(p3)
+    p2 = self._upsample_add(p3, self.latlayer3(c2))
+    p2 = self.toplayer4(p2)
+
+    return p2
