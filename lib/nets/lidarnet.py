@@ -165,9 +165,10 @@ class lidarnet(Network):
 
     def _input_to_head(self,voxel_grid):
         if(cfg.LIDAR.USE_FPN):
-            c2 = self._layers['head'][0](voxel_grid)
-            c3 = self._layers['head'][1](c2)
-            c4 = self._layers['head'][2](c3)
+            c1 = self._layers['img_head'](voxel_grid)
+            c2 = self._layers['c2_head'](c1)
+            c3 = self._layers['c3_head'](c2)
+            c4 = self._layers['c4_head'](c3)
             net_conv = self._layers['fpn'](c2, c3, c4)
         else:   
             net_conv = self._layers['head'](voxel_grid)
@@ -275,10 +276,11 @@ class lidarnet(Network):
             self.fpn_block = BuildBlock()
             self._layers['fpn'] = self.fpn_block
         # Build resnet.
-        self._layers['head'] = nn.Sequential(
-            self.resnet.conv1, self.resnet.bn1, self.resnet.relu,
-            self.resnet.maxpool, self.resnet.layer1, self.resnet.layer2,
-            self.resnet.layer3)
+        self._layers['img_head'] = nn.Sequential(
+            self.resnet.conv1, self.resnet.bn1, self.resnet.relu,self.resnet.maxpool)
+        self._layers['c2_head'] = self.resnet.layer1
+        self._layers['c3_head'] = self.resnet.layer2
+        self._layers['c4_head'] = self.resnet.layer3
 
     def _region_classification(self, fc7):
         #fc7 = fc7.unsqueeze(0).repeat(self._num_mc_run,1,1)
@@ -445,7 +447,7 @@ class BuildBlock(nn.Module):
     super(BuildBlock, self).__init__()
     # Top-down layers, use nn.ConvTranspose2d to replace nn.Conv2d+F.upsample?
     #self.toplayer1 = nn.Conv2d(2048, planes, kernel_size=1, stride=1, padding=0)  # Reduce channels
-    self.toplayer2 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
+    self.toplayer2 = nn.Conv2d( 1024, planes, kernel_size=3, stride=1, padding=1)
     self.toplayer3 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
     self.toplayer4 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
 
@@ -466,7 +468,7 @@ class BuildBlock(nn.Module):
     #p5 = self.toplayer1(c5)
     #p6 = self.subsample(p5)
     #p4 = self._upsample_add(p5, self.latlayer1(c4))
-    p4 = self.toplayer2(p4)
+    p4 = self.toplayer2(c4)
     p3 = self._upsample_add(p4, self.latlayer2(c3))
     p3 = self.toplayer3(p3)
     p2 = self._upsample_add(p3, self.latlayer3(c2))

@@ -61,9 +61,9 @@ class waymo_lidb(lidb):
 
         self._imwidth  = 1300
         self._imheight = 1200
-        self._num_slices = 7
+        self._num_slices = cfg.LIDAR.NUM_SLICES
         self._bev_slice_locations = [1,2,3,4,5,7]
-        self._filetype   = 'BIN'
+        self._filetype   = 'npy'
         self._imtype   = 'PNG'
         self._mode = mode
         print('lidb mode: {}'.format(mode))
@@ -221,10 +221,11 @@ class waymo_lidb(lidb):
                     #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
                     #    draw_file.save(outfile,self._imtype)
 
-    def draw_bev_bbox(self,draw,bbox,slice_idx):
+    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True):
         p = []
         x_c, y_c, z_c = bbox[0:3]
-        x_d, y_d, z_d = bbox[3:6]
+        x_l, y_w, z_h = bbox[3:6]
+        x_d, y_d, z_d = x_l/2, y_w/2, z_h/2
         heading       = bbox[6]
         #p0 -> bottom, left
         p.append([x_c-x_d,y_c-y_d])
@@ -242,34 +243,64 @@ class waymo_lidb(lidb):
         z2 = z_c+z_d
 
         if(slice_idx is None):
-            z_max = cfg.LIDAR.Z_RANGE[1]
-            z_min = cfg.LIDAR.Z_RANGE[0]
+            z_max = cfg.LIDAR.NUM_SLICES
+            z_min = 0
         else:
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
-        c = int(z2/z_max*255)
-        coords = bbox_utils.rotate_in_bev(p, p_c, -heading, [cfg.LIDAR.X_RANGE,cfg.LIDAR.Y_RANGE])
+        c = np.clip(int(z2/z_max*255),0,255)
+        coords = bbox_utils.rotate_in_bev(p, p_c, -heading)
+        #Uncomment to skip rotation
+        #coords = p
         pixel_coords = []
-        for coord_pair in coords:
-            pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=True,inv_y=True))
+        if(transform):
+            for coord_pair in coords:
+                #X value
+                coord_pair[0] = np.clip(coord_pair[0],0,self._imwidth)
+                #Y value
+                coord_pair[1] = np.clip(coord_pair[1],0,self._imheight)
+                pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=False,inv_y=False))
+        else:
+            for coord_pair in coords:
+                #X value
+                x = np.clip(coord_pair[0],0,self._imwidth)
+                #Y value
+                y = np.clip(coord_pair[1],0,self._imheight)
+                pixel_coords.append((int(x), int(y)))
         self._draw_polygon(draw,pixel_coords,c)
 
     def _draw_polygon(self,draw,pixel_coords,c):
         for i in range(len(pixel_coords)):
             if(i == 0):
-                draw.line((pixel_coords[i],pixel_coords[len(pixel_coords)-1]),fill=(c,0,0),width=2)
+                xy1 = pixel_coords[i]
+                xy2 = pixel_coords[len(pixel_coords)-1]
             else:
-                draw.line((pixel_coords[i],pixel_coords[i-1]),fill=(c,0,0),width=2)
-            draw.point(pixel_coords[i],fill=(c,0,0))
+                xy1 = pixel_coords[i]
+                xy2 = pixel_coords[i-1]
+            draw.line((xy1,xy2),fill=(c,0,0),width=2)
+            draw.point(xy1,fill=(c,0,0))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
-        x = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imwidth/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
-        y = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._imheight/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
+        y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imheight/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
+        x = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._imwidth/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
         if(inv_x):
             x = self._imwidth - x
         if(inv_y):
             y = self._imheight - y
         return (int(x), int(y))
+
+    def draw_voxel_grid(self,voxel_grid,draw):
+        voxel_grid = voxel_grid[0]
+        coord = []
+        color = []
+        z_max = cfg.LIDAR.Z_RANGE[1]
+        z_min = cfg.LIDAR.Z_RANGE[0]
+        for x, row in enumerate(voxel_grid):
+            for y, element in enumerate(row):
+                if(np.sum(element) != 0):
+                    c = int((element[7]-z_min)*255/(z_max - z_min))
+                    draw.point((x,y), fill=(int(c),0,0))
+        return draw
 
     def draw_bev(self,bev_img,draw):
         coord = []
@@ -279,8 +310,8 @@ class waymo_lidb(lidb):
             z_min = cfg.LIDAR.Z_RANGE[0]
             #Point is contained within slice
             #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
-            if(point[2] < z_max or point[2] >= z_min):
-                coords = self._transform_to_pixel_coords(point,inv_x=True,inv_y=True)
+            if(point[2] >= z_min and point[2] < z_max):
+                coords = self._transform_to_pixel_coords(point,inv_x=False,inv_y=False)
                 c = int((point[2]-z_min)*255/(z_max - z_min))
                 draw.point(coords, fill=(int(c),0,0))
         return draw
@@ -496,10 +527,11 @@ class waymo_lidb(lidb):
             x_c = float(bbox['xc'])
             y_c = float(bbox['yc'])
             z_c = float(bbox['zc'])
-            delta_x = float(bbox['delta_x'])
-            delta_y = float(bbox['delta_y'])
-            delta_z = float(bbox['delta_z'])
+            l_x = float(bbox['lx'])
+            w_y = float(bbox['wy'])
+            h_z = float(bbox['hz'])
             heading = float(bbox['heading'])
+            bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
             #if(x1 < cfg.LIDAR.X_RANGE[0] or x2 > cfg.LIDAR.X_RANGE[1]):
@@ -513,7 +545,7 @@ class waymo_lidb(lidb):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
-                boxes[ix, :] = [x_c, y_c, z_c, delta_x, delta_y, delta_z, heading]
+                boxes[ix, :] = bbox
                 #TODO: Not sure what to filter these to yet.
                 #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
@@ -531,10 +563,10 @@ class waymo_lidb(lidb):
                 overlaps[ix, cls] = 1.0
                 #seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
                 ix = ix + 1
-            if(anno_cat == 'dontcare'):
+            else:
                 #print(line)
                 #ignore[ix] = True
-                boxes_dc[ix_dc, :] = [x_c, y_c, z_c, delta_x, delta_y, delta_z, heading]
+                boxes_dc[ix_dc, :] = bbox
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):

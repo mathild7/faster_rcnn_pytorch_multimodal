@@ -25,6 +25,8 @@ from pyntcloud import PyntCloud
 from scipy.ndimage.filters import gaussian_filter
 import spconv
 import utils.bbox as bbox_utils
+import shutil
+from datasets.waymo_lidb import waymo_lidb
 
 def draw_and_save_minibatch(im,roidb):
     datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
@@ -39,7 +41,46 @@ def draw_and_save_minibatch(im,roidb):
             color = 255
         draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
     print('Saving file at location {}'.format(out_file))
-    source_img.save(out_file,'PNG')    
+    source_img.save(out_file,'PNG')  
+
+def draw_and_save_lidar_minibatch(blob):
+    filename = blob['filename']
+    info = blob['info']
+    lidb = waymo_lidb()
+    #Extract voxel grid size
+    width   = int(info[1] - info[0] + 1)
+    #Y is along height axis in image domain
+    height  = int(info[3] - info[2] + 1)
+    lidb._imheight = height
+    lidb._imwidth  = width
+
+    datapath = os.path.join(cfg.DATA_DIR, 'waymo')
+    out_file = filename.replace('/point_clouds/','/minibatch_drawn/').replace('.{}'.format('npy'),'.{}'.format('png'))
+    source_bin = np.load(filename)
+
+    draw_file  = Image.new('RGB', (width, height), (255,255,255))
+    draw = ImageDraw.Draw(draw_file)
+    lidb.draw_bev(source_bin,draw)
+    for bbox in blob['gt_boxes']:
+        lidb.draw_bev_bbox(draw,bbox,None,transform=False)
+    draw_file.save(out_file.replace('.png','_bev.png'),'png')
+    voxel_grid = blob['data'][0]
+    voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+    voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+    max_height = np.max(voxel_grid_rgb[:,:,0])
+    min_height = np.min(voxel_grid_rgb[:,:,0])
+    voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+    voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+    voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+    voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
+    img = Image.fromarray(voxel_grid_rgb,'RGB')
+    draw = ImageDraw.Draw(img)
+    for bbox in blob['gt_boxes']:
+        lidb.draw_bev_bbox(draw,bbox,None,transform=False)
+    #for bbox_dc in enumerate(blob['gt_boxes_dc']):
+    #    lidb.draw_bev_bbox(draw,bbox_dc,None)
+    print('Saving BEV map file at location {}'.format(out_file))
+    img.save(out_file,'png')
 
 def get_minibatch(roidb, num_classes, augment_en):
     if(cfg.NET_TYPE == 'image'):
@@ -55,7 +96,8 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     """Given a roidb, construct a minibatch sampled from it."""
 
     num_images = len(roidb)
-    gt_box_size = 8
+    gt_box_size = 7 + 1  #BBox + Cls
+    #X1,Y1,Z1,X2,Y2,Z2
     area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
     #Removed input scaling capability. Unused.
     # Sample random scales to use for each image in this batch
@@ -83,22 +125,26 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
     blobs['filename'] = local_roidb[0]['filename']
+    print(blobs['filename'])
     #TODO: Ground plane estimation and subtraction
+    #Transform into voxel_grid form (flip y-axis, scale to image size (e.g. 800,700))
     vg_boxes = bbox_utils.bbox_to_voxel_grid(local_roidb[0]['boxes'][gt_inds, :],area_extents,info)
     gt_boxes[:, 0:-1] = vg_boxes
     #shift gt_boxes to voxel domain
-
-    gt_boxes[:, -1] = local_roidb[0]['gt_classes'][gt_inds]
+    bbox_labels = local_roidb[0]['gt_classes'][gt_inds]
+    gt_boxes[:, -1] = bbox_labels
     blobs['gt_boxes'] = gt_boxes
     #Do we include don't care areas, so we ignore certain ground truth boxes (Might be kitti only, even tho waymo has NLZ)
     if cfg.TRAIN.IGNORE_DC:
         gt_ind_dc = np.arange(dc_len)
         gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
         gt_boxes_dc[:, -1] = np.zeros(dc_len)
+    #TODO: FIX
     vg_boxes_dc = bbox_utils.bbox_to_voxel_grid(gt_boxes_dc,area_extents,info)
     blobs['gt_boxes_dc'] = vg_boxes_dc
     blobs['info'] = np.array(np.hstack((info,dummy_scale_value)), dtype=np.float32)
     #blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
+    #draw_and_save_lidar_minibatch(blobs)
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
         return None
@@ -164,11 +210,8 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
     processed_frames = []
 
     for i in range(num_frame):
-        source_bin = np.fromfile(roidb[i]['filename'], dtype='float32').reshape((-1,5))
-
-        #img_arr  = im
-        mean     = 0
-        sigma    = 2
+        source_bin = np.load(roidb[i]['filename'])
+        #np.random.shuffle(source_bin)
         local_roidb = deepcopy(roidb)
         if(augment_en):
             #print('augmenting image {}'.format(roidb[i]['imgname']))
@@ -187,49 +230,55 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
             else:
                 local_roidb[i]['flipped'] = False
 
-        num_x_voxel = (cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
-        num_y_voxel = (cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN)
-        num_z_voxel = (cfg.LIDAR.NUM_SLICES)
-        info = [0,num_x_voxel-1,0,num_y_voxel-1,0,num_z_voxel]
+        num_x_voxel = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        num_y_voxel = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        num_z_voxel = int(cfg.LIDAR.NUM_SLICES)
+        info = [0,num_x_voxel-1,0,num_y_voxel-1,0,num_z_voxel-1]
         vertical_voxel_size = (cfg.LIDAR.Z_RANGE[1] - cfg.LIDAR.Z_RANGE[0])/(cfg.LIDAR.NUM_SLICES+0.0)
         assert vertical_voxel_size == cfg.LIDAR.VOXEL_HEIGHT
-        voxel_generator = spconv.utils.VoxelGenerator(
+        voxel_generator = spconv.utils.VoxelGeneratorV2(
             voxel_size=[cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_HEIGHT],
             point_cloud_range=pc_extents,
             max_num_points=cfg.LIDAR.MAX_PTS_PER_VOXEL,
-            max_voxels=cfg.LIDAR.MAX_NUM_VOXEL,
-            full_mean=False
+            max_voxels=cfg.LIDAR.MAX_NUM_VOXEL
         )
         #Coords returns zyx format
-        voxels, coords, num_points_per_voxel = voxel_generator.generate(source_bin)
+        res = voxel_generator.generate(source_bin)
+        voxels = res['voxels']
+        coords = res['coordinates']
+        num_points_per_voxel = res['num_points_per_voxel']
+        #Generate empty numpy arra to be populated
         bev_map = np.zeros((int(num_x_voxel),int(num_y_voxel),(cfg.LIDAR.NUM_CHANNEL)),dtype=np.float32)
+        #zyx to xyz
         coords[:,[2,1,0]] = coords[:,[0,1,2]]
-        coord_inds = np.argsort(coords)
         xy_coords = coords[:,0:2]
+        #Voxel contains (x,y,z,intensity,elongation)
         voxel_max_height = np.max(voxels[:,:,2], axis=1)
+        voxel_min_height = np.min(voxels[:,:,2])
+        #print('min height of frame: {}'.format(voxel_min_height))
         voxel_intensity = np.average(voxels[:,:,3], axis=1)
         voxel_elongation = np.average(voxels[:,:,4], axis=1)
-        voxel_density    = np.count_nonzero(np.sum(voxels,axis=2),axis=1)/cfg.LIDAR.MAX_PTS_PER_VOXEL
+        voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
+        #Scatter height slices into bev_map
         maxheight_tuple = tuple(zip(*coords))
+        bev_map[maxheight_tuple] = voxel_max_height - cfg.LIDAR.Z_RANGE[0]
+        #print(np.count_nonzero(np.sum(bev_map,axis=2)))
 
-        intensity_loc = np.full((xy_coords.shape[0],1),6)
+        #Scatter intensity into bev_map
+        intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
         intensity_coords = np.hstack((xy_coords,intensity_loc))
         intensity_tuple = tuple(zip(*intensity_coords))
+        bev_map[intensity_tuple] = voxel_intensity
 
-        elongation_loc = np.full((xy_coords.shape[0],1),7)
+        #Scatter elongation into bev_map
+        elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
         elongation_coords = np.hstack((xy_coords,elongation_loc))
         elongation_tuple = tuple(zip(*elongation_coords))
-
-        bev_map[intensity_tuple] = voxel_intensity
         bev_map[elongation_tuple] = voxel_elongation
-        bev_map[maxheight_tuple] = voxel_max_height
-        #np.set_printoptions(threshold=np.inf)
-        #print(bev_map[0:20,200:300,:])
-        #np.set_printoptions(threshold=1000)
-        #draw_and_save_minibatch(im,local_roidb[0])
-        #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
-        proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)
-        processed_frames.append(proc_bev_map)
+        #Transpose so Y(left-right)/X(front-back) is X(left-right)/Y(front-back)
+        bev_map        = np.transpose(bev_map,axes=[1,0,2])
+        #proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)
+        processed_frames.append(bev_map)
     # Create a blob to hold the input images
     blob = bev_map_list_to_blob(processed_frames)
 

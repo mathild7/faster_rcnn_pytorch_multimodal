@@ -235,5 +235,5 @@ if __name__ == '__main__':
         val_sum_size=1000,
         batch_size=16,
         val_thresh=0.4,
-        augment_en=True,
+        augment_en=False,
         val_augment_en=False)

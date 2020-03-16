@@ -30,7 +30,7 @@ class GridAnchor3dGenerator(object):
         y_max = math.ceil((cfg.LIDAR.Y_RANGE[1]-cfg.LIDAR.Y_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
         z_max = math.ceil((cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0])/cfg.LIDAR.VOXEL_HEIGHT) - 1
         area_3d = [[0,x_max],[0,y_max],[0,z_max]]
-        anchor_3d_sizes = int(cfg.LIDAR.ANCHOR_SIZES/([cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_HEIGHT]))
+        anchor_3d_sizes = cfg.LIDAR.ANCHORS/([cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_HEIGHT])
         anchor_stride = cfg.LIDAR.ANCHOR_STRIDE
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF
 
@@ -56,7 +56,7 @@ def tile_anchors_3d(area_extents,
         boxes: list of 3D anchors in box_3d format N x [x, y, z, l, w, h, ry]
     """
     # Convert sizes to ndarray
-    anchor_3d_sizes = np.asarray(anchor_3d_sizes)
+    anchor_3d_sizes = np.asarray(anchor_3d_sizes,dtype=(int))
 
     anchor_stride_x = anchor_stride[0]
     anchor_stride_y = anchor_stride[1]

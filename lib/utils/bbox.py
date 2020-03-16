@@ -69,18 +69,25 @@ def bbox_3d_to_bev_axis_aligned(bboxes):
         y2 = bbox[2] + bbox[4]/2
         points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
         p_c    = [bbox[0], bbox[1]]
+        #WARNING: currently skipping rotation
         rot_points = rotate_in_bev(points, p_c, bbox[6])
-        axis_aligned_points = rotated_4p_to_axis_aligned_2p(rot_points)
+        axis_aligned_points = rotated_4p_to_axis_aligned_2p(points)
         bev_bboxes.append(axis_aligned_points)
     return np.asarray(bev_bboxes)
 #(xc,yc,zc,l,w,h,ry)
+#extants [x1,y1,z1,x2,y2,z2]
+#info: voxel grid size (x_min,x_max,y_min,y_max,z_min,z_max)
 def bbox_to_voxel_grid(bboxes,bev_extants,info):
-    bboxes[:,0] = np.clip((bboxes[:,0]-bev_extants[0])*(bev_extants[3]-bev_extants[0])/(info[1]-info[0]),info[0],info[1])
-    bboxes[:,1] = np.clip((bboxes[:,0]-bev_extants[1])*(bev_extants[4]-bev_extants[1])/(info[1]-info[0]),info[2],info[3])
-    bboxes[:,2] = np.clip((bboxes[:,1]-bev_extants[2])*(bev_extants[5]-bev_extants[2])/(info[3]-info[2]),info[4],info[5])
-    bboxes[:,3] = np.clip((bboxes[:,3])*(bev_extants[3]-bev_extants[0])/(info[1]-info[0]),info[0],info[1])
-    bboxes[:,4] = np.clip((bboxes[:,3])*(bev_extants[4]-bev_extants[1])/(info[1]-info[0]),info[0],info[1])
-    bboxes[:,5] = np.clip((bboxes[:,3])*(bev_extants[5]-bev_extants[2])/(info[3]-info[2]),info[2],info[3])
+    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
+    #Invert Y as left is +40 but left is actually interpreted as most negative value in PC when converted to voxel grid.
+    #bboxes[:,1] = -bboxes[:,1]
+    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    #bboxes[:,2] = (bboxes[:,2]-bev_extants[2])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
+    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    #bboxes[:,5] = (bboxes[:,5])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
+    #If inverting y axis, also must invert ry
+    #bboxes[:,6] = -bboxes[:,6]
     return bboxes
 
 #Input is (xc,yc,zc,l,w,h,ry)
@@ -93,8 +100,8 @@ def bbox_3d_to_bev_4pt(bboxes):
         y2 = bbox[2] + bbox[4]/2
         points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
         p_c    = [bbox[0], bbox[1]]
-        rot_points = rotate_in_bev(points, p_c, bbox[6])
-        bev_bboxes.append(rot_points)
+        #rot_points = rotate_in_bev(points, p_c, bbox[6])
+        bev_bboxes.append(points)
     return np.asarray(bev_bboxes)
 
 def bbox_overlaps_3d(boxes, query_boxes):

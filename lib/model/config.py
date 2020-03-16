@@ -353,17 +353,17 @@ __C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
-__C.LIDAR.Z_RANGE            = [0,3]
+__C.LIDAR.Z_RANGE            = [-1,3]
 __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 6
+__C.LIDAR.NUM_SLICES         = 8
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
-__C.LIDAR.MAX_PTS_PER_VOXEL  = 64
-__C.LIDAR.MAX_NUM_VOXEL      = 40000
+__C.LIDAR.MAX_PTS_PER_VOXEL  = 32
+__C.LIDAR.MAX_NUM_VOXEL      = 200000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
-__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
-__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1]]])
+__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
+__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_STRIDE = np.array([0.5,0.5,0.5])

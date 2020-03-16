@@ -24,7 +24,7 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data/waymo/val'
+    mypath = '/home/mat/thesis/data/waymo/train'
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
     #top_crop = 550
@@ -100,6 +100,9 @@ def frame_loop(proc_data):
         #height: dim z
         z_c = float(label.box.center_z)
         #Second point is far(x) right(y) top(z)
+        lx = float(label.box.length)
+        wy = float(label.box.width)
+        hz = float(label.box.height)
         delta_x = float(label.box.length)/2.0
         delta_y = float(label.box.width)/2.0
         delta_z = float(label.box.height)/2.0
@@ -120,9 +123,9 @@ def frame_loop(proc_data):
             'xc': '{:.3f}'.format(x_c),
             'yc': '{:.3f}'.format(y_c),
             'zc': '{:.3f}'.format(z_c),
-            'delta_x': '{:.3f}'.format(delta_x),
-            'delta_y': '{:.3f}'.format(delta_y),
-            'delta_z': '{:.3f}'.format(delta_z),
+            'lx': '{:.3f}'.format(lx),
+            'wy': '{:.3f}'.format(wy),
+            'hz': '{:.3f}'.format(hz),
             'heading': '{:.3f}'.format(heading),
         })
         json_labels['meta'].append({
@@ -148,12 +151,13 @@ def frame_loop(proc_data):
         #points_top_2     = points_2[laser_enum.TOP.value-1]
         points_top_filtered = filter_points(points_top)
         #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
-        bin_filename = '{0:05d}.bin'.format(i*1000+j)
+        bin_filename = '{0:05d}.npy'.format(i*1000+j)
         out_file = os.path.join(mypath, 'point_clouds',bin_filename)
         if(len(points_top_filtered) > 0):
-            fp = open(out_file, 'wb')
-            fp.write(bytearray(points_top_filtered))
-            fp.close()
+            np.save(out_file,points_top_filtered)
+            #fp = open(out_file, 'wb')
+            #fp.write(bytearray(points_top_filtered))
+            #fp.close()
         else:
             print('Lidar pointcloud {} is empty'.format(bin_filename))
             #    k_i = k_i + 1
@@ -163,7 +167,7 @@ def frame_loop(proc_data):
 
 def filter_points(pc):
     pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
-    pc_min_and_max_thresh = pc[(pc[:,0] < cfg.LIDAR.X_RANGE[1]) & (pc[:,1] < cfg.LIDAR.Y_RANGE[1]) & (pc[:,2] < cfg.LIDAR.Z_RANGE[1])]
+    pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,0] < cfg.LIDAR.X_RANGE[1]) & (pc_min_thresh[:,1] < cfg.LIDAR.Y_RANGE[1]) & (pc_min_thresh[:,2] < cfg.LIDAR.Z_RANGE[1])]
     return pc_min_and_max_thresh
 
 
