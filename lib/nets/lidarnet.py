@@ -103,7 +103,7 @@ class lidarnet(Network):
         self._num_layers = num_layers
         if(cfg.LIDAR.USE_FPN):
             self._feat_stride       = 4
-            self._net_conv_channels = 256
+            self._net_conv_channels = 1024
             self._fc7_channels      = 2048
             self.inplanes = 64
         else:
@@ -123,13 +123,13 @@ class lidarnet(Network):
         self.rpn_cls_score_net = nn.Conv2d(cfg.RPN_CHANNELS, self._num_anchors * 2, [1, 1])
 
         self.rpn_bbox_pred_net = nn.Conv2d(cfg.RPN_CHANNELS,
-                                           self._num_anchors * 7, [1, 1])
+                                           self._num_anchors * 4, [1, 1])
         if(cfg.ENABLE_CUSTOM_TAIL):
             self.t_fc1           = nn.Linear(self._roi_pooling_channels,self._fc7_channels*8)
             self.t_fc2           = nn.Linear(self._fc7_channels*8,self._fc7_channels*4)
             self.t_fc3           = nn.Linear(self._fc7_channels*4,self._fc7_channels*2)
-        self.cls_score_net       = nn.Linear(int(self._fc7_channels/4), self._num_classes)
-        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels/2), self._num_classes * 4)
+        self.cls_score_net       = nn.Linear(int(self._fc7_channels), self._num_classes)
+        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels), self._num_classes * 7)
         if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
             self.bbox_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
             self.bbox_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
@@ -443,35 +443,36 @@ class lidarnet(Network):
         })
 
 class BuildBlock(nn.Module):
-  def __init__(self, planes=256):
+  def __init__(self, planes=1024):
     super(BuildBlock, self).__init__()
     # Top-down layers, use nn.ConvTranspose2d to replace nn.Conv2d+F.upsample?
     #self.toplayer1 = nn.Conv2d(2048, planes, kernel_size=1, stride=1, padding=0)  # Reduce channels
-    self.toplayer2 = nn.Conv2d( 1024, planes, kernel_size=3, stride=1, padding=1)
-    self.toplayer3 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
-    self.toplayer4 = nn.Conv2d( 256, planes, kernel_size=3, stride=1, padding=1)
+    #self.toplayer2 = nn.Conv2d(1024, planes, kernel_size=3, stride=1, padding=1)
+    #self.toplayer3 = nn.Conv2d(256, planes, kernel_size=3, stride=1, padding=1)
+    #self.toplayer4 = nn.Conv2d(256, planes, kernel_size=3, stride=1, padding=1)
 
     # Lateral layers
-    self.latlayer1 = nn.Conv2d(1024, planes, kernel_size=1, stride=1, padding=0)
-    self.latlayer2 = nn.Conv2d( 512, planes, kernel_size=1, stride=1, padding=0)
-    self.latlayer3 = nn.Conv2d( 256, planes, kernel_size=1, stride=1, padding=0)
+    #self.latlayer1 = nn.Conv2d(1024, planes, kernel_size=1, stride=1, padding=0)
+    self.latlayer2 = nn.Conv2d(512, planes, kernel_size=1, stride=1, padding=0)
+    #self.latlayer2 = nn.Conv2d( 512, planes, kernel_size=1, stride=1, padding=0)
+    self.latlayer3 = nn.Conv2d(256, planes, kernel_size=1, stride=1, padding=0)
 
     self.subsample = nn.AvgPool2d(2, stride=2)
 
   def _upsample_add(self, x, y):
     _,_,H,W = y.size()
-    print('fpn upsample dims H: {} W: {}'.format(H,W))
-    return F.upsample(x, size=(H,W), mode='bilinear') + y
+    #print('fpn upsample dims H: {} W: {}'.format(H,W))
+    return F.interpolate(x, size=(H,W), mode='bilinear') + y
 
   def forward(self, c2, c3, c4):
     # Top-down
     #p5 = self.toplayer1(c5)
     #p6 = self.subsample(p5)
     #p4 = self._upsample_add(p5, self.latlayer1(c4))
-    p4 = self.toplayer2(c4)
-    p3 = self._upsample_add(p4, self.latlayer2(c3))
-    p3 = self.toplayer3(p3)
+    #p4 = self.toplayer2(c4)
+    p3 = self._upsample_add(c4, self.latlayer2(c3))
+    #p3 = self.toplayer3(p3)
     p2 = self._upsample_add(p3, self.latlayer3(c2))
-    p2 = self.toplayer4(p2)
+    #p2 = self.toplayer4(p2)
 
     return p2

@@ -166,11 +166,19 @@ class SolverWrapper(object):
         # Set the random seed
         torch.manual_seed(cfg.RNG_SEED)
         # Build the main computation graph
-        self.net.create_architecture(
-            self.db.num_classes,
-            tag='default',
-            anchor_scales=cfg.ANCHOR_SCALES,
-            anchor_ratios=cfg.ANCHOR_RATIOS)
+        if(cfg.NET_TYPE == 'lidar'):
+            #TODO: Magic numbers, need to sort this out to flow through 3d anchor gen properly
+            self.net.create_architecture(
+                self.db.num_classes,
+                tag='default',
+                anchor_scales=cfg.LIDAR.ANCHOR_SCALES,
+                anchor_ratios=cfg.LIDAR.ANCHOR_ANGLES)
+        elif(cfg.NET_TYPE == 'image'):
+            self.net.create_architecture(
+                self.db.num_classes,
+                tag='default',
+                anchor_scales=cfg.ANCHOR_SCALES,
+                anchor_ratios=cfg.ANCHOR_RATIOS)
         # Define the loss
         # loss = layers['total_loss']
         # Set learning rate and momentum

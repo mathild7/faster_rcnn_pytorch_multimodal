@@ -65,13 +65,19 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
     argmax_overlaps = overlaps.argmax(axis=1) #Best fiting GT for each anchor (1,N)
     gt_argmax_overlaps = overlaps.argmax(axis=0) #Best fitting anchor for each GT box (K,1)
     #grab subset of 2D array to only get [:,max_overlap_index] 
-    max_overlaps = overlaps[:, argmax_overlaps]
+    #max_overlaps = overlaps.take(argmax_overlaps,axis=1)
+    #np.set_printoptions(threshold=np.inf)
+    #print(argmax_overlaps)
+    #print(overlaps)
+    max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
+    #max_overlaps = overlaps[:, argmax_overlaps]
     #max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
     #grab same subset of 2D array to get corresponding GT boxes with their max overlap counterpart
     #gt_max_overlaps = overlaps[gt_argmax_overlaps,
     #                           np.arange(overlaps.shape[1])]
     #TODO: How the fuck does this work
-    gt_max_overlaps = overlaps[gt_argmax_overlaps,:]
+    #gt_max_overlaps = overlaps[gt_argmax_overlaps,:]
+    gt_max_overlaps = overlaps[gt_argmax_overlaps, np.arange(overlaps.shape[1])]
     gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
 
     if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
@@ -145,7 +151,7 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
 
     # labels
     labels = labels.reshape((1, height, width, A)).transpose(0, 3, 1, 2)
-    labels = labels.reshape((1, 1, A * height, width))
+    #labels = labels.reshape((1, 1, A * height, width))
     rpn_labels = labels
 
     # bbox_targets

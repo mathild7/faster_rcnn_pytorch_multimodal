@@ -48,32 +48,43 @@ def bbox_bev_2pt_to_4_pt(x1,y1,x2,y2):
 
 #Input: [bottomleft,bottomright,topright,topleft]
 def rotated_4p_to_axis_aligned_2p(points):
-    bottomleft  = points[0]
-    bottomright = points[1]
-    topright    = points[2]
-    topleft     = points[3]
-    x1 = min(bottomleft[0],topleft[0])
-    x2 = max(bottomright[0],topright[0])
-    y1 = min(bottomleft[1],bottomright[1])
-    y2 = max(topleft[1],topright[1])
+    topright    = points[0]
+    topleft     = points[1]
+    bottomleft  = points[2]
+    bottomright = points[3]
+    points = np.asarray(points)
+    x1 = min(points[:,0])
+    x2 = max(points[:,0])
+    y1 = min(points[:,1])
+    y2 = max(points[:,1])
     return [x1,y1,x2,y2]
 
 #Input is (xc,yc,zc,l,w,h,ry)
 #This creates a BEV box that contains an entire rotated object (Birdnet Fig 2)
-def bbox_3d_to_bev_axis_aligned(bboxes):
-    bev_bboxes = []
-    for bbox in bboxes:
-        x1 = bbox[0] - bbox[3]/2
-        x2 = bbox[0] + bbox[3]/2
-        y1 = bbox[1] - bbox[4]/2
-        y2 = bbox[2] + bbox[4]/2
-        points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
-        p_c    = [bbox[0], bbox[1]]
-        #WARNING: currently skipping rotation
-        rot_points = rotate_in_bev(points, p_c, bbox[6])
-        axis_aligned_points = rotated_4p_to_axis_aligned_2p(points)
-        bev_bboxes.append(axis_aligned_points)
-    return np.asarray(bev_bboxes)
+def bbox_3d_to_bev_axis_aligned(bbox):
+    #bev_bboxes = []
+    #for bbox in bboxes:
+    x1 = bbox[:,0] - bbox[:,3]/2
+    x2 = bbox[:,0] + bbox[:,3]/2
+    y1 = bbox[:,1] - bbox[:,4]/2
+    y2 = bbox[:,1] + bbox[:,4]/2
+    ry = bbox[:,6]
+    lx  = np.abs((x2-x1)*np.cos(ry) - (y2-y1)*np.sin(ry))
+    wy  = np.abs((x2-x1)*np.sin(ry) + (y2-y1)*np.cos(ry))
+    #points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
+    #p_c    = [bbox[0], bbox[1]]
+    #WARNING: currently skipping rotation
+    #rot_points = rotate_in_bev(points, p_c, bbox[6])
+    #axis_aligned_points = rotated_4p_to_axis_aligned_2p(rot_points)
+    #X1,Y1,X2,Y2
+    x1 = bbox[:,0] - lx/2
+    x2 = bbox[:,0] + lx/2
+    y1 = bbox[:,1] - wy/2
+    y2 = bbox[:,1] + wy/2
+    bev_bboxes = [x1,y1,x2,y2]
+    #axis_aligned_points = [x1,y1,x2,y2]
+    #bev_bboxes.append(axis_aligned_points)
+    return np.swapaxes(np.asarray(bev_bboxes,dtype=np.float32),1,0)
 #(xc,yc,zc,l,w,h,ry)
 #extants [x1,y1,z1,x2,y2,z2]
 #info: voxel grid size (x_min,x_max,y_min,y_max,z_min,z_max)

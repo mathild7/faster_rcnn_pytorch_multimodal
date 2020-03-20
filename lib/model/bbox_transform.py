@@ -123,28 +123,38 @@ def bbox_3d_transform_inv_all_boxes(boxes, deltas):
     # Input should be both tensor or both Variable and on the same device
     if len(boxes) == 0:
         return deltas.detach() * 0
-
-    widths = boxes[:, 2] - boxes[:, 0] + 1.0
-    heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    lengths  = boxes[:, 3]
+    widths   = boxes[:, 4]
+    heights  = boxes[:, 5]
+    #headings = boxes[:, 6] 
     #Re-centering top left hand corner
-    ctr_x = boxes[:, 0] + 0.5 * widths
-    ctr_y = boxes[:, 1] + 0.5 * heights
+    ctr_x = boxes[:, 0]
+    ctr_y = boxes[:, 1]
+    ctr_z = boxes[:, 2]
     #e.g. 16 elements for 4 classes
-    dx = deltas[:, 0::4]
-    dy = deltas[:, 1::4]
-    dw = deltas[:, 2::4]
-    dh = deltas[:, 3::4]
+    dx = deltas[:, 0::7]
+    dy = deltas[:, 1::7]
+    dz = deltas[:, 2::7]
+    dl = deltas[:, 3::7]
+    dw = deltas[:, 4::7]
+    dh = deltas[:, 5::7]
+    heading = deltas[:, 6::7]
 
-    pred_ctr_x = dx * widths.unsqueeze(1) + ctr_x.unsqueeze(1)
-    pred_ctr_y = dy * heights.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_ctr_x = dx * lengths.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * widths.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_ctr_z = dz * heights.unsqueeze(1) + ctr_z.unsqueeze(1)
+    pred_l = torch.exp(dl) * lengths.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
 
     pred_boxes = torch.cat(\
-      [_.unsqueeze(2) for _ in [pred_ctr_x - 0.5 * pred_w,\
-                                pred_ctr_y - 0.5 * pred_h,\
-                                pred_ctr_x + 0.5 * pred_w,\
-                                pred_ctr_y + 0.5 * pred_h]], 2).view(len(boxes), -1)
+      [_.unsqueeze(2) for _ in [pred_ctr_x,\
+                                pred_ctr_y,\
+                                pred_ctr_z,\
+                                pred_l,\
+                                pred_w,\
+                                pred_h,\
+                                heading]], 2).view(len(boxes), -1)
 
     return pred_boxes
 

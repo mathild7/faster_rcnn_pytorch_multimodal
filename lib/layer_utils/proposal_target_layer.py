@@ -47,11 +47,11 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxe
         _num_classes, num_bbox_target_elem)
 
 
-    rois = rois.view(-1, num_bbox_target_elem)
+    rois = rois.view(-1, 5)
     roi_scores = roi_scores.view(-1)
     labels = labels.view(-1, 1)
-    bbox_targets = bbox_targets.view(-1, _num_classes * num_bbox_target_elem)
-    bbox_inside_weights = bbox_inside_weights.view(-1, _num_classes * num_bbox_target_elem)
+    bbox_targets = bbox_targets
+    bbox_inside_weights = bbox_inside_weights
     bbox_outside_weights = (bbox_inside_weights > 0).float()
 
     return labels, rois, roi_scores, bbox_targets, bbox_inside_weights, bbox_outside_weights
@@ -78,15 +78,23 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_elem):
         clss = clss[inds].contiguous().view(-1, 1)
         dim1_inds = inds.unsqueeze(1).expand(inds.size(0), num_bbox_elem)
         #TODO: Very hacky, try to fix.
-        if(num_bbox_elem == 7):
-            dim2_inds = torch.cat([num_bbox_elem * clss, num_bbox_elem * clss + 1, num_bbox_elem * clss + 2, num_bbox_elem * clss + 3, num_bbox_elem * clss + 4, num_bbox_elem * clss + 5, num_bbox_elem * clss + 6], 1).long()
-        elif(num_bbox_elem == 4):
-            dim2_inds = torch.cat([4 * clss, 4 * clss + 1, 4 * clss + 2, 4 * clss + 3], 1).long()
-        else:
-            print('ERROR: Invalid dim2_inds specified in get_bbox_regression_labels')
+        base_index = num_bbox_elem * clss
+        dim2_list = []
+        for i in range(num_bbox_elem):
+            dim2_list.append(base_index+i)
+
+        dim2_inds = torch.cat(dim2_list, dim=1).long()
+        #dim2_inds_old = torch.cat([num_bbox_elem * clss, num_bbox_elem * clss + 1, num_bbox_elem * clss + 2, num_bbox_elem * clss + 3, num_bbox_elem * clss + 4, num_bbox_elem * clss + 5, num_bbox_elem * clss + 6], 1).long()
+        #if(num_bbox_elem == 7):
+        #    dim2_inds = torch.cat([num_bbox_elem * clss, num_bbox_elem * clss + 1, num_bbox_elem * clss + 2, num_bbox_elem * clss + 3, num_bbox_elem * clss + 4, num_bbox_elem * clss + 5, num_bbox_elem * clss + 6], 1).long()
+        #elif(num_bbox_elem == 4):
+        #    dim2_inds = torch.cat([num_bbox_elem * clss, num_bbox_elem * clss + 1, num_bbox_elem * clss + 2, num_bbox_elem * clss + 3], 1).long()
+        #else:
+        #    print('ERROR: Invalid dim2_inds specified in get_bbox_regression_labels')
         bbox_targets[dim1_inds, dim2_inds] = bbox_target_data[inds][:, 1:]
-        bbox_inside_weights[dim1_inds, dim2_inds] = bbox_targets.new(
-            cfg.TRAIN.BBOX_INSIDE_WEIGHTS).view(-1, num_bbox_elem).expand_as(dim1_inds)
+        bbox_inside_weights[dim1_inds, dim2_inds] = 1.0
+        
+        #bbox_targets.new(cfg.TRAIN.BBOX_INSIDE_WEIGHTS).view(-1, num_bbox_elem).expand_as(dim1_inds)
 
     return bbox_targets, bbox_inside_weights
 
@@ -130,8 +138,8 @@ def _compute_lidar_targets(ex_rois, roi_height, roi_zc, gt_rois, labels):
     targets = lidar_bbox_transform(ex_rois, roi_height, roi_zc, gt_rois)
     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
         # Optionally normalize targets by a precomputed mean and stdev
-        targets = ((targets - targets.new(cfg.TRAIN.BBOX_NORMALIZE_MEANS)) /
-                   targets.new(cfg.TRAIN.BBOX_NORMALIZE_STDS))
+        targets = ((targets - targets.new(cfg.LIDAR.BBOX_NORMALIZE_MEANS)) /
+                   targets.new(cfg.LIDAR.BBOX_NORMALIZE_STDS))
     return torch.cat([labels.unsqueeze(1), targets], 1)
 
 #ex_rois are pre-computed proposal ROI's to be compared against the GT_ROI's
@@ -160,8 +168,6 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
     #print('gt boxes')
     #print(gt_boxes)
     max_overlaps_dc = torch.tensor([])
-    dc_filtered_rois = all_rois
-    dc_filtered_scores = all_scores
     #Remove all indices that cover dc areas
     if(cfg.TRAIN.IGNORE_DC and list(gt_boxes_dc.size())[0] > 0):
         overlaps_dc = bbox_overlaps(all_rois[:, 1:5].data, gt_boxes_dc[:, :4].data)  #NxK Output N= num roi's k = num gt entries on image
@@ -169,6 +175,9 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
         dc_inds = (max_overlaps_dc < cfg.TRAIN.DC_THRESH).nonzero().view(-1)
         dc_filtered_rois = all_rois[dc_inds, :]
         dc_filtered_scores = all_scores[dc_inds, :]
+    else:
+        dc_filtered_rois = all_rois
+        dc_filtered_scores = all_scores
     overlaps = bbox_overlaps(dc_filtered_rois[:, 1:5].data, gt_boxes[:, :4].data) #NxK Output N= num roi's k = num gt entries on image
     max_overlaps, gt_assignment = overlaps.max(1) #Returns max value of all input elements along dimension and their index
     labels = gt_boxes[gt_assignment, [4]] #Contains which gt box each overlap is assigned to and the class it belongs to as well
@@ -227,8 +236,8 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
     #Right here, bbox_target_data is actually the delta.
     if(cfg.NET_TYPE == 'lidar'):
         #TODO: Multiple anchors??
-        roi_height = cfg.LIDAR.ANCHORS[2]
-        roi_zc     = cfg.LIDAR.ANCHORS[2]/2
+        roi_height = cfg.LIDAR.ANCHORS[0][2]
+        roi_zc     = cfg.LIDAR.ANCHORS[0][2]/2
         bbox_target_data = _compute_lidar_targets(
             rois[:, 1:5].data, roi_height, roi_zc, true_gt_boxes[gt_assignment[keep_inds]][:, :-1].data,
             labels.data)

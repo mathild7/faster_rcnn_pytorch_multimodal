@@ -125,7 +125,7 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
     blobs['filename'] = local_roidb[0]['filename']
-    print(blobs['filename'])
+    #print(blobs['filename'])
     #TODO: Ground plane estimation and subtraction
     #Transform into voxel_grid form (flip y-axis, scale to image size (e.g. 800,700))
     vg_boxes = bbox_utils.bbox_to_voxel_grid(local_roidb[0]['boxes'][gt_inds, :],area_extents,info)
@@ -140,7 +140,8 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
         gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
         gt_boxes_dc[:, -1] = np.zeros(dc_len)
     #TODO: FIX
-    vg_boxes_dc = bbox_utils.bbox_to_voxel_grid(gt_boxes_dc,area_extents,info)
+    #vg_boxes_dc = bbox_utils.bbox_to_voxel_grid(gt_boxes_dc,area_extents,info)
+    vg_boxes_dc = np.empty(0)
     blobs['gt_boxes_dc'] = vg_boxes_dc
     blobs['info'] = np.array(np.hstack((info,dummy_scale_value)), dtype=np.float32)
     #blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
@@ -211,7 +212,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
 
     for i in range(num_frame):
         source_bin = np.load(roidb[i]['filename'])
-        #np.random.shuffle(source_bin)
+        np.random.shuffle(source_bin)
         local_roidb = deepcopy(roidb)
         if(augment_en):
             #print('augmenting image {}'.format(roidb[i]['imgname']))

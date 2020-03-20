@@ -359,14 +359,19 @@ __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 8
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
-__C.LIDAR.MAX_NUM_VOXEL      = 200000
+__C.LIDAR.MAX_NUM_VOXEL      = 40000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
 __C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
 __C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
-__C.LIDAR.ANCHOR_STRIDE = np.array([0.5,0.5,0.5])
+__C.LIDAR.ANCHOR_SCALES = np.array([[1]])
+__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/4,np.pi/2])
+__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
+__C.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+__C.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
+
 #Need to turn this on in order to debug
 #Slows
 __C.DEBUG_EN                 = True

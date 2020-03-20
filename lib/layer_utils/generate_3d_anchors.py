@@ -12,7 +12,7 @@ class GridAnchor3dGenerator(object):
     def name_scope(self):
         return 'GridAnchor3dGenerator'
 
-    def _generate(self):
+    def _generate(self, height, width, feature_stride, anchor_scales, anchor_rotations):
         """
         Generates 3D anchors in a grid in the provided 3d area and places
         them on the ground_plane.
@@ -26,22 +26,26 @@ class GridAnchor3dGenerator(object):
             list of 3D anchors in the form N x [x, y, z, l, w, h, ry]
             These describe the space that RoI's are collected from.
         """
-        x_max = math.ceil((cfg.LIDAR.X_RANGE[1]-cfg.LIDAR.X_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
-        y_max = math.ceil((cfg.LIDAR.Y_RANGE[1]-cfg.LIDAR.Y_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
+        #x_max = math.ceil((cfg.LIDAR.X_RANGE[1]-cfg.LIDAR.X_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
+        #y_max = math.ceil((cfg.LIDAR.Y_RANGE[1]-cfg.LIDAR.Y_RANGE[0])/cfg.LIDAR.VOXEL_LEN) - 1
+        assert len(anchor_scales) == 1
+        x_max = (width*feature_stride) - 1
+        y_max = (height*feature_stride) - 1
         z_max = math.ceil((cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0])/cfg.LIDAR.VOXEL_HEIGHT) - 1
         area_3d = [[0,x_max],[0,y_max],[0,z_max]]
         anchor_3d_sizes = cfg.LIDAR.ANCHORS/([cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_HEIGHT])
-        anchor_stride = cfg.LIDAR.ANCHOR_STRIDE
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF
-
+        anchor_stride = [feature_stride,feature_stride]
         return tile_anchors_3d(area_3d,
                                anchor_3d_sizes,
-                               anchor_stride)
+                               anchor_stride,
+                               anchor_rotations)
 
 
 def tile_anchors_3d(area_extents,
                     anchor_3d_sizes,
-                    anchor_stride):
+                    anchor_stride,
+                    anchor_rotations):
     """
     Tiles anchors over the area extents by using meshgrids to
     generate combinations of (x, y, z), (l, w, h) and ry.
@@ -60,15 +64,15 @@ def tile_anchors_3d(area_extents,
 
     anchor_stride_x = anchor_stride[0]
     anchor_stride_y = anchor_stride[1]
-    anchor_rotations = np.asarray([0, np.pi / 2.0])
+    #anchor_rotations = np.asarray([0, np.pi / 2.0])
 
-    x_start = area_extents[0][0] + anchor_stride[0] / 2.0
+    x_start = area_extents[0][0] # + anchor_stride[0] / 2.0
     x_end = area_extents[0][1]
     x_centers = np.array(np.arange(x_start, x_end, step=anchor_stride_x),
                          dtype=np.float32)
 
-    y_start = area_extents[2][1] - anchor_stride[1] / 2.0
-    y_end = area_extents[2][0]
+    y_start = area_extents[1][1] # - anchor_stride[1] / 2.0
+    y_end = area_extents[1][0]
     y_centers = np.array(np.arange(y_start, y_end, step=-anchor_stride_y),
                          dtype=np.float32)
 
@@ -95,7 +99,7 @@ def tile_anchors_3d(area_extents,
 
     # Create empty matrix to return
     num_anchors = len(before_sub)
-    all_anchor_boxes_3d = np.zeros((num_anchors, 7))
+    all_anchor_boxes_3d = np.zeros((num_anchors, 7),dtype=np.float32)
 
     # Fill in x, y, z
     all_anchor_boxes_3d[:, 0:3] = np.stack((all_x, all_y, all_z), axis=1)
