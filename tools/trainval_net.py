@@ -233,7 +233,7 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=1000,
-        batch_size=16,
+        batch_size=4,
         val_thresh=0.4,
         augment_en=False,
         val_augment_en=False)

@@ -14,7 +14,7 @@ import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
 from .data_layer_generator import data_layer_generator
 import utils.timer
-from utils.filter_predictions import *
+from utils.filter_predictions import filter_and_draw_prep
 try:
     import cPickle as pickle
 except ImportError:
@@ -386,27 +386,28 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
+
                     self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
-                        bbox_pred_val, a_bbox_var_val, e_bbox_var_val, \
-                        cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                        cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
                     self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
-                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
-                                                                             bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
-                                                                             blobs_val['info'],
-                                                                             self.db.num_classes,self.val_thresh)
+                    rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
+                                                                                             bbox_pred_val,
+                                                                                             uncertainties_val,
+                                                                                             blobs_val['info'],
+                                                                                             self.db.num_classes,self.val_thresh,self.db.type)
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     bbox_pred_val = np.array(bbox_pred_val)
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.db.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
+                    self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'trainval')
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
 
             if iter % self.sum_size == 0:
-                #print('performing summary at iteration: {:d}'.format(iter))
+                print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss

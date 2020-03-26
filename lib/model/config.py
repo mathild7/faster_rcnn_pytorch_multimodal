@@ -20,7 +20,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.001
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -171,6 +171,11 @@ __C.TRAIN.USE_ALL_GT = True
 
 #Whether or not to ignore dont care areas when training
 __C.TRAIN.IGNORE_DC = False
+
+__C.TRAIN.LIDAR = edict()
+
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
 #
 # Testing options
 #
@@ -292,6 +297,9 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 #[B,G,R] to [R,G,B]
 #__C.PIXEL_ARRANGE = [2,1,0]
 
+#Maximum value to clip at when performing backprop
+__C.GRAD_MAX_CLIP = 20
+
 #cafferesnet101
 __C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 __C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
@@ -369,8 +377,6 @@ __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/4,np.pi/2])
 __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
-__C.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-__C.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
 
 #Need to turn this on in order to debug
 #Slows
@@ -384,9 +390,9 @@ def get_output_dir(db, weights_filename):
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name, __C.NET_TYPE))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = ''
+    mode = '{}_'.format(__C.NET_TYPE)
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
     if __C.ENABLE_ALEATORIC_CLS_VAR:
@@ -420,9 +426,10 @@ def get_output_tb_dir(db, weights_filename):
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name, __C.NET_TYPE))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = ''
+    mode = '{}_'.format(__C.NET_TYPE)
+    
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
     if __C.ENABLE_ALEATORIC_CLS_VAR:

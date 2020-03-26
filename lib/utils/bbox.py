@@ -23,7 +23,7 @@ def bbox_overlaps(boxes, query_boxes):
             (boxes[:, 3] - boxes[:, 1] + 1)
     query_areas = (query_boxes[:, 2] - query_boxes[:, 0] + 1) * \
             (query_boxes[:, 3] - query_boxes[:, 1] + 1)
-
+    test = boxes[:, 2:3]
     iw = (torch.min(boxes[:, 2:3], query_boxes[:, 2:3].t()) - torch.max(
         boxes[:, 0:1], query_boxes[:, 0:1].t()) + 1).clamp(min=0)
     ih = (torch.min(boxes[:, 3:4], query_boxes[:, 3:4].t()) - torch.max(
@@ -32,9 +32,83 @@ def bbox_overlaps(boxes, query_boxes):
     overlaps = iw * ih / ua
     return out_fn(overlaps)
 
+"""
+Function: bbox_3d_to_bev_axis_aligned
+Computes the axis-aligned tightest bounding box required to fit a rotated (along ry) bounding box in BEV
+Arguments:
+----------
+bbox -> (Nx7) [XC,YC,ZC,L,W,H,RY]
+width -> BEV image width
+height -> BEV image height
+Returns:
+---------
+clipped_bev_bboxes -> (Nx4) [X1,Y1,X2,Y2]
+"""
+def bbox_3d_to_bev_axis_aligned(bbox,width=0,height=0):
+    points = bbox_3d_to_bev_4pt(bbox)
+    x1 = np.min(points[:,:,0],axis=1)
+    x2 = np.max(points[:,:,0],axis=1)
+    y1 = np.min(points[:,:,1],axis=1)
+    y2 = np.max(points[:,:,1],axis=1)
+    bev_bboxes = np.swapaxes(np.asarray([x1,y1,x2,y2],dtype=np.float32),1,0)
+    #TODO: Ignore bboxes that have been clipped to be too small? Probably need to do this at an earlier stage
+    clipped_bev_bboxes = _bbox_clip(width,height,bev_bboxes)
+    return clipped_bev_bboxes
+
+
+#Clip bounding boxes to pixel array
+def _bbox_clip(width,height,bboxes):
+    bboxes[:,0] = np.clip(bboxes[:,0],0,width)
+    bboxes[:,2] = np.clip(bboxes[:,2],0,width)
+    bboxes[:,1] = np.clip(bboxes[:,1],0,height)
+    bboxes[:,3] = np.clip(bboxes[:,3],0,height)
+    return bboxes
+
+
+"""
+Function: bbox_to_voxel_grid
+shifts and scales bounding boxes to fit on the voxel grid image interpretation of the LiDAR scan
+Arguments:
+----------
+bboxes      -> (Nx7) [XC,YC,ZC,L,W,H,RY]
+bev_extants -> LiDAR scan range [x1,y1,z1,x2,y2,z2]
+info        -> BEV voxel grid image size (x_min,x_max,y_min,y_max,z_min,z_max)
+Returns:
+---------
+vg_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted to fit the image)
+"""
+def bbox_to_voxel_grid(bboxes,bev_extants,info):
+    #vg_bboxes = np.zeros((bboxes.shape[0],4))
+    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    return bboxes
+
+"""
+Function: bbox_3d_to_bev_4pt
+transforms a 3d bounding box to a 4pt interpretation of the BEV bbox
+Arguments:
+----------
+bboxes      -> (Nx7) [XC,YC,ZC,L,W,H,RY]
+Returns:
+---------
+bev_bboxes -> (Nx4x2) [[X1, Y1], [X2,Y2], [X3, Y3], [X4, Y4]]
+"""
+def bbox_3d_to_bev_4pt(bboxes):
+    x1 = bboxes[:,0] - bboxes[:,3]/2
+    x2 = bboxes[:,0] + bboxes[:,3]/2
+    y1 = bboxes[:,1] - bboxes[:,4]/2
+    y2 = bboxes[:,1] + bboxes[:,4]/2
+    points = _bbox_bev_2pt_to_4pt(x1, y1, x2, y2)
+    p_c    = np.hstack((bboxes[:,0:1], bboxes[:,1:2]))
+    bev_bboxes = rotate_in_bev(points, p_c, bboxes[:,6])
+    return np.asarray(bev_bboxes)
+
+#Helper function for above
 #Input: X1,Y1,X2,Y2
 #Output: [[x1,y1],[x1,y2],[x2,y2][x2,y1]]
-def bbox_bev_2pt_to_4_pt(x1,y1,x2,y2):
+def _bbox_bev_2pt_to_4pt(x1,y1,x2,y2):
     p = []
     #p0 -> bottom, left
     p.append([x1,y1])
@@ -44,76 +118,7 @@ def bbox_bev_2pt_to_4_pt(x1,y1,x2,y2):
     p.append([x2,y2])
     #p3 -> top, left
     p.append([x2,y1])
-    return p
-
-#Input: [bottomleft,bottomright,topright,topleft]
-def rotated_4p_to_axis_aligned_2p(points):
-    topright    = points[0]
-    topleft     = points[1]
-    bottomleft  = points[2]
-    bottomright = points[3]
-    points = np.asarray(points)
-    x1 = min(points[:,0])
-    x2 = max(points[:,0])
-    y1 = min(points[:,1])
-    y2 = max(points[:,1])
-    return [x1,y1,x2,y2]
-
-#Input is (xc,yc,zc,l,w,h,ry)
-#This creates a BEV box that contains an entire rotated object (Birdnet Fig 2)
-def bbox_3d_to_bev_axis_aligned(bbox):
-    #bev_bboxes = []
-    #for bbox in bboxes:
-    x1 = bbox[:,0] - bbox[:,3]/2
-    x2 = bbox[:,0] + bbox[:,3]/2
-    y1 = bbox[:,1] - bbox[:,4]/2
-    y2 = bbox[:,1] + bbox[:,4]/2
-    ry = bbox[:,6]
-    lx  = np.abs((x2-x1)*np.cos(ry) - (y2-y1)*np.sin(ry))
-    wy  = np.abs((x2-x1)*np.sin(ry) + (y2-y1)*np.cos(ry))
-    #points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
-    #p_c    = [bbox[0], bbox[1]]
-    #WARNING: currently skipping rotation
-    #rot_points = rotate_in_bev(points, p_c, bbox[6])
-    #axis_aligned_points = rotated_4p_to_axis_aligned_2p(rot_points)
-    #X1,Y1,X2,Y2
-    x1 = bbox[:,0] - lx/2
-    x2 = bbox[:,0] + lx/2
-    y1 = bbox[:,1] - wy/2
-    y2 = bbox[:,1] + wy/2
-    bev_bboxes = [x1,y1,x2,y2]
-    #axis_aligned_points = [x1,y1,x2,y2]
-    #bev_bboxes.append(axis_aligned_points)
-    return np.swapaxes(np.asarray(bev_bboxes,dtype=np.float32),1,0)
-#(xc,yc,zc,l,w,h,ry)
-#extants [x1,y1,z1,x2,y2,z2]
-#info: voxel grid size (x_min,x_max,y_min,y_max,z_min,z_max)
-def bbox_to_voxel_grid(bboxes,bev_extants,info):
-    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
-    #Invert Y as left is +40 but left is actually interpreted as most negative value in PC when converted to voxel grid.
-    #bboxes[:,1] = -bboxes[:,1]
-    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
-    #bboxes[:,2] = (bboxes[:,2]-bev_extants[2])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
-    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
-    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
-    #bboxes[:,5] = (bboxes[:,5])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
-    #If inverting y axis, also must invert ry
-    #bboxes[:,6] = -bboxes[:,6]
-    return bboxes
-
-#Input is (xc,yc,zc,l,w,h,ry)
-def bbox_3d_to_bev_4pt(bboxes):
-    bev_bboxes = []
-    for bbox in bboxes:
-        x1 = bbox[0] - bbox[3]/2
-        x2 = bbox[0] + bbox[3]/2
-        y1 = bbox[1] - bbox[4]/2
-        y2 = bbox[2] + bbox[4]/2
-        points = bbox_bev_2pt_to_4_pt(x1, y1, x2, y2)
-        p_c    = [bbox[0], bbox[1]]
-        #rot_points = rotate_in_bev(points, p_c, bbox[6])
-        bev_bboxes.append(points)
-    return np.asarray(bev_bboxes)
+    return np.transpose(np.asarray(p),(2,0,1))
 
 def bbox_overlaps_3d(boxes, query_boxes):
     overlaps = np.zeros((boxes.shape[0],query_boxes.shape[0]))
@@ -175,36 +180,82 @@ def three_d_iou(box, boxes):
 
     return iou
 
-#STOLEN FROM AVOD :-)
+"""
+Function: rotate_in_bev
+For taking in a BEV bounding box and rotating along yaw
+Arguments:
+--------
+p -> 4 pt encoding of axis aligned bboxes (Nx4x2)
+p_c -> list of center points for each bbox (Nx2)
+rot -> list of updated headings for each bbox (N)
+Return:
+--------
+box_points -> 4pt encoding of rotated bboxes(Nx4x2)
+"""
 def rotate_in_bev(p, p_c, rot):
+    p_c = p_c[:,np.newaxis,:].repeat(p.shape[1],axis=1)
+    rot = rot[:,np.newaxis].repeat(p.shape[1],axis=1)
+    delta_x = p[:,:,0] - p_c[:,:,0]
+    delta_y = p[:,:,1] - p_c[:,:,1]
+    rot_x = delta_x*np.cos(rot) - delta_y*np.sin(rot)
+    rot_y = delta_x*np.sin(rot) + delta_y*np.cos(rot)
+    p[:,:,0] = rot_x + p_c[:,:,0]
+    p[:,:,1] = rot_y + p_c[:,:,1]
     points = np.asarray(p,dtype=np.float32)
     center = np.asarray(p_c)
     pts    = np.asarray(p)
-    rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],
-                        [-np.sin(rot), np.cos(rot)]],
-                        (2, 2))
-    box_p = []
-    for coords in pts:
-        rotated = np.dot(rot_mat,coords-center) + center
-        box_p.append(rotated)
-    #rot_points = np.dot(rot_mat,points) + box_xy
-    #box_p0 = (np.dot(rot_mat, p0) + box_xy)
-    #box_p1 = (np.dot(rot_mat, p1) + box_xy)
-    #box_p2 = (np.dot(rot_mat, p2) + box_xy)
-    #box_p3 = (np.dot(rot_mat, p3) + box_xy)
-
-    #box_points = np.array([box_p0, box_p1, box_p2, box_p3])
-
-    # Calculate normalized box corners for ROI pooling
-    #x_extents_min = bev_extents[0][0]
-    #y_extents_min = bev_extents[1][1]  # z axis is reversed
-    #points_shifted = box_points - [x_extents_min, y_extents_min]
-
-    #x_extents_range = bev_extents[0][1] - bev_extents[0][0]
-    #y_extents_range = bev_extents[1][0] - bev_extents[1][1]
-    #box_points_norm = points_shifted / [x_extents_range, y_extents_range]
-
-    box_points = np.asarray(box_p, dtype=np.float32)
-    #box_points_norm = np.asarray(box_points_norm, dtype=np.float32)
-
+    #rot_mat = np.reshape([[np.cos(rot), np.sin(rot)],
+    #                    [-np.sin(rot), np.cos(rot)]],
+    #                    (2, 2))
+    box_points = np.asarray(p, dtype=np.float32)
     return box_points
+
+
+"""  
+Transforming Axis-Aligned Bounding Boxes
+by Jim Arvo
+from "Graphics Gems", Academic Press, 1990
+
+
+Transforms a 2D axis-aligned box via a 2x2 matrix and a translation
+vector and returns an axis-aligned box enclosing the result.
+Matrix3  M;  	/* Transform matrix.             */
+Vector3  T;  	/* Translation matrix.           */
+Box3     A;  	/* The original bounding box.    */
+Box3    *B;  	/* The transformed bounding box. */
+"""
+def bbaa_graphics_gems(bboxes,width,height):
+
+    rot = bboxes[:,6:7]
+    M = np.asarray([[np.cos(rot), np.sin(rot)],[-np.sin(rot), np.cos(rot)]]).squeeze(-1).transpose((2,0,1))
+    T = bboxes[:,0:2]
+    A = bboxes
+    Amin = np.zeros((A.shape[0],2))
+    Amax = np.zeros((A.shape[0],2))
+    Bmin = np.zeros((A.shape[0],2))
+    Bmax = np.zeros((A.shape[0],2))
+    #Copy box A into a min array and a max array for easy reference.
+
+    Amin[:,0] = - A[:,3]/2.0
+    Amax[:,0] = + A[:,3]/2.0
+    Amin[:,1] = - A[:,4]/2.0
+    Amax[:,1] = + A[:,4]/2.0
+
+    #Now find the extreme points by considering the product of the
+    #min and max with each component of M.
+    a = np.einsum('ijk,ik->ijk',M,Amin)
+    b = np.einsum('ijk,ik->ijk',M,Amax)
+    Bmin = np.minimum(a,b)
+    Bmax = np.maximum(a,b)
+    Bmin = np.sum(Bmin,axis=2).astype(dtype=np.float32)
+    Bmax = np.sum(Bmax,axis=2).astype(dtype=np.float32)
+    #Copy the result into the new box.
+    Bmin = Bmin + T
+    Bmax = Bmax + T
+    x1 = Bmin[:,0:1]
+    x2 = Bmax[:,0:1]
+    y1 = Bmin[:,1:2]
+    y2 = Bmax[:,1:2]
+    bev_bboxes = np.concatenate((x1,y1,x2,y2),axis=1)
+    B = _bbox_clip(width-1,height-1,bev_bboxes)
+    return B

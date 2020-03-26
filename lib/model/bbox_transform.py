@@ -80,11 +80,52 @@ def bbox_transform_inv(boxes, deltas, scales=None):
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
 
     pred_boxes = torch.cat(\
-      [_.unsqueeze(2) for _ in [pred_ctr_x - 0.5 * pred_w,\
-                                pred_ctr_y - 0.5 * pred_h,\
-                                pred_ctr_x + 0.5 * pred_w,\
+      [_.unsqueeze(2) for _ in [pred_ctr_x - 0.5 * pred_w,
+                                pred_ctr_y - 0.5 * pred_h,
+                                pred_ctr_x + 0.5 * pred_w,
                                 pred_ctr_y + 0.5 * pred_h]], 2).view(len(boxes), -1)
 
+    return pred_boxes
+
+
+def lidar_bbox_transform_inv(boxes, box_height, box_zc, deltas, scales=None):
+    # Input should be both tensor or both Variable and on the same device
+    if(scales is not None):
+        boxes = boxes/scales
+    if len(boxes) == 0:
+        return deltas.detach() * 0
+
+    lengths = boxes[:, 2] - boxes[:, 0] + 1.0
+    widths = boxes[:, 3] - boxes[:, 1] + 1.0
+    height = float(box_height)
+    #Re-centering top left hand corner
+    ctr_x = boxes[:, 0] + 0.5 * lengths
+    ctr_y = boxes[:, 1] + 0.5 * widths
+    ctr_z = float(box_zc)
+    #e.g. 16 elements for 4 classes
+    dx = deltas[:, 0::7]
+    dy = deltas[:, 1::7]
+    dz = deltas[:, 2::7]
+    dl = deltas[:, 3::7]
+    dw = deltas[:, 4::7]
+    dh = deltas[:, 5::7]
+    dr = deltas[:, 6::7]
+
+    pred_ctr_x = dx * lengths.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * widths.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_ctr_z = dz * height + ctr_z
+    pred_l = torch.exp(dl) * widths.unsqueeze(1)
+    pred_w = torch.exp(dw) * widths.unsqueeze(1)
+    pred_h = torch.exp(dh) * height
+    pred_ry = dr
+    pred_boxes = torch.cat(
+        [_.unsqueeze(2) for _ in [pred_ctr_x,
+                                  pred_ctr_y,
+                                  pred_ctr_z,
+                                  pred_l,
+                                  pred_w,
+                                  pred_h,
+                                  pred_ry]], 2).view(len(boxes), -1)
     return pred_boxes
 
 def bbox_transform_inv_all_boxes(boxes, deltas):

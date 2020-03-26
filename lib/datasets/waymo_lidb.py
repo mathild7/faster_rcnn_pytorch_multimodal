@@ -59,8 +59,8 @@ class waymo_lidb(lidb):
         self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
         self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
 
-        self._imwidth  = 1300
-        self._imheight = 1200
+        self._imwidth  = 700
+        self._imheight = 800
         self._num_slices = cfg.LIDAR.NUM_SLICES
         self._bev_slice_locations = [1,2,3,4,5,7]
         self._filetype   = 'npy'
@@ -222,52 +222,27 @@ class waymo_lidb(lidb):
                     #    draw_file.save(outfile,self._imtype)
 
     def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True):
-        p = []
-        x_c, y_c, z_c = bbox[0:3]
-        x_l, y_w, z_h = bbox[3:6]
-        x_d, y_d, z_d = x_l/2, y_w/2, z_h/2
-        heading       = bbox[6]
-        #p0 -> bottom, left
-        p.append([x_c-x_d,y_c-y_d])
-        #p1 -> bottom, right
-        p.append([x_c-x_d,y_c+y_d])
-        #p2 -> top, right
-        p.append([x_c+x_d,y_c+y_d])
-        #p3 -> top, left
-        p.append([x_c+x_d,y_c-y_d])
-        #x_c = (bbox[3]-bbox[0])/2
-        #y_c = (bbox[4]-bbox[1])/2
-        p_c = [x_c,y_c]
-        #Only need 2x z coord
-        z1 = z_c-z_d
-        z2 = z_c+z_d
+        bboxes = bbox[np.newaxis,:]
+        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform)
 
+    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True):
+        bboxes_4pt = bbox_utils.bbox_3d_to_bev_4pt(bboxes)
+        bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._imwidth-1)
+        bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._imheight-1)
+        bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
+        z1 = bboxes[:,2]-bboxes[:,5]
+        z2 = bboxes[:,2]+bboxes[:,5]
+        
         if(slice_idx is None):
             z_max = cfg.LIDAR.NUM_SLICES
             z_min = 0
         else:
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
-        c = np.clip(int(z2/z_max*255),0,255)
-        coords = bbox_utils.rotate_in_bev(p, p_c, -heading)
-        #Uncomment to skip rotation
-        #coords = p
-        pixel_coords = []
-        if(transform):
-            for coord_pair in coords:
-                #X value
-                coord_pair[0] = np.clip(coord_pair[0],0,self._imwidth)
-                #Y value
-                coord_pair[1] = np.clip(coord_pair[1],0,self._imheight)
-                pixel_coords.append(self._transform_to_pixel_coords(coord_pair,inv_x=False,inv_y=False))
-        else:
-            for coord_pair in coords:
-                #X value
-                x = np.clip(coord_pair[0],0,self._imwidth)
-                #Y value
-                y = np.clip(coord_pair[1],0,self._imheight)
-                pixel_coords.append((int(x), int(y)))
-        self._draw_polygon(draw,pixel_coords,c)
+        c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+
+        for i, bbox in enumerate(bboxes_4pt):
+            self._draw_polygon(draw,bbox,c[i])
 
     def _draw_polygon(self,draw,pixel_coords,c):
         for i in range(len(pixel_coords)):
@@ -277,7 +252,13 @@ class waymo_lidb(lidb):
             else:
                 xy1 = pixel_coords[i]
                 xy2 = pixel_coords[i-1]
-            draw.line((xy1,xy2),fill=(c,0,0),width=2)
+            #if(xy1[0] >= self._imwidth or xy1[0] < 0):
+            #    print(xy1)
+            #if(xy2[0] >= self._imwidth or xy2[0] < 0):
+            #    print(xy2)
+            #print('drawing: {}-{}'.format(xy1,xy2))
+            line = np.concatenate((xy1,xy2))
+            draw.line(line,fill=(c,0,0),width=2)
             draw.point(xy1,fill=(c,0,0))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
@@ -358,10 +339,84 @@ class waymo_lidb(lidb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
+
+    def _draw_and_save_lidar_targets(self,frame,info,targets,rois,labels,mask,target_type):
+        datapath = os.path.join(cfg.DATA_DIR, 'waymo','debug')
+        out_file = os.path.join(datapath,'{}_target_{}.png'.format(target_type,self._cnt))
+        #lidb = waymo_lidb()
+        #Extract voxel grid size
+        width   = int(info[1] - info[0] + 1)
+        #Y is along height axis in image domain
+        height  = int(info[3] - info[2] + 1)
+        #lidb._imheight = height
+        #lidb._imwidth  = width
+        voxel_grid = frame[0]
+        voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+        voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+        max_height = np.max(voxel_grid_rgb[:,:,0])
+        min_height = np.min(voxel_grid_rgb[:,:,0])
+        voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+        voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+        voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+        voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
+        img = Image.fromarray(voxel_grid_rgb,'RGB')
+        draw = ImageDraw.Draw(img)
+        if(target_type == 'anchor'):
+            mask   = mask.view(-1,4)
+            labels = labels.permute(0,2,3,1).reshape(-1)
+        #if(target_type == 'anchor'):
+        if(target_type == 'proposal'):
+            #Target is in a (N,K*7) format, transform to (N,7) where corresponding label dictates what class bbox belongs to 
+            sel_targets = torch.where(labels == 0, targets[:,0:7],targets[:,7:14])
+            #Get subset of mask for specific class selected
+            mask = torch.where(labels == 0, mask[:,0:7], mask[:,7:14])
+            sel_targets = sel_targets*mask
+            rois = rois[:,1:5]
+            #Extract XC,YC and L,W
+            targets = torch.cat((sel_targets[:,0:2],sel_targets[:,3:5]),dim=1)
+            stds = targets.data.new(cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS[0:4]).unsqueeze(0).expand_as(targets)
+            means = targets.data.new(cfg.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS[0:4]).unsqueeze(0).expand_as(targets)
+            targets = targets.mul(stds).add(means)
+        rois = rois.view(-1,4)
+        targets = targets.view(-1,4)
+        anchors = bbox_transform_inv(rois,targets)
+        label_mask = labels + 1
+        label_idx  = label_mask.nonzero().squeeze(1)
+        anchors_filtered = anchors[label_idx,:]
+        #else:
+        #    anchors = bbox_3d_transform_inv_all_boxes(anchors_3d,targets)
+            #anchors = 3d_to_bev(anchors)
+        for i, bbox in enumerate(anchors.view(-1,4)):
+            bbox_mask = mask[i]
+            bbox_label = int(labels[i])
+            roi        = rois[i]
+            np_bbox = None
+            #if(torch.mean(bbox_mask) > 0):
+            if(bbox_label == 1):
+                np_bbox = bbox.data.cpu().numpy()
+                draw.text((np_bbox[0],np_bbox[1]),"class: {}".format(bbox_label))
+                draw.rectangle(np_bbox,width=1,outline='green')
+                if(np_bbox[0] >= np_bbox[2]):
+                    print('x1 {} x2 {}'.format(np_bbox[0],np_bbox[2]))
+                if(np_bbox[1] >= np_bbox[3]):
+                    print('y1 {} y2 {}'.format(np_bbox[1],np_bbox[3]))
+            elif(bbox_label == 0):
+                np_bbox = roi.data.cpu().numpy()
+                draw.text((np_bbox[0],np_bbox[1]),"class: {}".format(bbox_label))
+                draw.rectangle(np_bbox,width=1,outline='red')
+                if(np_bbox[0] >= np_bbox[2]):
+                    print('x1 {} x2 {}'.format(np_bbox[0],np_bbox[2]))
+                if(np_bbox[1] >= np_bbox[3]):
+                    print('y1 {} y2 {}'.format(np_bbox[1],np_bbox[3]))
+        print('Saving BEV map file at location {}'.format(out_file))
+        img.save(out_file,'png')
+        self._cnt += 1
+
+        
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        source_bin = np.fromfile(filename, dtype='float32').reshape((-1,5))
+        source_bin = np.load(filename)
         draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
@@ -388,7 +443,7 @@ class waymo_lidb(lidb):
                         self.draw_bev_bbox(draw,det,None)
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
-                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
+                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
                                 if(i == 0):
@@ -398,7 +453,7 @@ class waymo_lidb(lidb):
                                 if(i == 0):
                                     avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
-                        det_string += 'confidence: {:5.4f} '.format(det[4])
+                        det_string += 'confidence: {:5.4f} '.format(det[-1])
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
@@ -409,8 +464,8 @@ class waymo_lidb(lidb):
                 color = 0
             else:
                 color = 255
-            #draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
-            self.draw_bev_bbox(draw,det,None)
+            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+            #self.draw_bev_bbox(draw,det,None)
         print('Saving BEV map file at location {}'.format(out_file))
         draw_file.save(out_file,self._imtype)
 
@@ -452,7 +507,8 @@ class waymo_lidb(lidb):
         elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
             sortable = uncertainties['e_cls_mutual_info']
         else:
-            sortable = range(0,len(dets))
+            print('default sort')
+            sortable = np.arange(0,dets.shape[0])
         if(descending is True):
             return np.argsort(-sortable)
         else:

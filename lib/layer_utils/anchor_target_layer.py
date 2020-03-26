@@ -34,6 +34,9 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
 
     # only keep anchors inside the frame
     #TODO: Torchify
+
+    #TODO: Subtract minimum value between GT boxes and anchors as to not get the overlaps issue (maybe also track and see it happen?)
+
     inds_inside = np.where(
         (all_anchors[:, 0] >= info[0] - _allowed_border) &  #width_max
         (all_anchors[:, 1] >= info[2] - _allowed_border) &  #height_min
@@ -55,6 +58,11 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
     overlaps = bbox_overlaps(
         np.ascontiguousarray(anchors, dtype=np.float),
         np.ascontiguousarray(gt_boxes, dtype=np.float))
+    #np.set_printoptions(threshold=np.inf)
+    #print('----------------------------------------------')
+    #overlaps_trimmed = overlaps[~np.all(overlaps == 0, axis=1)]
+    #print(overlaps_trimmed)
+    #print('----------------------------------------------')
     if cfg.TRAIN.IGNORE_DC:
         overlaps_dc = bbox_overlaps(
             np.ascontiguousarray(anchors, dtype=np.float),

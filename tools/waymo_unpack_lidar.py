@@ -36,8 +36,8 @@ def main():
     with open(os.path.join(mypath,'labels','lidar_labels.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
-            if(i > 1):
-                break
+            #if(i > 1):
+            #    break
             if('tfrecord' in filename):
                 print('opening {}'.format(filename))
                 dataset = tf.data.TFRecordDataset(filename,compression_type='')
@@ -108,13 +108,13 @@ def frame_loop(proc_data):
         delta_z = float(label.box.height)/2.0
         heading = float(label.box.heading)
         #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10] as per config
-        if(x_c + delta_x < cfg.LIDAR.X_RANGE[0] or x_c - delta_x > cfg.LIDAR.X_RANGE[1]):
+        if(x_c < cfg.LIDAR.X_RANGE[0] or x_c > cfg.LIDAR.X_RANGE[1]):
             #print('object not infront of car')
             continue
-        if(y_c + delta_y < cfg.LIDAR.Y_RANGE[0] or y_c - delta_y > cfg.LIDAR.Y_RANGE[1]):
+        if(y_c < cfg.LIDAR.Y_RANGE[0] or y_c > cfg.LIDAR.Y_RANGE[1]):
             #print('object too far to left/right side')
             continue
-        if(z_c + delta_z < cfg.LIDAR.Z_RANGE[0] or z_c - delta_z > cfg.LIDAR.Z_RANGE[1]):
+        if(z_c < cfg.LIDAR.Z_RANGE[0] or z_c > cfg.LIDAR.Z_RANGE[1]):
             #print('object either too high or below car')
             continue
         #if(y2-y1 <= bbox_top_min and y1 == 0):

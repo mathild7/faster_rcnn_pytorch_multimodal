@@ -26,7 +26,7 @@ from model.config import cfg, get_output_dir
 from model.bbox_transform import clip_boxes, bbox_transform_inv
 
 import torch
-from utils.filter_predictions import *
+from utils.filter_predictions import filter_and_draw_prep
 
 def _get_image_blob(im):
     """Converts an image into a network input.
@@ -107,9 +107,7 @@ def im_detect(net, im, num_classes, thresh):
     blobs['info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     net.set_num_mc_run(cfg.NUM_MC_RUNS)
-    _, probs, a_cls_entropy, a_cls_var,\
-        e_cls_mutual_info, bbox_pred,\
-        a_bbox_var, e_bbox_var, rois = net.test_frame(blobs['data'],blobs['info'])
+    _, probs, bbox_pred, uncertainties, rois = net.test_frame(blobs['data'],blobs['info'])
     net.set_num_mc_run(1)
     boxes = rois[:, 1:5]
     #TODO: Useless??
@@ -118,10 +116,10 @@ def im_detect(net, im, num_classes, thresh):
     #e^(x) where x = log(bbox_var) 
 
 
-    rois, bbox_pred, uncertainties = filter_pred(boxes, probs, a_cls_entropy, a_cls_var, e_cls_mutual_info,
-                                                 bbox_pred, a_bbox_var, e_bbox_var,
-                                                 blobs['info'],
-                                                 num_classes,thresh)
+    rois, bbox_pred, uncertainties = filter_and_draw_prep(probs,
+                                                          boxes
+                                                          blobs['info'],
+                                                          num_classes,thresh)
     #TODO: Fix all this bullshit
     #REPLACED BY - filter_pred()
     #if(cfg.ENABLE_ALEATORIC_BBOX_VAR):

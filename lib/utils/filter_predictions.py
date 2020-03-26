@@ -20,7 +20,7 @@ import torch
 from torchvision.ops import nms
 
 #TODO: Rework to accept all kinds of variance
-def nms_hstack_var_torch(var_type,var,inds,keep,c):
+def nms_hstack_var_torch(var_type,var,inds,keep,c,bbox_elem):
     if(var_type == 'cls'):
         cls_var = var[inds]
         #Removed dependency on class, as entropy is measured across all classes
@@ -34,7 +34,7 @@ def nms_hstack_var_torch(var_type,var,inds,keep,c):
         cls_var = cls_var[keep].unsqueeze(1)
         return cls_var.cpu().numpy()
     elif(var_type == 'bbox'):
-        cls_bbox_var = var[inds, c * 4:(c + 1) * 4]
+        cls_bbox_var = var[inds, c * bbox_elem:(c + 1) * bbox_elem]
         cls_bbox_var = cls_bbox_var[keep, :].cpu().numpy()
         #bbox_samples = samples[inds, c * 4:(c + 1) * 4]
         #bbox_samples = bbox_samples[keep, :, :]
@@ -42,7 +42,7 @@ def nms_hstack_var_torch(var_type,var,inds,keep,c):
     else:
         return None
 
-def nms_hstack_torch(scores,mean_boxes,thresh,c):
+def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem):
     inds = torch.where(scores[:, c] > thresh)[0]
     #inds         = np.where(scores[:, c] > thresh)[0]
     #No detections over threshold
@@ -50,7 +50,7 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c):
         print('no detections for image over threshold {}'.format(thresh))
         return np.empty(0),[],[]
     cls_scores   = scores[inds, c]
-    cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
+    cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]
     #[cls_var,cls_boxes,cls_scores]
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)
@@ -63,31 +63,33 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c):
 
 
 #TODO: Could use original imwidth/imheight
-def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bbox_pred, a_bbox_var, e_bbox_var, info, num_classes,thresh=0.1):
+def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_classes,thresh=0.1,db_type='none'):
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
     frame_width = info[1] - info[0]
     frame_height = info[3] - info[2]
     scale = info[4]
     rois = rois[:, 1:5].detach().cpu().numpy()
-    #Deleting extra dim
-    #cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
-    #bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
-    #torch.set_printoptions(profile="full")
-    #print(bbox_pred)
-    pred_boxes = bbox_pred
-    
+    a_cls_entropy     = uncertainties['a_cls_entropy']
+    a_cls_var         = uncertainties['a_cls_var']
+    e_cls_mutual_info = uncertainties['e_cls_mutual_info']
+    a_bbox_var        = uncertainties['a_bbox_var']
+    e_bbox_var        = uncertainties['e_bbox_var']
     #pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
-    # x1 >= 0
-    pred_boxes[:, 0::4] = torch.clamp_min(pred_boxes[:, 0::4],0)
-    # y1 >= 0
-    #pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], 0,dim=1)[0]
-    pred_boxes[:, 1::4] = torch.clamp_min(pred_boxes[:, 1::4], 0)
-    # x2 < imwidth
-    #pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.tensor([imwidth/imscale - 1]).cuda(),dim=1)[0]
-    pred_boxes[:, 2::4] = torch.clamp_max(pred_boxes[:, 2::4],frame_width/scale - 1)
-    # y2 < imheight 3::4 means start at 3 then jump every 4
-    #pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.tensor([imheight/imscale - 1]).cuda(),dim=1)[0]
-    pred_boxes[:, 3::4] = torch.clamp_max(pred_boxes[:, 3::4],frame_height/scale - 1)
+    if(db_type == 'image'):
+        bbox_elem         = 4
+        # x1 >= 0
+        pred_boxes[:, 0::bbox_elem] = torch.clamp_min(pred_boxes[:, 0::bbox_elem],0)
+        # y1 >= 0
+        pred_boxes[:, 1::bbox_elem] = torch.clamp_min(pred_boxes[:, 1::bbox_elem], 0)
+        # x2 < imwidth
+        pred_boxes[:, 2::bbox_elem] = torch.clamp_max(pred_boxes[:, 2::bbox_elem],frame_width/scale - 1)
+        # y2 < imheight 3::4 means start at 3 then jump every 4
+        pred_boxes[:, 3::bbox_elem] = torch.clamp_max(pred_boxes[:, 3::bbox_elem],frame_height/scale - 1)
+    elif(db_type == 'lidar'):
+        bbox_elem         = 7
+    else:
+        return None
+        
     all_boxes = []
     all_uncertainties = []
     #print('----------------')
@@ -102,27 +104,30 @@ def filter_pred(rois, cls_score, a_cls_entropy, a_cls_var, e_cls_mutual_info, bb
     all_uncertainty = [{} for _ in range(num_classes)]
     for j in range(1, num_classes):
         #Don't need to stack variance here, it is only used in trainval to draw stuff
-        all_box, inds, keep = nms_hstack_torch(cls_score,pred_boxes,thresh,j)
+        all_box, inds, keep = nms_hstack_torch(cls_score,pred_boxes,thresh,j,bbox_elem)
         uncertainties = {}
         if(len(keep) != 0):
             if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',a_bbox_var,inds,keep,j)
+                uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',a_bbox_var,inds,keep,j,bbox_elem)
             else:
-                a_bbox_var = [0,0,0,0]
+                a_bbox_var = np.zeros(bbox_elem)
             if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
-                uncertainties['e_bbox_var'] = nms_hstack_var_torch('bbox',e_bbox_var,inds,keep,j)
+                uncertainties['e_bbox_var'] = nms_hstack_var_torch('bbox',e_bbox_var,inds,keep,j,bbox_elem)
             else:
-                e_bbox_var = [0,0,0,0]
+                e_bbox_var = np.zeros(bbox_elem)
             if(cfg.ENABLE_ALEATORIC_CLS_VAR):
                 #uncertainties['a_cls_entropy'] = a_cls_entropy
-                uncertainties['a_cls_entropy'] = nms_hstack_var_torch('cls',a_cls_entropy,inds,keep,j)
-                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',a_cls_var,inds,keep,j)
+                uncertainties['a_cls_entropy'] = nms_hstack_var_torch('cls',a_cls_entropy,inds,keep,j,bbox_elem)
+                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',a_cls_var,inds,keep,j,bbox_elem)
             else:
                 a_cls_var = [0]
             if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
-                uncertainties['e_cls_mutual_info'] = nms_hstack_var_torch('cls',e_cls_mutual_info,inds,keep,j)
+                uncertainties['e_cls_mutual_info'] = nms_hstack_var_torch('cls',e_cls_mutual_info,inds,keep,j,bbox_elem)
             else:
                 e_cls_var = [0]
         all_uncertainty[j] = uncertainties
         all_boxes[j] = all_box
+    #torch.set_printoptions(profile="full")
+    #print(bbox_pred)
+
     return rois, all_boxes, all_uncertainty
