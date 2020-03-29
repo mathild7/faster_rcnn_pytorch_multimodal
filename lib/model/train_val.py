@@ -341,8 +341,14 @@ class SolverWrapper(object):
         # flat list of parameters. You can partially specify names, i.e. provide
         # a list here shorter than the number of inputs to the model, and we will
         # only set that subset of names, starting from the beginning.
-        t = utils.timer.timer
-        t_net = utils.timer.timer
+        t = utils.timer.Timer()
+        timers = {}
+        timers['net'] = utils.timer.Timer()
+        #timers['anchor_gen'] = utils.timer.Timer()
+        #timers['proposal']   = utils.timer.Timer()
+        #timers['proposal_t'] = utils.timer.Timer()
+        timers['anchor_t']   = utils.timer.Timer()
+        self.net.timers = timers
         loss_cumsum = 0
         killer = GracefulKiller()
         if(iter < 10):
@@ -416,6 +422,7 @@ class SolverWrapper(object):
                     #print(_sum)
                     self.writer.add_summary(_sum, float(iter))
                 last_summary_time = now
+
             else:
                 # Compute the graph without summary
                 #https://stackoverflow.com/questions/46561390/4-step-alternating-rpn-faster-r-cnn-training-tensorflow-object-detection-mo/46981671#46981671
@@ -437,6 +444,8 @@ class SolverWrapper(object):
                 self.net.print_cumulative_loss(iter-(iter%self.batch_size),iter, max_iters, lr)
                 print('speed: {:.3f}s / iter'.format(
                     t.average_time()))
+                for key, timer in timers.items():
+                    print('{} timer: {:.3f}s / iter'.format(key,timer.average_time()))
             if iter % self.epoch_size == 0:
                 print('----------------------------------------------------')
                 print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(self.epoch_size)))

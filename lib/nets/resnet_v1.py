@@ -124,22 +124,26 @@ class resnetv1(Network):
             self.t_fc1           = nn.Linear(self._roi_pooling_channels,self._fc7_channels*8)
             self.t_fc2           = nn.Linear(self._fc7_channels*8,self._fc7_channels*4)
             self.t_fc3           = nn.Linear(self._fc7_channels*4,self._fc7_channels*2)
-        self.cls_score_net       = nn.Linear(int(self._fc7_channels/4), self._num_classes)
-        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels/2), self._num_classes * 4)
         if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
             self.bbox_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
             self.bbox_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
             self.bbox_fc3        = nn.Linear(int(self._fc7_channels/2), int(self._fc7_channels/4))
+            self.bbox_pred_net       = nn.Linear(int(self._fc7_channels/2), self._num_classes * 4)
             #self.bbox_dropout         = nn.Dropout(0.4)
             #self.bbox_post_dropout_fc = nn.Linear(self._fc7_channels*2, self._fc7_channels)
+        else:
+            self.bbox_pred_net       = nn.Linear(self._fc7_channels, self._num_classes * 4)
         if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
             self.bbox_al_var_net  = nn.Linear(int(self._fc7_channels), self._num_classes * 4)
         if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
             self.cls_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
             self.cls_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
             self.cls_fc3        = nn.Linear(int(self._fc7_channels/2), int(self._fc7_channels/4))
+            self.cls_score_net       = nn.Linear(int(self._fc7_channels/4), self._num_classes)
             #self.cls_dropout         = nn.Dropout(0.4)
             #self.cls_post_dropout_fc = nn.Linear(self._fc7_channels*2, self._fc7_channels)
+        else:
+            self.cls_score_net       = nn.Linear(self._fc7_channels, self._num_classes)
         if(cfg.ENABLE_ALEATORIC_CLS_VAR):
             self.cls_al_var_net   = nn.Linear(int(self._fc7_channels/4),self._num_classes)
         self.init_weights()

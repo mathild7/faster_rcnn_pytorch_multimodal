@@ -136,7 +136,7 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
     #Sample weighting is turned off
     if int(cfg.TRAIN.RPN_POSITIVE_WEIGHT) == -1:
         # uniform weighting of examples (given non-uniform sampling) num_examples is a max of 256 by default
-        num_examples = np.sum(labels != -1)
+        num_examples = np.sum(labels >= 0)
         positive_weights = np.ones((1, 4)) * 1.0 / num_examples
         negative_weights = np.ones((1, 4)) * 1.0 / num_examples
     else:
@@ -144,6 +144,7 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
                 (cfg.TRAIN.RPN_POSITIVE_WEIGHT < 1))
         positive_weights = (cfg.TRAIN.RPN_POSITIVE_WEIGHT / np.sum(labels == 1))
         negative_weights = ((1.0 - cfg.TRAIN.RPN_POSITIVE_WEIGHT) / np.sum(labels == 0))
+    
     bbox_outside_weights[labels == 1, :] = positive_weights
     bbox_outside_weights[labels == 0, :] = negative_weights
     #print('bbox weights')

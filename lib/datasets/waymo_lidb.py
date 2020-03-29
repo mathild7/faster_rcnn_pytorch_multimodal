@@ -200,7 +200,7 @@ class waymo_lidb(lidb):
                     self.draw_bev(source_bin,draw)
                     for roi_box, cat in zip(roi['boxes'],roi['cat']):
                         self.draw_bev_bbox(draw,roi_box,None)
-                    print('Saving entire BEV drawn file at location {}'.format(outfile))
+                    #print('Saving entire BEV drawn file at location {}'.format(outfile))
                     draw_file.save(outfile,self._imtype)
                     #for slice_idx, bev_slice in enumerate(bev_img):
                     #    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_{}.{}'.format(slice_idx,self._imtype.lower()))
@@ -257,9 +257,9 @@ class waymo_lidb(lidb):
             #if(xy2[0] >= self._imwidth or xy2[0] < 0):
             #    print(xy2)
             #print('drawing: {}-{}'.format(xy1,xy2))
-            line = np.concatenate((xy1,xy2))
-            draw.line(line,fill=(c,0,0),width=2)
-            draw.point(xy1,fill=(c,0,0))
+            #line = np.concatenate((xy1,xy2))
+            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(0,255,0),width=2)
+            draw.point(xy1,fill=(0,255,0))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
         y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imheight/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
@@ -424,6 +424,13 @@ class waymo_lidb(lidb):
         limiter = 15
         y_start = self._imheight - 10*(limiter+2)
         #TODO: Swap axes of dets
+        for det,label in zip(roi_dets,roi_det_labels):
+            if(label == 0):
+                color = 0
+            else:
+                color = 127
+            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+
         for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
             #Ignore background
@@ -440,6 +447,7 @@ class waymo_lidb(lidb):
                     for i,idx in enumerate(det_idx):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
+                        print(det)
                         self.draw_bev_bbox(draw,det,None)
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
@@ -459,12 +467,6 @@ class waymo_lidb(lidb):
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
-        for det,label in zip(roi_dets,roi_det_labels):
-            if(label == 0):
-                color = 0
-            else:
-                color = 255
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
             #self.draw_bev_bbox(draw,det,None)
         print('Saving BEV map file at location {}'.format(out_file))
         draw_file.save(out_file,self._imtype)

@@ -67,7 +67,7 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
     #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
     frame_width = info[1] - info[0]
     frame_height = info[3] - info[2]
-    scale = info[4]
+    scale = info[6]
     rois = rois[:, 1:5].detach().cpu().numpy()
     a_cls_entropy     = uncertainties['a_cls_entropy']
     a_cls_var         = uncertainties['a_cls_var']

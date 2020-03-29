@@ -35,7 +35,7 @@ def prepare_roidb(mode,imdb):
     #Loop thru all images
     print('index size {:d}'.format(idx))
     for i in range(idx):
-        #print('Preparing ROI\'s for image {:s} '.format(roidb[i]['imagefile']))
+        #print('Preparing ROI\'s for image {:s} '.format(roidb[i]['filename']))
         #store weidth and height of entire image (why?)
         roidb[i]['width'] = sizes[i][0]
         roidb[i]['height'] = sizes[i][1]

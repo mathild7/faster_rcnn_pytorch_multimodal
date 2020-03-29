@@ -208,6 +208,8 @@ class lidarnet(Network):
             m.bias.data.fill_(bias)
         
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.fpn_block.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.fpn_block.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -462,7 +464,7 @@ class BuildBlock(nn.Module):
   def _upsample_add(self, x, y):
     _,_,H,W = y.size()
     #print('fpn upsample dims H: {} W: {}'.format(H,W))
-    return F.interpolate(x, size=(H,W), mode='bilinear') + y
+    return F.interpolate(x, size=(H,W), mode='bilinear',align_corners=False) + y
 
   def forward(self, c2, c3, c4):
     # Top-down

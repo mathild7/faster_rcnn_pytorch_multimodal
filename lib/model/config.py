@@ -104,7 +104,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 10000
+__C.TRAIN.SNAPSHOT_ITERS = 1000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -174,8 +174,12 @@ __C.TRAIN.IGNORE_DC = False
 
 __C.TRAIN.LIDAR = edict()
 
+__C.TRAIN.IMAGE = edict()
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
+
+__C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
+__C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 #
 # Testing options
 #
@@ -338,6 +342,8 @@ __C.ANCHOR_RATIOS = [0.5,1,2]
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512
 
+__C.FREEZE_DB      = False
+__C.FREEZE_DB_INDS = 1
 
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
@@ -357,7 +363,7 @@ __C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
-__C.NET_TYPE                 = 'lidar'
+__C.NET_TYPE                 = 'image'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -380,7 +386,11 @@ __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 
 #Need to turn this on in order to debug
 #Slows
-__C.DEBUG_EN                 = True
+__C.DEBUG                    = edict()
+__C.DEBUG.DRAW_ANCHORS       = False
+__C.DEBUG.DRAW_ANCHOR_T      = False
+__C.DEBUG.DRAW_PROPOSAL_T    = False
+__C.DEBUG.EN                 = True
 
 
 def get_output_dir(db, weights_filename):
@@ -412,7 +422,7 @@ def get_output_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_11'.format(mode,train_filter)
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -450,7 +460,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_11'.format(mode,train_filter)
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

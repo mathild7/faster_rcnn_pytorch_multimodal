@@ -4,7 +4,7 @@ import os
 from PIL import Image, ImageDraw
 # XC, YC, ZC, L, W, H, Ry
 def bbox_rot_debug():
-    bboxes = [[350,400,2,50,20,3, np.pi/2],[400,300,2,50,20,3, np.pi/4],[100,100,2,50,20,3, np.pi/8]]
+    bboxes = [[350,400,2,50,20,3, np.pi/8],[400,300,2,50,20,3, np.pi/8],[100,100,2,50,20,3, np.pi/8]]
     bboxes = np.asarray(bboxes)
     datapath = '/home/mat/thesis/data/waymo/debug/'
     out_file = os.path.join(datapath,'test_target.png')

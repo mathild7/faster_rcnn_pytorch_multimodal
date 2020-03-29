@@ -165,7 +165,7 @@ def get_image_minibatch(roidb, num_classes, augment_en):
 
     # Get the input image blob, formatted for caffe
     im_blob, im_scales, local_roidb = _get_image_blob(roidb, random_scale_inds, augment_en)
-    #print('got image {}'.format(roidb[0]['imagefile']))
+    #print('got image {}'.format(roidb[0]['filename']))
     #print('token {}'.format(roidb[0]['imgname']))
     #print('is it flipped?: {}'.format(roidb[0]['flipped']))
     #Contains actual image
@@ -179,7 +179,9 @@ def get_image_minibatch(roidb, num_classes, augment_en):
     #print(local_roidb[0]['ignore'])
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
     dc_len  = local_roidb[0]['boxes_dc'].shape[0]
-    blobs['imagefile'] = local_roidb[0]['imagefile']
+    blobs['filename'] = local_roidb[0]['filename']
+    print('from get_image_minibatch')
+    print(blobs['filename'])
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     #print('scaling gt boxes by {}'.format(im_scales[0]))
     gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scales[0]
@@ -193,9 +195,9 @@ def get_image_minibatch(roidb, num_classes, augment_en):
     blobs['gt_boxes_dc'] = gt_boxes_dc
     #x_min, x_max, y_min, y_max, scale
     blobs['info'] = np.array(
-        [0, im_blob.shape[1]-1, 0, im_blob.shape[2]-1, 0, 0, im_scales[0]], dtype=np.float32)
+        [0, im_blob.shape[2]-1, 0, im_blob.shape[1]-1, 0, 0, im_scales[0]], dtype=np.float32)
     #print('gt boxes')
-    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['imagefile'])
+    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['filename'])
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
         return None
@@ -293,10 +295,10 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        im = cv2.imread(roidb[i]['imagefile'])
+        im = cv2.imread(roidb[i]['filename'])
         #im  = cv2.imread('/home/mat/black.png')
-        #print(roidb[i]['imagefile'])
-        #if('000318' in roidb[i]['imagefile']):
+        #print(roidb[i]['filename'])
+        #if('000318' in roidb[i]['filename']):
         #    print('--------------------------')
         #    print('minibatch images')
         #    print('--------------------------')
