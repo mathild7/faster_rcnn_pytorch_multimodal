@@ -182,19 +182,29 @@ def anchor_target_layer(gt_boxes, gt_boxes_dc, info, _feat_stride,
     return rpn_labels, rpn_bbox_targets, rpn_bbox_inside_weights, rpn_bbox_outside_weights
 
 
-def _unmap(data, count, inds, fill=0):
+def _unmap(data, count, inds, fill=0,dev=None,datatype=torch.float32):
     """ Unmap a subset of item (data) back to the original set of items (of
   size count) """
-    #1D array
-    if len(data.shape) == 1:
-        ret = np.empty((count, ), dtype=np.float32)
-        ret.fill(fill)
-        ret[inds] = data
-    #ND array
+    if isinstance(data, np.ndarray):
+        #1D array
+        if len(data.shape) == 1:
+            ret = np.empty((count, ), dtype=np.float32)
+            ret.fill(fill)
+            ret[inds] = data
+        #ND array
+        else:
+            ret = np.empty((count, ) + data.shape[1:], dtype=np.float32)
+            ret.fill(fill)
+            ret[inds, :] = data
     else:
-        ret = np.empty((count, ) + data.shape[1:], dtype=np.float32)
-        ret.fill(fill)
-        ret[inds, :] = data
+        #1D array
+        if len(data.shape) == 1:
+            ret = torch.full((count, ), fill, dtype=torch.float32).to(device=dev)
+            ret[inds] = data
+        #ND array
+        else:
+            ret = torch.full((count, ) + data.shape[1:], fill, dtype=torch.float32).to(device=dev)
+            ret[inds, :] = data
     return ret
 
 
@@ -204,6 +214,8 @@ def _compute_targets(ex_rois, gt_rois):
     assert ex_rois.shape[0] == gt_rois.shape[0]
     assert ex_rois.shape[1] == 4
     assert gt_rois.shape[1] == 5
-
-    return bbox_transform(
-        torch.from_numpy(ex_rois), torch.from_numpy(gt_rois[:, :4])).numpy()
+    if isinstance(ex_rois, np.ndarray):
+        ex_rois = torch.from_numpy(ex_rois)
+    if isinstance(gt_rois, np.ndarray):
+        gt_rois = torch.from_numpy(gt_rois)
+    return bbox_transform(ex_rois, gt_rois[:, :4])

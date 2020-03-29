@@ -417,7 +417,7 @@ class waymo_lidb(lidb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         source_bin = np.load(filename)
-        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
         #TODO: Magic numbers
@@ -426,9 +426,9 @@ class waymo_lidb(lidb):
         #TODO: Swap axes of dets
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
-                color = 0
-            else:
                 color = 127
+            else:
+                color = 255
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
 
         for j,class_dets in enumerate(dets):
@@ -447,7 +447,7 @@ class waymo_lidb(lidb):
                     for i,idx in enumerate(det_idx):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
-                        print(det)
+                        #print(det)
                         self.draw_bev_bbox(draw,det,None)
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
@@ -589,6 +589,9 @@ class waymo_lidb(lidb):
             w_y = float(bbox['wy'])
             h_z = float(bbox['hz'])
             heading = float(bbox['heading'])
+            #Lock headings to be [pi/2, -pi/2)
+            heading = np.where(heading > np.pi/2, heading - np.pi, heading)
+            heading = np.where(heading <= -np.pi/2, heading + np.pi, heading)
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
