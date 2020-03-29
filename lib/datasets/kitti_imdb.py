@@ -209,7 +209,7 @@ class kitti_imdb(imdb):
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'img_index': index,
-            'imagefile': img_filename,
+            'filename': img_filename,
             'det': ignore[0:ix].copy(),
             'ignore':ignore[0:ix],
             'hit': ignore[0:ix].copy(),
@@ -230,7 +230,7 @@ class kitti_imdb(imdb):
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['imagefile'] == imfile):
+            if(roi['filename'] == imfile):
                 return roi
         return None
 
@@ -248,11 +248,11 @@ class kitti_imdb(imdb):
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+                    outfile = roi['filename'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
-                    outfile = roi['imagefile'].replace('/image_2','/drawn')
+                    outfile = roi['filename'].replace('/image_2','/drawn')
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"

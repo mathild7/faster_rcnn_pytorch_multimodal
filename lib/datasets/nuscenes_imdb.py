@@ -194,9 +194,9 @@ class nuscenes_imdb(imdb):
         #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
-                outfile = roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/{}'.format(mode))
+                outfile = roi['filename'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/{}'.format(mode))
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"
@@ -474,7 +474,7 @@ class nuscenes_imdb(imdb):
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'img_index': img['token'],
-            'imagefile': filename,
+            'filename': filename,
             'ignore': ignore[0:ix_new],
             'det': ignore[0:ix_new].copy(),
             'cat': filtered_cat,

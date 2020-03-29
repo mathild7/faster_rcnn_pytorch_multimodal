@@ -99,7 +99,7 @@ class data_layer_generator(object):
                     break
             if(not q.full()):
                 blob = data_layer.forward(augment_en.value)
-                #print('data acquired for image {}'.format(blob['imagefile']))
+                #print('data acquired for image {}'.format(blob['filename']))
                 q.put((blob, data_layer._cur, data_layer._perm))
                 #self._ptr_queue.put(self.data_layer._cur)
                 #self._perm_queue.put(self.data_layer._perm)

@@ -159,7 +159,7 @@ class waymo_imdb(imdb):
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['imagefile'] == imfile):
+            if(roi['filename'] == imfile):
                 return roi
         return None
 
@@ -188,11 +188,11 @@ class waymo_imdb(imdb):
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+                    outfile = roi['filename'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
-                    outfile = roi['imagefile'].replace('/images','/drawn')
+                    outfile = roi['filename'].replace('/images','/drawn')
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"
@@ -309,7 +309,7 @@ class waymo_imdb(imdb):
         elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
             sortable = uncertainties['e_cls_mutual_info']
         else:
-            sortable = range(0,len(dets))
+            sortable = np.arange(len(dets))
         if(descending is True):
             return np.argsort(-sortable)
         else:
@@ -429,7 +429,7 @@ class waymo_imdb(imdb):
             'img_idx':     img_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
-            'imagefile':   filename,
+            'filename':   filename,
             'ignore':      ignore[0:ix],
             'det':         ignore[0:ix].copy(),
             'cat':         cat,
@@ -508,7 +508,7 @@ class waymo_imdb(imdb):
         #    'img_idx':     img_idx,
         #    'scene_idx':   scene_idx,
         #    'scene_desc':  scene_desc,
-        #    'imagefile': filename,
+        #    'filename': filename,
         #    'ignore': ignore[0:ix_filter],
         #    'det': ignore[0:ix_filter].copy(),
         #    'cat': filtered_cat,

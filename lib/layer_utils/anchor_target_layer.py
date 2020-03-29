@@ -141,7 +141,7 @@ def anchor_target_layer(rpn_cls_score, gt_boxes, gt_boxes_dc, im_info, _feat_str
 
     # labels
     labels = labels.reshape((1, height, width, A)).transpose(0, 3, 1, 2)
-    labels = labels.reshape((1, 1, A * height, width))
+    #labels = labels.reshape((1, 1, A * height, width))
     rpn_labels = labels
 
     # bbox_targets

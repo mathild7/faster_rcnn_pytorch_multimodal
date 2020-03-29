@@ -395,7 +395,7 @@ class SolverWrapper(object):
                     bbox_pred_val = np.array(bbox_pred_val)
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
+                    self.imdb.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
 
                     #for obj in gc.get_objects():
                     #    try:

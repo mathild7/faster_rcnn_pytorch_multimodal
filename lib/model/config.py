@@ -330,14 +330,16 @@ __C.ANCHOR_RATIOS = [0.5,1,2]
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512
 
+__C.FREEZE_DB      = False
+__C.FREEZE_DB_INDS = 1
 
 #Bayesian Config
 __C.ENABLE_RPN_BBOX_VAR      = False
 __C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_ALEATORIC_BBOX_VAR          = True
-__C.ENABLE_ALEATORIC_CLS_VAR           = True
-__C.ENABLE_EPISTEMIC_BBOX_VAR          = True
-__C.ENABLE_EPISTEMIC_CLS_VAR           = True
+__C.ENABLE_ALEATORIC_BBOX_VAR          = False
+__C.ENABLE_ALEATORIC_CLS_VAR           = False
+__C.ENABLE_EPISTEMIC_BBOX_VAR          = False
+__C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 100
 __C.MAX_IMG_PER_SCENE        = 1000
@@ -383,7 +385,7 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_11'.format(mode,train_filter)
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -420,7 +422,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_11'.format(mode,train_filter)
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
