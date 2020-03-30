@@ -20,7 +20,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.01
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -363,25 +363,26 @@ __C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
-__C.NET_TYPE                 = 'lidar'
+__C.NET_TYPE                 = 'image'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
-__C.LIDAR.Z_RANGE            = [-1,3]
+__C.LIDAR.Z_RANGE            = [-3,3]
 __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 8
+__C.LIDAR.NUM_SLICES         = 12
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 40000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
+#TODO: Broken, dont use..
 __C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
 __C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
-__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/4,np.pi/2])
+__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2,np.pi/8,3*np.pi/8])
 __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 
 #Need to turn this on in order to debug
@@ -390,7 +391,7 @@ __C.DEBUG                    = edict()
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
-__C.DEBUG.EN                 = True
+__C.DEBUG.EN                 = False
 
 
 def get_output_dir(db, weights_filename):
@@ -422,7 +423,7 @@ def get_output_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_1'.format(mode,train_filter)
+    weights_filename = '{}train_{}_8'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -460,7 +461,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_1'.format(mode,train_filter)
+    weights_filename = '{}train_{}_8'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

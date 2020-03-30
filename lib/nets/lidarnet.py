@@ -129,7 +129,9 @@ class lidarnet(Network):
             self.t_fc2           = nn.Linear(self._fc7_channels*8,self._fc7_channels*4)
             self.t_fc3           = nn.Linear(self._fc7_channels*4,self._fc7_channels*2)
         self.cls_score_net       = nn.Linear(int(self._fc7_channels), self._num_classes)
-        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels), self._num_classes * 7)
+        self.bbox_pred_net       = nn.Linear(int(self._fc7_channels), self._num_classes * 4)
+        self.bbox_z_pred_net     = nn.Linear(int(self._fc7_channels), self._num_classes * 2)
+        self.heading_pred_net    = nn.Linear(int(self._fc7_channels), self._num_classes)
         if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
             self.bbox_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
             self.bbox_fc2        = nn.Linear(self._fc7_channels, int(self._fc7_channels/2))
@@ -206,6 +208,21 @@ class lidarnet(Network):
                 m.weight.data.normal_(mean, stddev)
             #m.bias.data.zero_()
             m.bias.data.fill_(bias)
+
+        def xaiver_init(m, mean, stddev, truncated=False,bias=0.0):
+            """
+      weight initalizer: truncated normal and random normal.
+      """
+            # x is a parameter
+            if truncated:
+                #In-place functions to save GPU mem
+                m.weight.data.xavier_normal_().fmod_(2).mul_(stddev).add_(
+                    mean)  # not a perfect approximation
+            else:
+                nn.init.xavier_normal_(m.weight)
+            #m.bias.data.zero_()
+            m.bias.data.fill_(bias)
+            
         
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.fpn_block.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -217,8 +234,10 @@ class lidarnet(Network):
 
         normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        xaiver_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        xaiver_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        xaiver_init(self.bbox_z_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        xaiver_init(self.heading_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
             normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -295,8 +314,13 @@ class lidarnet(Network):
             bbox_pred_in = self._bbox_tail(fc7,True)
         else:
             bbox_pred_in = fc7
-        bbox_pred = self.bbox_pred_net(bbox_pred_in)
-
+        bbox_s_pred  = self.bbox_pred_net(bbox_pred_in)
+        num_samp = bbox_s_pred.shape[0]
+        heading_pred = self.heading_pred_net(bbox_pred_in)
+        bbox_z_pred  = self.bbox_z_pred_net(bbox_pred_in)
+        #Mix heading back into bbox pred
+        bbox_pred    = torch.cat((bbox_s_pred.view(num_samp,-1,4),bbox_z_pred.view(num_samp,-1,2),heading_pred.view(num_samp,-1,1)),dim=2)
+        bbox_pred    = bbox_pred.view(num_samp,-1,7*self._num_classes)
         cls_score_mean = torch.mean(cls_score,dim=0)
         cls_pred = torch.max(cls_score_mean, 1)[1]
         cls_prob = torch.mean(F.softmax(cls_score, dim=2),dim=0)

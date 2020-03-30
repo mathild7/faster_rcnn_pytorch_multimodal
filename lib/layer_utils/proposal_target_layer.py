@@ -13,6 +13,7 @@ import numpy.random as npr
 from model.config import cfg
 from model.bbox_transform import bbox_transform, lidar_bbox_transform
 from utils.bbox import bbox_overlaps
+import utils.bbox as bbox_utils
 
 import torch
 
@@ -128,13 +129,14 @@ def _get_image_bbox_regression_labels(bbox_target_data, num_classes):
     return bbox_targets, bbox_inside_weights
 
 def _compute_lidar_targets(ex_rois, roi_height, roi_zc, gt_rois, labels):
-    """Compute bounding-box regression targets for a 3d bbox."""
+    """ function: _compute_lidar_targets
+        Compute bounding-box regression targets for a 3d bbox.
+        Also normalize targets"""
     # Inputs are tensor
 
     assert ex_rois.shape[0] == gt_rois.shape[0]
     assert ex_rois.shape[1] == 4
     assert gt_rois.shape[1] == 7
-
     targets = lidar_bbox_transform(ex_rois, roi_height, roi_zc, gt_rois)
     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
         # Optionally normalize targets by a precomputed mean and stdev

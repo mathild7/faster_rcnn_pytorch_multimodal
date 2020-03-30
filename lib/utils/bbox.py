@@ -66,7 +66,7 @@ def _bbox_clip(width,height,bboxes):
 
 
 """
-Function: bbox_to_voxel_grid
+Function: bbox_pc_to_voxel_grid
 shifts and scales bounding boxes to fit on the voxel grid image interpretation of the LiDAR scan
 Arguments:
 ----------
@@ -77,12 +77,44 @@ Returns:
 ---------
 vg_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted to fit the image)
 """
-def bbox_to_voxel_grid(bboxes,bev_extants,info):
+def bbox_pc_to_voxel_grid(bboxes,bev_extants,info):
     #vg_bboxes = np.zeros((bboxes.shape[0],4))
     bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
     bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
     bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
     bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    return bboxes
+
+
+"""
+Function: bbox_voxel_grid_to_pc
+shifts and scales bounding boxes to fit on the LiDAR scan boundaries
+Arguments:
+----------
+vg_bboxes   -> (Nx7) [XC,YC,ZC,L,W,H,RY]
+bev_extants -> LiDAR scan range [x1,y1,z1,x2,y2,z2]
+info        -> BEV voxel grid image size (x_min,x_max,y_min,y_max,z_min,z_max)
+Returns:
+---------
+pc_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted to fit lidar extants)
+"""
+def bbox_voxel_grid_to_pc(bboxes,bev_extants,info,aabb=False):
+    #vg_bboxes = np.zeros((bboxes.shape[0],4))
+    if(aabb):
+        #X1
+        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
+        #Y1
+        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
+        #X2
+        bboxes[:,2] = (bboxes[:,2])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
+        #Y2
+        bboxes[:,3] = (bboxes[:,3])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
+    #X,Y,Z,L,W,H
+    else:
+        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
+        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
+        bboxes[:,3] = (bboxes[:,3])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1))
+        bboxes[:,4] = (bboxes[:,4])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1))
     return bboxes
 
 """

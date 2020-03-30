@@ -24,7 +24,7 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data/waymo/train'
+    mypath = '/home/mat/thesis/data/waymo/val'
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
     #top_crop = 550
@@ -33,7 +33,7 @@ def main():
     #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
     #pool = Pool(processes=16)
     #m = 
-    with open(os.path.join(mypath,'labels','lidar_labels.json'), 'w') as json_file:
+    with open(os.path.join(mypath,'labels','lidar_labels_new.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
             #if(i > 1):
@@ -152,7 +152,7 @@ def frame_loop(proc_data):
         points_top_filtered = filter_points(points_top)
         #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
         bin_filename = '{0:05d}.npy'.format(i*1000+j)
-        out_file = os.path.join(mypath, 'point_clouds',bin_filename)
+        out_file = os.path.join(mypath, 'point_clouds_new',bin_filename)
         if(len(points_top_filtered) > 0):
             np.save(out_file,points_top_filtered)
             #fp = open(out_file, 'wb')

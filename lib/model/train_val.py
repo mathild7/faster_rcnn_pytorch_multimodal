@@ -102,14 +102,14 @@ class SolverWrapper(object):
             os.makedirs(self.output_dir)
 
         # Store the model snapshot
-        filename = cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
+        filename = cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
             iter) + '.pth'
         filename = os.path.join(self.output_dir, filename)
         torch.save(self.net.state_dict(), filename)
         print('Wrote snapshot to: {:s}'.format(filename))
 
         # Also store some meta information, random state, etc.
-        nfilename = cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
+        nfilename = cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
             iter) + '.pkl'
         nfilename = os.path.join(self.output_dir, nfilename)
         # current state of numpy random
@@ -220,7 +220,7 @@ class SolverWrapper(object):
         for stepsize in cfg.TRAIN.STEPSIZE:
             redfiles.append(
                 os.path.join(
-                    self.output_dir, cfg.TRAIN.SNAPSHOT_PREFIX +
+                    self.output_dir, cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX +
                     '_iter_{:d}.pth'.format(stepsize + 1)))
         sfiles = [ss for ss in sfiles if ss not in redfiles]
 
@@ -343,11 +343,14 @@ class SolverWrapper(object):
         # only set that subset of names, starting from the beginning.
         t = utils.timer.Timer()
         timers = {}
-        timers['net'] = utils.timer.Timer()
+        #timers['net'] = utils.timer.Timer()
         #timers['anchor_gen'] = utils.timer.Timer()
         #timers['proposal']   = utils.timer.Timer()
         #timers['proposal_t'] = utils.timer.Timer()
-        timers['anchor_t']   = utils.timer.Timer()
+        #timers['anchor_t']   = utils.timer.Timer()
+        #timers['data_gen']   = utils.timer.Timer()
+        #timers['losses']     = utils.timer.Timer()
+        #timers['backprop']   = utils.timer.Timer()
         self.net.timers = timers
         loss_cumsum = 0
         killer = GracefulKiller()
@@ -382,7 +385,9 @@ class SolverWrapper(object):
             t.tic()
             # Get training data, one batch at a time
             #blobs = self.data_layer.forward(augment_en)
+            #timers['data_gen'].tic()
             blobs  = self.data_gen.next()
+            #timers['data_gen'].toc()
             now = time.time()
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
             if iter % self.val_sum_size == 0:
@@ -392,11 +397,12 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-
-                    self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
+                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+                        self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
                         cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
-                    self.net.set_num_mc_run(1)
+                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+                        self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
                     rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
                                                                                              bbox_pred_val,

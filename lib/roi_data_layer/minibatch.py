@@ -128,7 +128,9 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
     #print(blobs['filename'])
     #TODO: Ground plane estimation and subtraction
     #Transform into voxel_grid form (flip y-axis, scale to image size (e.g. 800,700))
-    vg_boxes = bbox_utils.bbox_to_voxel_grid(local_roidb[0]['boxes'][gt_inds, :],area_extents,info)
+    vg_boxes = bbox_utils.bbox_pc_to_voxel_grid(local_roidb[0]['boxes'][gt_inds, :],area_extents,info)
+    #Subtract minimum height from GT boxes
+    vg_boxes[:,2] = vg_boxes[:,2] - cfg.LIDAR.Z_RANGE[0]
     gt_boxes[:, 0:-1] = vg_boxes
     #shift gt_boxes to voxel domain
     bbox_labels = local_roidb[0]['gt_classes'][gt_inds]
@@ -140,7 +142,7 @@ def get_lidar_minibatch(roidb, num_classes, augment_en):
         gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
         gt_boxes_dc[:, -1] = np.zeros(dc_len)
     #TODO: FIX
-    #vg_boxes_dc = bbox_utils.bbox_to_voxel_grid(gt_boxes_dc,area_extents,info)
+    #vg_boxes_dc = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes_dc,area_extents,info)
     vg_boxes_dc = np.empty(0)
     blobs['gt_boxes_dc'] = vg_boxes_dc
     blobs['info'] = np.array(np.hstack((info,dummy_scale_value)), dtype=np.float32)
@@ -180,8 +182,8 @@ def get_image_minibatch(roidb, num_classes, augment_en):
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
     dc_len  = local_roidb[0]['boxes_dc'].shape[0]
     blobs['filename'] = local_roidb[0]['filename']
-    print('from get_image_minibatch')
-    print(blobs['filename'])
+    #print('from get_image_minibatch')
+    #print(blobs['filename'])
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     #print('scaling gt boxes by {}'.format(im_scales[0]))
     gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scales[0]
@@ -232,7 +234,8 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
                 local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
             else:
                 local_roidb[i]['flipped'] = False
-
+        #print(roidb[i]['filename'])
+        #print('min z value: {}'.format(np.amin(source_bin[:,2])))
         num_x_voxel = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         num_y_voxel = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         num_z_voxel = int(cfg.LIDAR.NUM_SLICES)
@@ -264,8 +267,8 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
         voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
         #Scatter height slices into bev_map
         maxheight_tuple = tuple(zip(*coords))
+        #Subtract min height, so (0m,6m) instead of (-3m,3m)
         bev_map[maxheight_tuple] = voxel_max_height - cfg.LIDAR.Z_RANGE[0]
-        #print(np.count_nonzero(np.sum(bev_map,axis=2)))
 
         #Scatter intensity into bev_map
         intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
@@ -274,10 +277,16 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False):
         bev_map[intensity_tuple] = voxel_intensity
 
         #Scatter elongation into bev_map
-        elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
-        elongation_coords = np.hstack((xy_coords,elongation_loc))
-        elongation_tuple = tuple(zip(*elongation_coords))
-        bev_map[elongation_tuple] = voxel_elongation
+        #elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+        #elongation_coords = np.hstack((xy_coords,elongation_loc))
+        #elongation_tuple = tuple(zip(*elongation_coords))
+        #bev_map[elongation_tuple] = voxel_elongation
+
+        #Scatter density into bev_map
+        density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+        density_coords    = np.hstack((xy_coords,density_loc))
+        density_tuple     = tuple(zip(*density_coords))
+        bev_map[density_tuple] = voxel_density
         #Transpose so Y(left-right)/X(front-back) is X(left-right)/Y(front-back)
         bev_map        = np.transpose(bev_map,axes=[1,0,2])
         #proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)

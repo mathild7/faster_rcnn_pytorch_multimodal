@@ -509,7 +509,6 @@ class waymo_lidb(lidb):
         elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
             sortable = uncertainties['e_cls_mutual_info']
         else:
-            print('default sort')
             sortable = np.arange(0,dets.shape[0])
         if(descending is True):
             return np.argsort(-sortable)
