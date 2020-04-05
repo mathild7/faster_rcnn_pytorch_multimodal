@@ -276,13 +276,13 @@ class lidarnet(Network):
         for p in self.resnet.conv1.parameters():
             p.requires_grad = False
         assert (0 <= cfg.RESNET.FIXED_BLOCKS < 4)
-        if cfg.RESNET.FIXED_BLOCKS >= 3:
+        if cfg.RESNET.FIXED_BLOCKS >= 3 and cfg.PRELOAD:
             for p in self.resnet.layer3.parameters():
                 p.requires_grad = False
-        if cfg.RESNET.FIXED_BLOCKS >= 2:
+        if cfg.RESNET.FIXED_BLOCKS >= 2 and cfg.PRELOAD:
             for p in self.resnet.layer2.parameters():
                 p.requires_grad = False
-        if cfg.RESNET.FIXED_BLOCKS >= 1:
+        if cfg.RESNET.FIXED_BLOCKS >= 1 and cfg.PRELOAD:
             for p in self.resnet.layer1.parameters():
                 p.requires_grad = False
 

@@ -59,7 +59,7 @@ Vector3  T;  	/* Translation matrix.           */
 Box3     A;  	/* The original bounding box.    */
 Box3    *B;  	/* The transformed bounding box. */
 """
-def bbaa_graphics_gems(bboxes,width,height):
+def bbaa_graphics_gems(bboxes,width,height,clip=True):
 
     rot = bboxes[:,6:7]
     M = np.asarray([[np.cos(rot), np.sin(rot)],[-np.sin(rot), np.cos(rot)]]).squeeze(-1).transpose((2,0,1))
@@ -90,7 +90,10 @@ def bbaa_graphics_gems(bboxes,width,height):
     y1 = Bmin[:,1:2]
     y2 = Bmax[:,1:2]
     bev_bboxes = np.concatenate((x1,y1,x2,y2),axis=1)
-    B = bbox_clip(width-1,height-1,bev_bboxes)
+    if(clip):
+        B = bbox_clip(width-1,height-1,bev_bboxes)
+    else:
+        B = bev_bboxes
     return B
 
 

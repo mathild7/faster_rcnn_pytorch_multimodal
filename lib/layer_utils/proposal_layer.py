@@ -16,7 +16,7 @@ import torch
 
 
 def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key, feat_stride,
-                   anchors, num_anchors):
+                   anchors, anchors_3d, num_anchors):
     """A simplified version compared to fast/er RCNN
      For details please see the technical report
   """
@@ -41,7 +41,7 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key, feat_stride,
         order  = order[:pre_nms_topN]
         scores = scores[:pre_nms_topN].view(-1, 1)
     proposals  = proposals[order.data, :]
-
+    anchors_3d = anchors_3d[order.data, :]
     # Non-maximal suppression
     keep = nms(proposals, scores.squeeze(1), nms_thresh)
     # Pick th top region proposals after NMS
@@ -49,9 +49,10 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key, feat_stride,
         keep = keep[:post_nms_topN]
     proposals = proposals[keep, :]
     scores    = scores[keep, ]
-
+    anchors   = anchors[keep, :]
+    anchors_3d = anchors_3d[keep, :]
     # Only support single image as input
     batch_inds = proposals.new_zeros(proposals.size(0), 1)
     blob       = torch.cat((batch_inds, proposals), 1)
 
-    return blob, scores
+    return blob, scores, anchors_3d

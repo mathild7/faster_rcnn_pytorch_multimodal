@@ -28,6 +28,7 @@ class RoIDataLayer(object):
         self._num_classes = num_classes
         # Also set a random flag
         self._random = random
+        self._cnt = 0
         self._shuffle_roidb_inds()
 
     def _shuffle_roidb_inds(self):
@@ -72,9 +73,10 @@ class RoIDataLayer(object):
             minibatch_db = [self._roidb[i] for i in db_inds]
             #print('minibatch')
             #print(minibatch_db)
-            minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en)
+            minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en, self._cnt)
             #if(minibatch is None):
                 #print('skipping image, augmentation resulted in 0 GT boxes')
+            self._cnt += 1
         return minibatch
 
     def forward(self,augment_en):

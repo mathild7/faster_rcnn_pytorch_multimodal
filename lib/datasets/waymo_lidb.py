@@ -448,7 +448,12 @@ class waymo_lidb(lidb):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
                         #print(det)
-                        self.draw_bev_bbox(draw,det,None)
+                        if(det.shape[0] > 5):
+                            self.draw_bev_bbox(draw,det,None)
+                        else:
+                            color_g = int(det[4]*255)
+                            color_b = int(1-det[4])*255
+                            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,color_g,color_b))
                         det_string = '{:02} '.format(i)
                         if(i < limiter):
                             draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))

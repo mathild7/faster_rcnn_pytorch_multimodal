@@ -51,6 +51,8 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem):
         return np.empty(0),[],[]
     cls_scores   = scores[inds, c]
     cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]
+    if(cls_boxes.shape[1] >= 7):
+        cls_boxes[:,6] = torch.asin(cls_boxes[:,6])
     #[cls_var,cls_boxes,cls_scores]
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)
@@ -69,11 +71,6 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
     frame_height = info[3] - info[2]
     scale = info[6]
     rois = rois[:, 1:5].detach().cpu().numpy()
-    a_cls_entropy     = uncertainties['a_cls_entropy']
-    a_cls_var         = uncertainties['a_cls_var']
-    e_cls_mutual_info = uncertainties['e_cls_mutual_info']
-    a_bbox_var        = uncertainties['a_bbox_var']
-    e_bbox_var        = uncertainties['e_bbox_var']
     #pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
     if(db_type == 'image'):
         bbox_elem         = 4
@@ -108,21 +105,21 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
         uncertainties = {}
         if(len(keep) != 0):
             if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
-                uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',a_bbox_var,inds,keep,j,bbox_elem)
+                uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',uncertainties['a_bbox_var'],inds,keep,j,bbox_elem)
             else:
                 a_bbox_var = np.zeros(bbox_elem)
             if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
-                uncertainties['e_bbox_var'] = nms_hstack_var_torch('bbox',e_bbox_var,inds,keep,j,bbox_elem)
+                uncertainties['e_bbox_var'] = nms_hstack_var_torch('bbox',uncertainties['e_bbox_var'],inds,keep,j,bbox_elem)
             else:
                 e_bbox_var = np.zeros(bbox_elem)
             if(cfg.ENABLE_ALEATORIC_CLS_VAR):
                 #uncertainties['a_cls_entropy'] = a_cls_entropy
-                uncertainties['a_cls_entropy'] = nms_hstack_var_torch('cls',a_cls_entropy,inds,keep,j,bbox_elem)
-                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',a_cls_var,inds,keep,j,bbox_elem)
+                uncertainties['a_cls_entropy'] = nms_hstack_var_torch('cls',uncertainties['a_cls_entropy'],inds,keep,j,bbox_elem)
+                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',uncertainties['a_cls_var'],inds,keep,j,bbox_elem)
             else:
                 a_cls_var = [0]
             if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
-                uncertainties['e_cls_mutual_info'] = nms_hstack_var_torch('cls',e_cls_mutual_info,inds,keep,j,bbox_elem)
+                uncertainties['e_cls_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['e_cls_mutual_info'],inds,keep,j,bbox_elem)
             else:
                 e_cls_var = [0]
         all_uncertainty[j] = uncertainties

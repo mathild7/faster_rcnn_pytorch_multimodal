@@ -56,4 +56,4 @@ def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, info, _feat_stride,
     # batch inds are 0
     batch_inds = proposals.new_zeros(proposals.size(0), 1)
     blob = torch.cat([batch_inds, proposals], 1)
-    return blob, scores
+    return blob, scores, anchors

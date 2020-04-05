@@ -11,14 +11,14 @@ from __future__ import print_function
 import numpy as np
 import numpy.random as npr
 from model.config import cfg
-from model.bbox_transform import bbox_transform, lidar_bbox_transform
+from model.bbox_transform import bbox_transform, lidar_bbox_transform, lidar_3d_bbox_transform
 from utils.bbox import bbox_overlaps
 import utils.bbox as bbox_utils
 
 import torch
 
 
-def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, _num_classes):
+def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, _num_classes):
     """
   Assign object detection proposals to ground-truth targets. Produces proposal
   classification labels and bounding-box regression targets.
@@ -28,7 +28,8 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxe
     # (i.e., rpn.proposal_layer.ProposalLayer), or any other source
     all_rois = rpn_rois
     all_scores = rpn_scores
-
+    all_anchors_3d = anchors_3d
+    #TODO: Does NOT work with LIDAR as anchors are used for regression
     # Include ground-truth boxes in the set of candidate rois
     if cfg.TRAIN.USE_GT:
         zeros = rpn_rois.new_zeros(gt_boxes.shape[0], 1)
@@ -43,8 +44,8 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxe
     num_bbox_target_elem = true_gt_boxes.shape[1] - 1
     # Sample rois with classification labels and bounding box regression
     # targets
-    labels, rois, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
-        all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
+    labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
+        all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
         _num_classes, num_bbox_target_elem)
 
 
@@ -55,7 +56,7 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, true_gt_boxes, gt_boxe
     bbox_inside_weights = bbox_inside_weights
     bbox_outside_weights = (bbox_inside_weights > 0).float()
 
-    return labels, rois, roi_scores, bbox_targets, bbox_inside_weights, bbox_outside_weights
+    return labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 
 def _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_elem):
@@ -128,16 +129,16 @@ def _get_image_bbox_regression_labels(bbox_target_data, num_classes):
 
     return bbox_targets, bbox_inside_weights
 
-def _compute_lidar_targets(ex_rois, roi_height, roi_zc, gt_rois, labels):
+def _compute_lidar_targets(ex_rois, ex_anchors, gt_rois, labels):
     """ function: _compute_lidar_targets
         Compute bounding-box regression targets for a 3d bbox.
         Also normalize targets"""
     # Inputs are tensor
 
-    assert ex_rois.shape[0] == gt_rois.shape[0]
-    assert ex_rois.shape[1] == 4
+    assert ex_anchors.shape[0] == gt_rois.shape[0] == ex_rois.shape[0]
+    assert ex_anchors.shape[1] == 7
     assert gt_rois.shape[1] == 7
-    targets = lidar_bbox_transform(ex_rois, roi_height, roi_zc, gt_rois)
+    targets = lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois)
     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
         # Optionally normalize targets by a precomputed mean and stdev
         targets = ((targets - targets.new(cfg.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS)) /
@@ -161,7 +162,7 @@ def _compute_targets(ex_rois, gt_rois, labels):
     return torch.cat([labels.unsqueeze(1), targets], 1)
 
 
-def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image,
+def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image,
                  rois_per_image, num_classes, num_bbox_target_elem):
     """Generate a random sample of RoIs comprising foreground and background
   examples. This will provide the 'best-case scenario' for the proposal layer to act as a target 
@@ -184,9 +185,11 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
         dc_inds = (max_overlaps_dc < cfg.TRAIN.DC_THRESH).nonzero().view(-1)
         dc_filtered_rois = all_rois[dc_inds, :]
         dc_filtered_scores = all_scores[dc_inds, :]
+        dc_filtered_anchors_3d = all_anchors_3d[dc_inds, :]
     else:
         dc_filtered_rois = all_rois
         dc_filtered_scores = all_scores
+        dc_filtered_anchors_3d = all_anchors_3d
     overlaps = bbox_overlaps(dc_filtered_rois[:, 1:5].data, gt_boxes[:, :4].data) #NxK Output N= num roi's k = num gt entries on image
     max_overlaps, gt_assignment = overlaps.max(1) #Returns max value of all input elements along dimension and their index
     #Very strange syntax, but maps a new array (size gt_assignment) and populates every element with the selected index from gt_assignment,4
@@ -240,16 +243,15 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
     labels = labels[keep_inds].contiguous()
     # Clamp labels for the background RoIs to 0
     labels[int(fg_rois_per_image):] = 0
-    rois = dc_filtered_rois[keep_inds].contiguous()
+    rois       = dc_filtered_rois[keep_inds].contiguous()
     roi_scores = dc_filtered_scores[keep_inds].contiguous()
+    anchors_3d = dc_filtered_anchors_3d[keep_inds].contiguous()
 
     #Right here, bbox_target_data is actually the delta.
     if(cfg.NET_TYPE == 'lidar'):
         #TODO: Multiple anchors??
-        roi_height = cfg.LIDAR.ANCHORS[0][2]
-        roi_zc     = cfg.LIDAR.ANCHORS[0][2]/2
         bbox_target_data = _compute_lidar_targets(
-            rois[:, 1:5].data, roi_height, roi_zc, true_gt_boxes[gt_assignment[keep_inds]][:, :-1].data,
+            rois[:, 1:5].data, anchors_3d.data, true_gt_boxes[gt_assignment[keep_inds]][:, :-1].data,
             labels.data)
 
     elif(cfg.NET_TYPE == 'image'):
@@ -260,4 +262,4 @@ def _sample_rois(all_rois, all_scores, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_
     bbox_targets, bbox_inside_weights = \
         _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_target_elem)
 
-    return labels, rois, roi_scores, bbox_targets, bbox_inside_weights
+    return labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights

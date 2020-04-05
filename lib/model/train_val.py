@@ -31,6 +31,7 @@ import time
 import signal
 import gc
 from torch.multiprocessing import Pool, Process, Queue
+from torchvision.ops import nms
 
 
 class GracefulKiller:
@@ -241,9 +242,12 @@ class SolverWrapper(object):
         np_paths = []
         ss_paths = []
         # Fresh train directly from ImageNet weights
-        print('Loading initial model weights from {:s}'.format(
-            self.pretrained_model))
-        self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
+        if(cfg.PRELOAD):
+            print('Loading initial model weights from {:s}'.format(
+                self.pretrained_model))
+            self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
+        else:
+            print('initializing model from scratch')
         #self.net.load_trimmed_pretrained_cnn(torch.load(self.pretrained_model))
         #sys.exit('test ended')
         print('Loaded.')
@@ -404,16 +408,36 @@ class SolverWrapper(object):
                     if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
                         self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
-                    rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
-                                                                                             bbox_pred_val,
-                                                                                             uncertainties_val,
-                                                                                             blobs_val['info'],
-                                                                                             self.db.num_classes,self.val_thresh,self.db.type)
+                    if(cfg.ENABLE_FULL_NET):
+                        rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
+                                                                                                    bbox_pred_val,
+                                                                                                    uncertainties_val,
+                                                                                                    blobs_val['info'],
+                                                                                                    self.db.num_classes,self.val_thresh,self.db.type)
+                        bbox_pred_val = np.array(bbox_pred_val)
+                    else:
+                        rois_val = rois_val.data.cpu().numpy()
+                        roi_labels_val = roi_labels_val.data.cpu().numpy()
+                        bbox_pred_val = bbox_pred_val
+                        cls_prob_val  = cls_prob_val
+                        keep = nms(bbox_pred_val, cls_prob_val.squeeze(1), self.val_thresh).cpu().numpy() if cls_prob_val.shape[0] > 0 else []
+                        bbox_pred_val = bbox_pred_val[keep,:].cpu().numpy()
+                        cls_prob_val  = cls_prob_val[keep, :].cpu().numpy()
+                        bbox_pred_val = np.concatenate((bbox_pred_val,cls_prob_val),axis=1)[np.newaxis,:,:]
+                        bbox_pred_val = np.repeat(bbox_pred_val,2,axis=0)
+                        sorted_uncertainties_val = [{},{}]
+                        #bbox_pred_val = bbox_
+                    #else:
+                    #    rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
+                    #                                                                             bbox_pred_val,
+                    #                                                                             uncertainties_val,
+                    #                                                                             blobs_val['info'],
+                    #                                                                             self.db.num_classes,self.val_thresh,'image')
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
-                    bbox_pred_val = np.array(bbox_pred_val)
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
                     self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'trainval')
+
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
@@ -447,7 +471,7 @@ class SolverWrapper(object):
 
             # Display training information
             if (iter % cfg.TRAIN.DISPLAY) == 0:
-                self.net.print_cumulative_loss(iter-(iter%self.batch_size),iter, max_iters, lr)
+                #self.net.print_cumulative_loss(iter-(iter%self.batch_size),iter, max_iters, lr)
                 print('speed: {:.3f}s / iter'.format(
                     t.average_time()))
                 for key, timer in timers.items():

@@ -35,11 +35,11 @@ __C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-#__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
+__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
+#__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -316,7 +316,7 @@ __C.RNG_SEED = 3
 __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 
 # Data directory
-__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
+__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data2'))
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'
@@ -363,7 +363,8 @@ __C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
-__C.NET_TYPE                 = 'image'
+#Lidar Config
+__C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -373,7 +374,7 @@ __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
-__C.LIDAR.MAX_NUM_VOXEL      = 40000
+__C.LIDAR.MAX_NUM_VOXEL      = 20000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
@@ -382,7 +383,7 @@ __C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
-__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2,np.pi/8,3*np.pi/8])
+__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 
 #Need to turn this on in order to debug
@@ -391,7 +392,10 @@ __C.DEBUG                    = edict()
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
+__C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
+__C.PRELOAD                  = False
+__C.ENABLE_FULL_NET          = False
 
 
 def get_output_dir(db, weights_filename):
@@ -423,7 +427,7 @@ def get_output_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_8'.format(mode,train_filter)
+    weights_filename = '{}train_{}_5'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -461,7 +465,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_8'.format(mode,train_filter)
+    weights_filename = '{}train_{}_5'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

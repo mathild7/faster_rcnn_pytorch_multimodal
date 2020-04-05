@@ -21,7 +21,7 @@ class cam_enum(Enum):
     SIDE_LEFT   = 4
     SIDE_RIGHT  = 5
 
-mypath = '/home/mat/thesis/data/waymo/train'
+mypath = '/home/mat/thesis/data2/waymo/train'
 top_crop = 550
 bbox_top_min = 30
 file_list = [os.path.join(mypath,f) for f in os.listdir(mypath) if os.path.isfile(os.path.join(mypath,f))]

@@ -14,6 +14,7 @@ from multiprocessing import Process, Pool
 import multiprocessing.managers
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from model.config import cfg
+import utils.bbox as bbox_utils
 
 skip_binaries = False
 class laser_enum(Enum):
@@ -24,20 +25,21 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data/waymo/val'
+    mypath = '/home/mat/thesis/data2/waymo/val'
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
     #top_crop = 550
     bbox_top_min = 30
     file_list = [os.path.join(tfrecord_path,f) for f in os.listdir(tfrecord_path) if os.path.isfile(os.path.join(tfrecord_path,f))]
+    file_list = sorted(file_list)
     #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
     #pool = Pool(processes=16)
     #m = 
-    with open(os.path.join(mypath,'labels','lidar_labels_new.json'), 'w') as json_file:
+    with open(os.path.join(mypath,'labels','lidar_labels.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
-            #if(i > 1):
-            #    break
+            if(i > 75):
+                break
             if('tfrecord' in filename):
                 print('opening {}'.format(filename))
                 dataset = tf.data.TFRecordDataset(filename,compression_type='')
@@ -60,6 +62,33 @@ def frame_loop(proc_data):
     import tensorflow as tfp
     tfp.enable_eager_execution()
     (i,j,frame,mypath) = proc_data
+    if(not skip_binaries):
+        (range_images, range_image_top_pose) = parse_range_image(frame,tfp)
+        points     = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)
+        #points_2   = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
+        #Top extraction
+        points_top       = points[laser_enum.TOP.value-1]
+        #cp_points_top    = cp_points[laser_enum.TOP.value-1]
+        #points_top_2     = points_2[laser_enum.TOP.value-1]
+        points_top_filtered = filter_points(points_top)
+        #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
+        bin_filename = '{0:05d}.npy'.format(i*1000+j)
+        out_file = os.path.join(mypath, 'point_clouds',bin_filename)
+        if(len(points_top_filtered) > 0):
+            np.save(out_file,points_top_filtered)
+            #fp = open(out_file, 'wb')
+            #fp.write(bytearray(points_top_filtered))
+            #fp.close()
+        else:
+            print('Lidar pointcloud {} is empty'.format(bin_filename))
+            #    k_i = k_i + 1
+        #if(k_i != k_l):
+        #    print('image to label mismatch!!!')
+    else:
+        points_top_filtered = None
+
+    pc_bin = points_top_filtered
+
     json_calib = {}
     #print(frame.context)
     for calib in frame.context.laser_calibrations:
@@ -92,6 +121,8 @@ def frame_loop(proc_data):
     json_labels['calibration'] = []
     json_labels['calibration'].append(json_calib)
     for label in frame.laser_labels:
+        if(label.num_lidar_points_in_box < 5):
+            continue
         #point 1 is near(x) left(y) bottom(z)
         #length: dim x
         x_c = float(label.box.center_x)
@@ -117,6 +148,12 @@ def frame_loop(proc_data):
         if(z_c < cfg.LIDAR.Z_RANGE[0] or z_c > cfg.LIDAR.Z_RANGE[1]):
             #print('object either too high or below car')
             continue
+        #if(not skip_binaries):
+        #    bbox = np.asarray([[z_c,y_c,z_c,lx,wy,hz,heading]])
+        #    points_in_bbox = pc_points_in_bbox(pc_bin,bbox)
+            #print(points_in_bbox.shape[0])
+        #if(points_in_bbox.shape[0] < 5):
+        #    continue
         #if(y2-y1 <= bbox_top_min and y1 == 0):
         #    continue
         json_labels['box'].append({
@@ -133,6 +170,7 @@ def frame_loop(proc_data):
             'vy': '{:.3f}'.format(label.metadata.speed_y),
             'ax': '{:.3f}'.format(label.metadata.accel_x),
             'ay': '{:.3f}'.format(label.metadata.accel_y),
+            'pts': '{}'.format(label.num_lidar_points_in_box)
         })
         json_labels['id'].append(label.id)
         json_labels['class'].append(label.type)
@@ -141,29 +179,18 @@ def frame_loop(proc_data):
         k_l = k_l + 1
     #print(k)
     k_i = 0
-    if(not skip_binaries):
-        (range_images, range_image_top_pose) = parse_range_image(frame,tfp)
-        points     = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)
-        #points_2   = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
-        #Top extraction
-        points_top       = points[laser_enum.TOP.value-1]
-        #cp_points_top    = cp_points[laser_enum.TOP.value-1]
-        #points_top_2     = points_2[laser_enum.TOP.value-1]
-        points_top_filtered = filter_points(points_top)
-        #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
-        bin_filename = '{0:05d}.npy'.format(i*1000+j)
-        out_file = os.path.join(mypath, 'point_clouds_new',bin_filename)
-        if(len(points_top_filtered) > 0):
-            np.save(out_file,points_top_filtered)
-            #fp = open(out_file, 'wb')
-            #fp.write(bytearray(points_top_filtered))
-            #fp.close()
-        else:
-            print('Lidar pointcloud {} is empty'.format(bin_filename))
-            #    k_i = k_i + 1
-        #if(k_i != k_l):
-        #    print('image to label mismatch!!!')
     return json_labels
+
+
+def pc_points_in_bbox(pc,bbox):
+    #z_min = bbox[0][2] - bbox[0][5]/2.0
+    #z_max = bbox[0][2] + bbox[0][5]/2.0
+    bev_bboxes = bbox_utils.bbaa_graphics_gems(bbox,None,None,False)
+    bev_bbox   = bev_bboxes[0]
+    pc_min_thresh = pc[(pc[:,0] >= bev_bbox[0]) & (pc[:,1] >= bev_bbox[1]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
+    pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,0] <= bev_bbox[2]) & (pc_min_thresh[:,1] <= bev_bbox[3]) & (pc_min_thresh[:,2] <= cfg.LIDAR.Z_RANGE[1])]
+    return pc_min_and_max_thresh
+
 
 def filter_points(pc):
     pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
