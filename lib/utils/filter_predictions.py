@@ -15,7 +15,7 @@ import math
 
 from model.config import cfg, get_output_dir
 from model.bbox_transform import clip_boxes, bbox_transform_inv
-
+import utils.bbox as bbox_utils
 import torch
 from torchvision.ops import nms
 
@@ -51,12 +51,11 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem):
         return np.empty(0),[],[]
     cls_scores   = scores[inds, c]
     cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]
-    if(cls_boxes.shape[1] >= 7):
-        cls_boxes[:,6] = torch.asin(cls_boxes[:,6])
+    cls_boxes_aabb = bbox_utils.bbaa_graphics_gems_torch(cls_boxes, 0,  0, clip=False)
     #[cls_var,cls_boxes,cls_scores]
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)
-    keep = nms(cls_boxes, cls_scores,
+    keep = nms(cls_boxes_aabb, cls_scores,
                cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
     cls_dets = cls_dets[keep, :]
     #Only if this variable has been provided

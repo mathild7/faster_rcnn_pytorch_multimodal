@@ -246,6 +246,10 @@ class SolverWrapper(object):
             print('Loading initial model weights from {:s}'.format(
                 self.pretrained_model))
             self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
+        elif(cfg.PRELOAD_RPN):
+            print('Loading initial first stage weights {:s}'.format(
+                self.pretrained_model))
+            self.net.load_pretrained_rpn(torch.load(self.pretrained_model))
         else:
             print('initializing model from scratch')
         #self.net.load_trimmed_pretrained_cnn(torch.load(self.pretrained_model))

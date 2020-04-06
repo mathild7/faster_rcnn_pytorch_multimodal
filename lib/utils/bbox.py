@@ -294,3 +294,47 @@ def bbaa_graphics_gems(bboxes,width,height,clip=True):
     else:
         B = bev_bboxes
     return B
+
+
+def bbaa_graphics_gems_torch(bboxes,width,height,clip=True):
+
+    rot = bboxes[:,6:7].cpu().numpy()
+    ##rot_top = torch.cat((torch.cos(rot).unsqueeze(0),torch.sin(rot).usqueeze(0)),dim=0)
+    #rot_bot = torch.cat((-torch.sin(rot).unsqueeze(0),torch.cos(rot).usqueeze(0)),dim=0)
+    #rot = torch.cat((rot_top.unsqueeze(0),rot_bot.unsqueeze(0)),dim=0).squeeze(-1).permute((2,0,1))
+    M = np.asarray([[np.cos(rot), np.sin(rot)],[-np.sin(rot), np.cos(rot)]]).squeeze(-1).transpose((2,0,1))
+    M = torch.from_numpy(M).to(device=bboxes.device)
+    T = bboxes[:,0:2]
+    A = bboxes
+    Amin = torch.zeros((A.shape[0],2)).to(device=bboxes.device)
+    Amax = torch.zeros((A.shape[0],2)).to(device=bboxes.device)
+    Bmin = torch.zeros((A.shape[0],2)).to(device=bboxes.device)
+    Bmax = torch.zeros((A.shape[0],2)).to(device=bboxes.device)
+    #Copy box A into a min array and a max array for easy reference.
+
+    Amin[:,0] = - A[:,3]/2.0
+    Amax[:,0] = A[:,3]/2.0
+    Amin[:,1] = - A[:,4]/2.0
+    Amax[:,1] = A[:,4]/2.0
+
+    #Now find the extreme points by considering the product of the
+    #min and max with each component of M.
+    a = torch.einsum('ijk,ik->ijk',M,Amin)
+    b = torch.einsum('ijk,ik->ijk',M,Amax)
+    Bmin = torch.min(a,b)
+    Bmax = torch.max(a,b)
+    Bmin = torch.sum(Bmin,dim=2).type(torch.float32)
+    Bmax = torch.sum(Bmax,dim=2).type(torch.float32)
+    #Copy the result into the new box.
+    Bmin = Bmin + T
+    Bmax = Bmax + T
+    x1 = Bmin[:,0:1]
+    x2 = Bmax[:,0:1]
+    y1 = Bmin[:,1:2]
+    y2 = Bmax[:,1:2]
+    bev_bboxes = torch.cat((x1,y1,x2,y2),dim=1)
+    if(clip):
+        B = _bbox_clip(width-1,height-1,bev_bboxes)
+    else:
+        B = bev_bboxes
+    return B

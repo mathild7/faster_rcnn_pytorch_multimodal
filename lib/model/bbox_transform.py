@@ -53,7 +53,7 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     targets_dz = (gt_rois[:,2] - ex_ctr_z) / ex_heights
     targets_dh = torch.log(gt_rois[:,5] / ex_heights)
     #TODO: Apply [Pi/2,-Pi/2) clipping
-    targets_ry = ex_headings - gt_rois[:, 6]
+    targets_ry = torch.sin(ex_headings - gt_rois[:, 6])
 
     targets = torch.stack((targets_dx, targets_dy, targets_dz, targets_dl, targets_dw, targets_dh, targets_ry), 1)
     return targets
@@ -145,7 +145,7 @@ def lidar_3d_bbox_transform_inv(boxes, deltas, scales=None):
     pred_l = torch.exp(dl) * lengths.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
-    pred_ry = dr + heading.unsqueeze(1)
+    pred_ry = torch.asin(dr) + heading.unsqueeze(1)
     #Lock headings to be [pi/2, -pi/2)
     pred_ry = torch.where(pred_ry > math.pi/2, pred_ry - math.pi, pred_ry)
     pred_ry = torch.where(pred_ry <= -math.pi/2, pred_ry + math.pi, pred_ry)

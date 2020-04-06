@@ -414,6 +414,15 @@ class resnetv1(Network):
                 new_state_dict[new_key] = param
         self.load_pretrained_cnn(new_state_dict)
 
+    def load_pretrained_rpn(self, state_dict):
+        own_state = self.state_dict()
+        for name, param in state_dict.items():
+            if name not in own_state:
+                continue
+            if isinstance(param, torch.nn.Parameter):
+                # backwards compatibility for serialized parameters
+                param = param.data
+            own_state[name].copy_(param)
 
     def load_pretrained_cnn(self, state_dict):
         self.resnet.load_state_dict({

@@ -395,7 +395,8 @@ __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
 __C.PRELOAD                  = False
-__C.ENABLE_FULL_NET          = False
+__C.PRELOAD_RPN              = True
+__C.ENABLE_FULL_NET          = True
 
 
 def get_output_dir(db, weights_filename):
@@ -427,7 +428,7 @@ def get_output_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_5'.format(mode,train_filter)
+    weights_filename = '{}train_{}_6'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -465,7 +466,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_5'.format(mode,train_filter)
+    weights_filename = '{}train_{}_6'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

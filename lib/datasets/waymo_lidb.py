@@ -221,11 +221,12 @@ class waymo_lidb(lidb):
                     #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
                     #    draw_file.save(outfile,self._imtype)
 
-    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True):
+    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True,color=None):
         bboxes = bbox[np.newaxis,:]
-        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform)
+        color  = np.asarray(color)[np.newaxis]
+        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform,color)
 
-    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True):
+    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True,color=None):
         bboxes_4pt = bbox_utils.bbox_3d_to_bev_4pt(bboxes)
         bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._imwidth-1)
         bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._imheight-1)
@@ -239,7 +240,10 @@ class waymo_lidb(lidb):
         else:
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
-        c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+        if(color is None):
+            c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+        else:
+            c = color
 
         for i, bbox in enumerate(bboxes_4pt):
             self._draw_polygon(draw,bbox,c[i])
@@ -258,8 +262,8 @@ class waymo_lidb(lidb):
             #    print(xy2)
             #print('drawing: {}-{}'.format(xy1,xy2))
             #line = np.concatenate((xy1,xy2))
-            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(0,255,0),width=2)
-            draw.point(xy1,fill=(0,255,0))
+            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(0,c,0),width=2)
+            draw.point(xy1,fill=(0,c,0))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
         y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imheight/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
@@ -437,7 +441,7 @@ class waymo_lidb(lidb):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
-                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
                     avg_det_string = 'pc average: '
                     num_det = len(det_idx)
                     if(num_det < limiter):
@@ -449,7 +453,7 @@ class waymo_lidb(lidb):
                         det = class_dets[idx]
                         #print(det)
                         if(det.shape[0] > 5):
-                            self.draw_bev_bbox(draw,det,None)
+                            self.draw_bev_bbox(draw,det,None,transform=False, color=int(det[7]*255))
                         else:
                             color_g = int(det[4]*255)
                             color_b = int(1-det[4])*255
