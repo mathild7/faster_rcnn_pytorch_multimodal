@@ -124,7 +124,7 @@ class waymo_imdb(imdb):
                     roidb = pickle.load(fid, encoding='bytes')
             print('{} gt roidb loaded from {}'.format(self._name, cache_file))
             return roidb
-        labels_filename = os.path.join(self._devkit_path, mode,'labels/labels.json')
+        labels_filename = os.path.join(self._devkit_path, mode,'labels/image_labels.json')
         gt_roidb = []
         with open(labels_filename,'r') as labels_file:
             data = labels_file.read()
@@ -234,7 +234,7 @@ class waymo_imdb(imdb):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
-                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
                     avg_det_string = 'image average: '
                     num_det = len(det_idx)
                     if(num_det < limiter):

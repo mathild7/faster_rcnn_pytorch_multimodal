@@ -364,7 +364,7 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
-__C.NET_TYPE                 = 'lidar'
+__C.NET_TYPE                 = 'image'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -378,8 +378,8 @@ __C.LIDAR.MAX_NUM_VOXEL      = 20000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
-__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
-__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
+#__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
+#__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
@@ -394,8 +394,8 @@ __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
-__C.PRELOAD                  = False
-__C.PRELOAD_RPN              = True
+__C.PRELOAD                  = True
+__C.PRELOAD_RPN              = False
 __C.ENABLE_FULL_NET          = True
 
 

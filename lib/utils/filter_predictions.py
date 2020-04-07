@@ -42,7 +42,7 @@ def nms_hstack_var_torch(var_type,var,inds,keep,c,bbox_elem):
     else:
         return None
 
-def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem):
+def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem,db_type):
     inds = torch.where(scores[:, c] > thresh)[0]
     #inds         = np.where(scores[:, c] > thresh)[0]
     #No detections over threshold
@@ -51,12 +51,15 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem):
         return np.empty(0),[],[]
     cls_scores   = scores[inds, c]
     cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]
-    cls_boxes_aabb = bbox_utils.bbaa_graphics_gems_torch(cls_boxes, 0,  0, clip=False)
+    if(db_type == 'lidar'):
+        cls_boxes_aabb = bbox_utils.bbaa_graphics_gems_torch(cls_boxes, 0,  0, clip=False)
     #[cls_var,cls_boxes,cls_scores]
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)
-    keep = nms(cls_boxes_aabb, cls_scores,
-               cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
+    if(db_type == 'lidar'):
+        keep = nms(cls_boxes_aabb, cls_scores, cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
+    else:
+        keep = nms(cls_boxes, cls_scores, cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
     cls_dets = cls_dets[keep, :]
     #Only if this variable has been provided
     return cls_dets, inds, keep
@@ -100,7 +103,7 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
     all_uncertainty = [{} for _ in range(num_classes)]
     for j in range(1, num_classes):
         #Don't need to stack variance here, it is only used in trainval to draw stuff
-        all_box, inds, keep = nms_hstack_torch(cls_score,pred_boxes,thresh,j,bbox_elem)
+        all_box, inds, keep = nms_hstack_torch(cls_score,pred_boxes,thresh,j,bbox_elem,db_type)
         uncertainties = {}
         if(len(keep) != 0):
             if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
