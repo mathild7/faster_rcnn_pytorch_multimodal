@@ -104,7 +104,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 1000
+__C.TRAIN.SNAPSHOT_ITERS = 4000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -364,7 +364,7 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
-__C.NET_TYPE                 = 'image'
+__C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -387,17 +387,18 @@ __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 
 #Need to turn this on in order to debug
-#Slows
 __C.DEBUG                    = edict()
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
-__C.PRELOAD                  = True
-__C.PRELOAD_RPN              = False
-__C.ENABLE_FULL_NET          = True
+#ONE OF
+__C.PRELOAD                  = False
+__C.PRELOAD_RPN              = True
 
+__C.ENABLE_FULL_NET          = True
+__C.TRAIN_ITER               = 12
 
 def get_output_dir(db, weights_filename):
   """Return the directory where experimental artifacts are placed.
@@ -428,7 +429,7 @@ def get_output_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_6'.format(mode,train_filter)
+    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -466,7 +467,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_6'.format(mode,train_filter)
+    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

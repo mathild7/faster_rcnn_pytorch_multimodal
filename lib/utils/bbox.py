@@ -55,6 +55,39 @@ def bbox_3d_to_bev_axis_aligned(bbox,width=0,height=0):
     clipped_bev_bboxes = _bbox_clip(width,height,bev_bboxes)
     return clipped_bev_bboxes
 
+"""
+function: bbox_3t_to_8pt
+input: (N,7) 3d bounding boxes
+output: (N,8,3) 3d bboxes in 8pt format
+format: (clockwise) start at back,left,top end at front,left,bottom
+
+"""
+def bbox_3d_to_8pt(bbox):
+    #bbox center
+    x_c = bbox[:, 0]
+    y_c = bbox[:, 1]
+    z_c = bbox[:, 2]
+    #bbox size
+    l   = bbox[:, 3]
+    w   = bbox[:, 4]
+    h   = bbox[:, 5]
+    #bbox heading
+    rot = bbox[:, 6]
+    x_corners = np.asarray([ l/2,l/2,-l/2,-l/2, l/2, l/2,-l/2,-l/2])[:,:,np.newaxis]
+    y_corners = np.asarray([-w/2,w/2, w/2,-w/2,-w/2, w/2, w/2,-w/2])[:,:,np.newaxis]
+    z_corners = np.asarray([ h/2,h/2, h/2, h/2,-h/2,-h/2,-h/2,-h/2])[:,:,np.newaxis]
+    corners_3d = np.stack((x_corners,y_corners,z_corners),axis=2)
+    p = corners_3d
+    #centers_3d = np.stack((x_c,y_c,z_c),axis=0)
+    p[:,:,0] = p[:,:,0]*np.cos(rot) - p[:,:,1]*np.sin(rot)
+    p[:,:,1] = p[:,:,0]*np.sin(rot) + p[:,:,1]*np.cos(rot)
+    p[:,:,2] = p[:,:,2]
+    #corners_3d = rotate_in_3d(corners_3d,rot)
+    corners_3d = p
+    corners_3d[0,:] = corners_3d[0,:] + x_c
+    corners_3d[1,:] = corners_3d[1,:] + y_c
+    corners_3d[2,:] = corners_3d[2,:] + z_c
+    return corners_3d
 
 #Clip bounding boxes to pixel array
 def _bbox_clip(width,height,bboxes):
@@ -83,6 +116,8 @@ def bbox_pc_to_voxel_grid(bboxes,bev_extants,info):
     bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
     bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
     bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    #DEPRECATED
+    #bboxes[:,2] = bboxes[:,2] - bev_extants[2]
     return bboxes
 
 
@@ -115,6 +150,8 @@ def bbox_voxel_grid_to_pc(bboxes,bev_extants,info,aabb=False):
         bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
         bboxes[:,3] = (bboxes[:,3])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1))
         bboxes[:,4] = (bboxes[:,4])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1))
+        #height starts at 0
+        bboxes[:,2] = bboxes[:,2] + bev_extants[2]
     return bboxes
 
 """
@@ -242,6 +279,13 @@ def rotate_in_bev(p, p_c, rot):
     box_points = np.asarray(p, dtype=np.float32)
     return box_points
 
+def rotate_in_3d(p, p_c, rot):
+    rot = rot[:,np.newaxis].repeat(p.shape[1],axis=1)
+    p[:,:,0] = p[:,:,0]*np.cos(rot) - p[:,:,1]*np.sin(rot)
+    p[:,:,1] = p[:,:,0]*np.sin(rot) + p[:,:,1]*np.cos(rot)
+    p[:,:,2] = p[:,:,2]
+    return p
+
 
 """  
 Transforming Axis-Aligned Bounding Boxes
@@ -302,6 +346,7 @@ def bbaa_graphics_gems_torch(bboxes,width,height,clip=True):
     ##rot_top = torch.cat((torch.cos(rot).unsqueeze(0),torch.sin(rot).usqueeze(0)),dim=0)
     #rot_bot = torch.cat((-torch.sin(rot).unsqueeze(0),torch.cos(rot).usqueeze(0)),dim=0)
     #rot = torch.cat((rot_top.unsqueeze(0),rot_bot.unsqueeze(0)),dim=0).squeeze(-1).permute((2,0,1))
+    #TODO: Fix this numpy conversion.
     M = np.asarray([[np.cos(rot), np.sin(rot)],[-np.sin(rot), np.cos(rot)]]).squeeze(-1).transpose((2,0,1))
     M = torch.from_numpy(M).to(device=bboxes.device)
     T = bboxes[:,0:2]

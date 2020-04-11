@@ -48,9 +48,9 @@ class waymo_imdb(imdb):
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_image_index = []
-        self._val_image_index = []
-        self._test_image_index = []
+        self._train_index = []
+        self._val_index = []
+        self._test_index = []
         self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
@@ -80,17 +80,17 @@ class waymo_imdb(imdb):
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
 
-        self._train_image_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
-        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
-        self._val_image_index.sort(key=natural_keys)
+        self._train_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
+        self._val_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
+        self._val_index.sort(key=natural_keys)
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling image indices')
-            rand.shuffle(self._val_image_index)
-            rand.shuffle(self._train_image_index)
+            rand.shuffle(self._val_index)
+            rand.shuffle(self._train_index)
         if(limiter != 0):
-            self._val_image_index   = self._val_image_index[:limiter]
-            self._train_image_index = self._train_image_index[:limiter]
+            self._val_index   = self._val_index[:limiter]
+            self._train_index = self._train_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 
@@ -134,9 +134,9 @@ class waymo_imdb(imdb):
             image_index = None
             sub_total   = 0
             if(mode == 'train'):
-                image_index = self._train_image_index
+                image_index = self._train_index
             elif(mode == 'val'):
-                image_index = self._val_image_index
+                image_index = self._val_index
             for img in image_index:
                 #print(img)
                 for img_labels in labels:
@@ -154,23 +154,23 @@ class waymo_imdb(imdb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_img(self,imfile,mode):
+    def find_gt_for_frame(self,filename,mode):
         if(mode == 'train'):
             roidb = self.roidb
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['filename'] == imfile):
+            if(roi['filename'] == filename):
                 return roi
         return None
 
     def scene_from_index(self,idx,mode='train'):
         if(mode == 'train'):
-            return self._train_image_index[i]
+            return self._train_index[i]
         elif(mode == 'val'):
-            return self._val_image_index[i]
+            return self._val_index[i]
         elif(mode == 'test'):
-            return self._test_image_index[i]
+            return self._test_index[i]
         else:
             return None
 
@@ -531,11 +531,11 @@ class waymo_imdb(imdb):
 
     def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            img_idx = self._val_image_index
+            img_idx = self._val_index
         elif(mode == 'train'):
-            img_idx = self._train_image_index
+            img_idx = self._train_index
         elif(mode == 'test'):
-            img_idx = self._test_image_index
+            img_idx = self._test_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -570,11 +570,11 @@ class waymo_imdb(imdb):
         #Not needed anymore, self._image_index has all files
         #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
         if(mode == 'train'):
-            imageset = self._train_image_index
+            imageset = self._train_index
         elif(mode == 'val'):
-            imageset = self._val_image_index
+            imageset = self._val_index
         elif(mode == 'test'):
-            imageset = self._test_image_index
+            imageset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):

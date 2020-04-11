@@ -48,9 +48,9 @@ class waymo_lidb(lidb):
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_pc_index = []
-        self._val_pc_index = []
-        self._test_pc_index = []
+        self._train_index = []
+        self._val_index = []
+        self._test_index = []
         self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
@@ -83,25 +83,25 @@ class waymo_lidb(lidb):
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
 
-        self._train_pc_index = os.listdir(os.path.join(self._devkit_path,'train','point_clouds'))
-        self._val_pc_index   = os.listdir(os.path.join(self._devkit_path,'val','point_clouds'))
-        self._val_pc_index.sort(key=natural_keys)
+        self._train_index = os.listdir(os.path.join(self._devkit_path,'train','point_clouds'))
+        self._val_index   = os.listdir(os.path.join(self._devkit_path,'val','point_clouds'))
+        self._val_index.sort(key=natural_keys)
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling pc indices')
-            rand.shuffle(self._train_pc_index)
-            rand.shuffle(self._val_pc_index)
+            rand.shuffle(self._train_index)
+            rand.shuffle(self._val_index)
         if(limiter != 0):
-            self._train_pc_index = self._train_pc_index[:limiter]
-            self._val_pc_index   = self._val_pc_index[:limiter]
+            self._train_index = self._train_index[:limiter]
+            self._val_index   = self._val_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 
-    def point_cloud_path_from_index(self, mode, index):
+    def path_from_index(self, mode, index):
         """
     Construct an pc path from the pc's "index" identifier.
     """
-        pc_path = os.path.join(self._devkit_path, mode, 'point_cloud', index)
+        pc_path = os.path.join(self._devkit_path, mode, 'point_clouds', index)
         assert os.path.exists(pc_path), \
             'Path does not exist: {}'.format(pc_path)
         return pc_path
@@ -134,19 +134,19 @@ class waymo_lidb(lidb):
             #print(data)
             #print(data)
             labels = json.loads(data)
-            pc_index = None
+            index = None
             sub_total   = 0
             if(mode == 'train'):
-                pc_index = self._train_pc_index
+                index = self._train_index
             elif(mode == 'val'):
-                pc_index = self._val_pc_index
-            for pc in pc_index:
+                index = self._val_index
+            for pc in index:
                 #print(pc)
                 for pc_labels in labels:
                     #print(pc_labels['assoc_frame'])
                     if(pc_labels['assoc_frame'] == pc.replace('.{}'.format(self._filetype.lower()),'')):
                         pc_file_path = os.path.join(mode,'point_clouds',pc)
-                        roi = self._load_waymo_lidar_annotation(pc_file_path,pc_labels,tod_filter_list=self._tod_filter_list)
+                        roi = self._load_waymo_annotation(pc_file_path,pc_labels,tod_filter_list=self._tod_filter_list)
                         if(roi is None):
                             sub_total += 1
                         else:
@@ -157,23 +157,23 @@ class waymo_lidb(lidb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_pc(self,pcfile,mode):
+    def find_gt_for_frame(self,filename,mode):
         if(mode == 'train'):
             roidb = self.roidb
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['pcfile'] == pcfile):
+            if(roi['filename'] == filename):
                 return roi
         return None
 
     def scene_from_index(self,idx,mode='train'):
         if(mode == 'train'):
-            return self._train_pc_index[i]
+            return self._train_index[i]
         elif(mode == 'val'):
-            return self._val_pc_index[i]
+            return self._val_index[i]
         elif(mode == 'test'):
-            return self._test_pc_index[i]
+            return self._test_index[i]
         else:
             return None
 
@@ -221,13 +221,14 @@ class waymo_lidb(lidb):
                     #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
                     #    draw_file.save(outfile,self._imtype)
 
-    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True,color=None):
+    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True,colors=None):
         bboxes = bbox[np.newaxis,:]
-        color  = np.asarray(color)[np.newaxis]
-        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform,color)
+        colors  = np.asarray(colors)[np.newaxis,:]
+        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform,colors)
 
-    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True,color=None):
+    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True,colors=None):
         bboxes_4pt = bbox_utils.bbox_3d_to_bev_4pt(bboxes)
+        #TODO: if clip, keep same angle
         bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._imwidth-1)
         bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._imheight-1)
         bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
@@ -240,10 +241,11 @@ class waymo_lidb(lidb):
         else:
             z_max, z_min = self._slice_height(slice_idx) 
         #if(z1 >= z_min or z2 < z_max):
-        if(color is None):
+        if(colors is None):
             c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+            c = [c,c,c]
         else:
-            c = color
+            c = colors
 
         for i, bbox in enumerate(bboxes_4pt):
             self._draw_polygon(draw,bbox,c[i])
@@ -262,8 +264,8 @@ class waymo_lidb(lidb):
             #    print(xy2)
             #print('drawing: {}-{}'.format(xy1,xy2))
             #line = np.concatenate((xy1,xy2))
-            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(0,c,0),width=2)
-            draw.point(xy1,fill=(0,c,0))
+            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(c[0],c[1],c[2]),width=2)
+            draw.point(xy1,fill=(c[0],c[1],c[2]))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
         y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imheight/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
@@ -428,12 +430,21 @@ class waymo_lidb(lidb):
         limiter = 15
         y_start = self._imheight - 10*(limiter+2)
         #TODO: Swap axes of dets
-        for det,label in zip(roi_dets,roi_det_labels):
-            if(label == 0):
-                color = 127
-            else:
-                color = 255
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+        if(len(roi_dets) > 0):
+            if(roi_dets.shape[1] == 4):
+                for det,label in zip(roi_dets,roi_det_labels):
+                    if(label == 0):
+                        color = 127
+                    else:
+                        color = 255
+                    draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+            elif(roi_dets.shape[1] == 7):
+                for det,label in zip(roi_dets,roi_det_labels):
+                    if(label == 0):
+                        colors = [127,127,127]
+                    else:
+                        colors = [255,255,255]
+                    self.draw_bev_bbox(draw,det,None,transform=False, colors=colors)
 
         for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
@@ -453,7 +464,8 @@ class waymo_lidb(lidb):
                         det = class_dets[idx]
                         #print(det)
                         if(det.shape[0] > 5):
-                            self.draw_bev_bbox(draw,det,None,transform=False, color=int(det[7]*255))
+                            colors = [0,int(det[7]*255),0]
+                            self.draw_bev_bbox(draw,det,None,transform=False, colors=colors)
                         else:
                             color_g = int(det[4]*255)
                             color_b = int(1-det[4])*255
@@ -548,7 +560,7 @@ class waymo_lidb(lidb):
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
-    def _load_waymo_lidar_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
+    def _load_waymo_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
         filename = os.path.join(self._devkit_path, pc_file_path)
         num_objs = len(pc_labels['box'])
 
@@ -598,8 +610,9 @@ class waymo_lidb(lidb):
             h_z = float(bbox['hz'])
             heading = float(bbox['heading'])
             #Lock headings to be [pi/2, -pi/2)
-            heading = np.where(heading > np.pi/2, heading - np.pi, heading)
-            heading = np.where(heading <= -np.pi/2, heading + np.pi, heading)
+            pi2 = float(np.pi/2.0)
+            heading = np.where(heading > pi2, heading - np.pi, heading)
+            heading = np.where(heading <= -pi2, heading + np.pi, heading)
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
@@ -749,11 +762,11 @@ class waymo_lidb(lidb):
 
     def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            img_idx = self._val_pc_index
+            idx = self._val_index
         elif(mode == 'train'):
-            img_idx = self._train_pc_index
+            idx = self._train_index
         elif(mode == 'test'):
-            img_idx = self._test_pc_index
+            idx = self._test_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -761,8 +774,8 @@ class waymo_lidb(lidb):
             filename = self._get_waymo_results_file_template(mode,cls)
             with open(filename, 'wt') as f:
                 #f.write('test')
-                for im_ind, img in enumerate(img_idx):
-                    dets = all_boxes[cls_ind][im_ind]
+                for ind, frame in enumerate(idx):
+                    dets = all_boxes[cls_ind][ind]
                     #TODO: Add this to dets file
                     #dets_bbox_var = dets[0:4]
                     #dets = dets[4:]
@@ -774,34 +787,37 @@ class waymo_lidb(lidb):
                     #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}'.format(
-                                im_ind, img, dets[k, 4], 
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.2f} {:.2f} {:.2f} {:.3f}'.format(
+                                ind, frame, dets[k, 7], 
                                 dets[k, 0], dets[k, 1], 
-                                dets[k, 2], dets[k, 3]))
+                                dets[k, 2], dets[k, 3],
+                                dets[k, 4], dets[k, 5], dets[k, 6]))
                         #Write uncertainties
-                        for l in range(4,dets.shape[1]):
-                            f.write(' {:.2f}'.format(dets[k,l]))
+                        if(dets.shape[1] > 8):
+                            for l in range(8,dets.shape[1]):
+                                f.write(' {:.2f}'.format(dets[k,l]))
                         f.write('\n')
 
 
     def _do_python_eval(self, output_dir='output',mode='val'):
-        #Not needed anymore, self._pc_index has all files
+        #Not needed anymore, self._index has all files
         #pcsetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
         if(mode == 'train'):
-            pcset = self._train_pc_index
+            pcset = self._train_index
         elif(mode == 'val'):
-            pcset = self._val_pc_index
+            pcset = self._val_index
         elif(mode == 'test'):
-            pcset = self._test_pc_index
+            pcset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
-        aps = np.zeros((len(self._classes)-1,3))
+        #AP: Level 1, Level 2
+        aps = np.zeros((len(self._classes)-1,2))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
         for i, cls in enumerate(self._classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
-            if 'Car' in cls:
+            if 'car' in cls:
                 ovt = 0.7
             else:
                 ovt = 0.5
@@ -815,7 +831,8 @@ class waymo_lidb(lidb):
                 cls,
                 cachedir,
                 mode,
-                ovthresh=ovt)
+                ovthresh=ovt,
+                eval_type='bev')
             aps[i-1,:] = ap
             #Tell user of AP
             print(('AP for {} = {:.4f}'.format(cls,ap)))

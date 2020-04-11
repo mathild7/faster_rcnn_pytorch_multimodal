@@ -72,7 +72,7 @@ def frame_loop(proc_data):
         #points_top_2     = points_2[laser_enum.TOP.value-1]
         points_top_filtered = filter_points(points_top)
         #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
-        bin_filename = '{0:05d}.npy'.format(i*1000+j)
+        bin_filename = '{0:07d}.npy'.format(i*1000+j)
         out_file = os.path.join(mypath, 'point_clouds',bin_filename)
         if(len(points_top_filtered) > 0):
             np.save(out_file,points_top_filtered)
@@ -112,7 +112,7 @@ def frame_loop(proc_data):
     json_labels['meta']        = []
     json_labels['difficulty']  = []
     json_labels['id']          = []
-    json_labels['assoc_frame'] = '{0:05d}'.format(i*1000+j) 
+    json_labels['assoc_frame'] = '{0:07d}'.format(i*1000+j) 
     json_labels['scene_name']  = frame.context.name
     json_labels['scene_type']  = []
     json_labels['scene_type'].append({'weather': frame.context.stats.weather,

@@ -21,23 +21,22 @@ class cam_enum(Enum):
     SIDE_LEFT   = 4
     SIDE_RIGHT  = 5
 
-save_imgs = False
-mypath = '/home/mat/thesis/data2/waymo/train'
+save_imgs = True
+mypath = '/home/mat/thesis/data2/waymo/val'
 tfrec_path = os.path.join(mypath,'compressed_tfrecords')
 top_crop = 550
 bbox_top_min = 30
 file_list = [os.path.join(tfrec_path,f) for f in os.listdir(tfrec_path) if os.path.isfile(os.path.join(tfrec_path,f))]
+file_list = sorted(file_list)
 #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
 with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_file:
     json_struct = []
     for i,filename in enumerate(file_list):
-        if(i > 350):
-            break
         if('.tfrecord' in filename):
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%3 == 0):
+                if(j%5 == 0):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))

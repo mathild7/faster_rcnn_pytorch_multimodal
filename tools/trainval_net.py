@@ -25,7 +25,7 @@ import roi_data_layer.roidb as rdl_roidb
 from copy import deepcopy
 from nets.vgg16 import vgg16
 from nets.resnet_v1 import resnetv1
-from nets.lidarnet  import lidarnet
+from nets.lidarnet import lidarnet
 from nets.mobilenet_v1 import mobilenetv1
 
 
@@ -169,9 +169,9 @@ if __name__ == '__main__':
         args.out_dir = 'output/'
         args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        #args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_30k.pth')
+        args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_fe_100k.pth')
         #IMAGE
-        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+        #args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
     print('Called with args:')

@@ -23,6 +23,8 @@ from nets.mobilenet_v1 import mobilenetv1
 from datasets.kitti_imdb import kitti_imdb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
+from datasets.waymo_lidb import waymo_lidb
+from nets.lidarnet import lidarnet
 import torch
 
 def parse_args(manual_mode):
@@ -68,8 +70,8 @@ def parse_args(manual_mode):
         type=str)
     parser.add_argument(
         '--num_dets',
-        dest='max_per_image',
-        help='max number of detections per image',
+        dest='max_num_dets',
+        help='max number of detections per frame',
         default=100,
         type=int)
     parser.add_argument(
@@ -101,10 +103,10 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'
-        args.imdb_name = 'waymo'
-        args.weights_file = 'weights/{}_faster_rcnn_iter_140000_all_uc.pth'.format(args.net)
+        args.db_name = 'waymo'
+        args.weights_file = 'weights/{}_lidar_full_128k.pth'.format(args.net)
         args.out_dir = 'output/'
-        args.imdb_root_dir = '/home/mat/thesis/data/{}/'.format(args.imdb_name)
+        args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
     if args.cfg_file is not None:
@@ -124,42 +126,57 @@ if __name__ == '__main__':
     #tag = args.tag
     #tag = tag if tag else 'default'
     #filename = tag + '/' + filename
-    if(args.imdb_name == 'kitti'):
-        imdb = kitti_imdb(mode='eval')
-    elif(args.imdb_name == 'nuscenes'):
-        imdb = nuscenes_imdb(mode='val',limiter=1000)
-    elif(args.imdb_name == 'waymo'):
-        imdb = waymo_imdb(mode='val',limiter=0, shuffle_en=False)
+    if(cfg.NET_TYPE == 'image'):
+        if(args.imdb_name == 'kitti'):
+            db = kitti_imdb(mode='eval')
+        elif(args.imdb_name == 'nuscenes'):
+            db = nuscenes_imdb(mode='val',limiter=1000)
+        elif(args.imdb_name == 'waymo'):
+            db = waymo_imdb(mode='val',limiter=0, shuffle_en=False)
+    elif(cfg.NET_TYPE == 'lidar'):
+        db = waymo_lidb(mode='val',limiter=100, shuffle_en=True)
 
     # load network
-    if args.net == 'vgg16':
-        net = vgg16()
-    elif args.net == 'res50':
-        net = resnetv1(num_layers=50)
-    elif args.net == 'res101':
-        net = resnetv1(num_layers=101)
-    elif args.net == 'res152':
-        net = resnetv1(num_layers=152)
-    elif args.net == 'mobile':
-        net = mobilenetv1()
-    else:
-        raise NotImplementedError
-
+    if(cfg.NET_TYPE == 'image'):
+        if args.net == 'vgg16':
+            net = vgg16()
+        elif args.net == 'res34':
+            net = resnetv1(num_layers=34)
+        elif args.net == 'res50':
+            net = resnetv1(num_layers=50)
+        elif args.net == 'res101':
+            net = resnetv1(num_layers=101)
+        elif args.net == 'res152':
+            net = resnetv1(num_layers=152)
+        elif args.net == 'mobile':
+            net = mobilenetv1()
+        else:
+            raise NotImplementedError
+    elif(cfg.NET_TYPE == 'lidar'):
+        net = lidarnet(num_layers=101)
     # load model
-    net.create_architecture(
-        imdb.num_classes,
-        tag='default',
-        anchor_scales=cfg.ANCHOR_SCALES,
-        anchor_ratios=cfg.ANCHOR_RATIOS)
+    if(cfg.NET_TYPE == 'lidar'):
+        #TODO: Magic numbers, need to sort this out to flow through 3d anchor gen properly
+        net.create_architecture(
+            db.num_classes,
+            tag='default',
+            anchor_scales=cfg.LIDAR.ANCHOR_SCALES,
+            anchor_ratios=cfg.LIDAR.ANCHOR_ANGLES)
+    elif(cfg.NET_TYPE == 'image'):
+        net.create_architecture(
+            db.num_classes,
+            tag='default',
+            anchor_scales=cfg.ANCHOR_SCALES,
+            anchor_ratios=cfg.ANCHOR_RATIOS)
 
     net.eval()
 
     print(('Loading initial weights from {:s}').format(args.weights_file))
-    params = torch.load(args.imdb_root_dir + args.weights_file, map_location=lambda storage, loc: storage)
+    params = torch.load(args.db_root_dir + args.weights_file, map_location=lambda storage, loc: storage)
     net.load_state_dict(params)
     print('Loaded.')
     if not torch.cuda.is_available():
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, imdb, args.out_dir, max_per_image=args.max_per_image, mode='val',thresh=0.5,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.65,draw_det=True,eval_det=True)

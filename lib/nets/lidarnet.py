@@ -234,10 +234,10 @@ class lidarnet(Network):
 
         normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        xaiver_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        xaiver_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        xaiver_init(self.bbox_z_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        xaiver_init(self.heading_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        normal_init(self.bbox_z_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.heading_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
             normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -317,6 +317,7 @@ class lidarnet(Network):
         bbox_s_pred  = self.bbox_pred_net(bbox_pred_in)
         num_samp = bbox_s_pred.shape[0]
         heading_pred = self.heading_pred_net(bbox_pred_in)
+        heading_pred = torch.tanh(heading_pred)
         bbox_z_pred  = self.bbox_z_pred_net(bbox_pred_in)
         #Mix heading back into bbox pred
         bbox_pred    = torch.cat((bbox_s_pred.view(num_samp,-1,4),bbox_z_pred.view(num_samp,-1,2),heading_pred.view(num_samp,-1,1)),dim=2)
@@ -454,7 +455,7 @@ class lidarnet(Network):
             own_state[name].copy_(param)
 
 
-    def load_pretrained_cnn(self, state_dict):
+    def load_imagenet_pretrained_cnn(self, state_dict):
         new_state_dict = OrderedDict()
         own_state = self.state_dict()
         #print(state_dict.keys())
@@ -474,11 +475,13 @@ class lidarnet(Network):
             new_state_dict[key] = new_param
         self._load_pretrained_cnn(new_state_dict)
 
-    def _load_pretrained_cnn(self, state_dict):
-        self.resnet.load_state_dict({
-            k: v
-            for k, v in state_dict.items() if k in self.resnet.state_dict()
-        })
+    def load_pretrained_cnn(self, state_dict):
+        sd = {}
+        for k, v in state_dict.items():
+            if 'resnet' in k:
+                k = k.replace('resnet.','')
+                sd[k] = v
+        self.resnet.load_state_dict(sd)
 
 class BuildBlock(nn.Module):
   def __init__(self, planes=1024):

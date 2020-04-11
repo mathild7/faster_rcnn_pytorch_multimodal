@@ -80,7 +80,7 @@ class coco(imdb):
         widths = [ann['width'] for ann in anns]
         return widths
 
-    def image_path_at(self, i):
+    def path_at(self, i):
         """
     Return the absolute path to image i in the image sequence.
     """

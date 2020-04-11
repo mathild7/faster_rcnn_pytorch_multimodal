@@ -103,31 +103,31 @@ class lidb(object):
 
     def _get_widths(self):
         return [
-            PIL.Image.open(self.image_path_at(i)).size[0]
+            PIL.Image.open(self.path_at(i)).size[0]
             for i in range(self.num_images)
         ]
 
 
-    def image_path_at(self, i, mode='train'):
+    def path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
     """
         if(mode == 'train'):
-            return self.image_path_from_index(mode, self._train_image_index[i])
+            return self.path_from_index(mode, self._train_index[i])
         elif(mode == 'val'):
-            return self.image_path_from_index(mode, self._val_image_index[i])
+            return self.path_from_index(mode, self._val_index[i])
         elif(mode == 'test'):
-            return self.image_path_from_index(mode, self._test_image_index[i])
+            return self.path_from_index(mode, self._test_index[i])
         else:
             return None
             
-    def point_cloud_index_at(self, i, mode='train'):
+    def index_at(self, i, mode='train'):
         if(mode == 'train'):
-            return self._train_image_index[i]
+            return self._train_index[i]
         elif(mode == 'val'):
-            return self._val_image_index[i]
+            return self._val_index[i]
         elif(mode == 'test'):
-            return self._test_image_index[i]
+            return self._test_index[i]
         else:
             return None
 
