@@ -150,8 +150,8 @@ def bbox_voxel_grid_to_pc(bboxes,bev_extants,info,aabb=False):
         bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
         bboxes[:,3] = (bboxes[:,3])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1))
         bboxes[:,4] = (bboxes[:,4])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1))
-        #height starts at 0
-        bboxes[:,2] = bboxes[:,2] + bev_extants[2]
+        #DEPRECATED - height starts at 0
+        #bboxes[:,2] = bboxes[:,2] + bev_extants[2]
     return bboxes
 
 """

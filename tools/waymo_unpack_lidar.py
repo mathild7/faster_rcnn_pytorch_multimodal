@@ -35,11 +35,11 @@ def main():
     #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
     #pool = Pool(processes=16)
     #m = 
-    with open(os.path.join(mypath,'labels','lidar_labels.json'), 'w') as json_file:
+    with open(os.path.join(mypath,'labels','lidar_labels_new.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
-            if(i > 75):
-                break
+            #if(i > 75):
+            #    break
             if('tfrecord' in filename):
                 print('opening {}'.format(filename))
                 dataset = tf.data.TFRecordDataset(filename,compression_type='')
@@ -48,13 +48,14 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    frame = open_dataset.Frame()
-                    frame.ParseFromString(bytearray(dataset_list[j].numpy()))
-                    proc_data = (i,j,frame,mypath)
-                    #print('frame: {}'.format(i*1000+j))
-                    labels = frame_loop(proc_data)
-                    #print(len(labels['box']))
-                    json_struct.append(labels)
+                    if(j%5 == 0):
+                        frame = open_dataset.Frame()
+                        frame.ParseFromString(bytearray(dataset_list[j].numpy()))
+                        proc_data = (i,j,frame,mypath)
+                        #print('frame: {}'.format(i*1000+j))
+                        labels = frame_loop(proc_data)
+                        #print(len(labels['box']))
+                        json_struct.append(labels)
         json.dump(json_struct,json_file)
 
 
@@ -73,7 +74,7 @@ def frame_loop(proc_data):
         points_top_filtered = filter_points(points_top)
         #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
         bin_filename = '{0:07d}.npy'.format(i*1000+j)
-        out_file = os.path.join(mypath, 'point_clouds',bin_filename)
+        out_file = os.path.join(mypath, 'point_clouds_new',bin_filename)
         if(len(points_top_filtered) > 0):
             np.save(out_file,points_top_filtered)
             #fp = open(out_file, 'wb')

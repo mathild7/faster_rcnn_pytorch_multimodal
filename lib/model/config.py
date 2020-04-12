@@ -353,7 +353,7 @@ __C.ENABLE_ALEATORIC_CLS_VAR           = False
 __C.ENABLE_EPISTEMIC_BBOX_VAR          = False
 __C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
-__C.NUM_SCENES               = 100
+__C.NUM_SCENES               = 300
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
@@ -398,7 +398,7 @@ __C.PRELOAD                  = False
 __C.PRELOAD_RPN              = True
 
 __C.ENABLE_FULL_NET          = True
-__C.TRAIN_ITER               = 12
+__C.TRAIN_ITER               = 1
 
 def get_output_dir(db, weights_filename):
   """Return the directory where experimental artifacts are placed.

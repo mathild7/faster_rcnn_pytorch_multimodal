@@ -54,13 +54,13 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                     #TODO: Output calibration to JSON array file.
                     k_l = 0
                     for img, labels in zip(frame.images, frame.camera_labels):
-                        
+                        frame_idx = i*1000+j
                         if(cam_enum(img.name)  == cam_enum.FRONT and save_imgs):
                         #print(img.DESCRIPTOR.fields)
                             im_data = tf.image.decode_jpeg(img.image, channels=3).numpy()
                             im_data = im_data[:][top_crop:][:]
                             im_data = Image.fromarray(im_data)
-                            img_filename = '{0:05d}.png'.format(i*1000+j)
+                            img_filename = '{0:07d}.png'.format(frame_idx)
                             out_file = os.path.join(mypath, 'images_new',img_filename)
                             draw = ImageDraw.Draw(im_data)
                             im_data.save(out_file,'PNG')
@@ -71,7 +71,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                             json_labels['class'] = []
                             json_labels['difficulty']  = []
                             json_labels['id'] = []
-                            json_labels['assoc_frame'] = '{0:05d}'.format(i*1000+j) 
+                            json_labels['assoc_frame'] = '{0:07d}'.format(frame_idx) 
                             json_labels['scene_name']  = frame.context.name
                             json_labels['scene_type']  = []
                             json_labels['scene_type'].append({'weather': frame.context.stats.weather,
