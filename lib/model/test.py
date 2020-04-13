@@ -84,10 +84,8 @@ def _get_blobs(frame):
         #Dummy value
         target_size = 1
         blobs['info'], blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,target_size,augment_en=False,mode='test')
-        
-        scales = [target_size]
 
-    return blobs, scales
+    return blobs
 
 
 def _clip_boxes(boxes, frame_shape):
@@ -111,7 +109,7 @@ def _rescale_boxes(boxes, inds, scales):
     return boxes
 
 
-def frame_detect(net, blobs, scales, num_classes, thresh):
+def frame_detect(net, blobs, num_classes, thresh):
     blob = blobs['data']
     #DEPRECATED
     #blobs['info'] = np.array(
@@ -233,9 +231,9 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         _t['frame_detect'].tic()
         #Put frame into array, single element only supported
         frame = [frame]
-        blobs, scales = _get_blobs(frame)
+        blobs = _get_blobs(frame)
         assert len(scales) == 1, "Only single-image batch implemented"
-        rois, bbox, uncertainties = frame_detect(net, blobs, scales, db.num_classes,thresh)
+        rois, bbox, uncertainties = frame_detect(net, blobs, db.num_classes,thresh)
         _t['frame_detect'].toc()
         _t['misc'].tic()
         #Stack output file with uncertainties
@@ -252,7 +250,8 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                     for key in cls_uncertainties:
                         cls_uncertainties[key] = cls_uncertainties[key][keep, :]
             if(cls_boxes.size != 0):
-                cls_boxes = bbox_utils.bbox_voxel_grid_to_pc(cls_boxes,area_extents,blobs['info'])
+                if(cfg.NET_TYPE == 'lidar'):
+                    cls_boxes = bbox_utils.bbox_voxel_grid_to_pc(cls_boxes,area_extents,blobs['info'])
                 bbox_uncertainty_hstack = stack_uncertainties(cls_boxes,cls_uncertainties,num_uncertainty_pos)
                 all_boxes[j][i] = bbox_uncertainty_hstack
             else:

@@ -52,7 +52,13 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem,db_type):
     cls_scores   = scores[inds, c]
     cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]
     if(db_type == 'lidar'):
-        cls_boxes_aabb = bbox_utils.bbaa_graphics_gems_torch(cls_boxes, 0,  0, clip=False)
+        #Turned off auto rotating
+        #cls_boxes_aabb = bbox_utils.bbaa_graphics_gems_torch(cls_boxes, 0,  0, clip=False)
+        x1 = cls_boxes[:,0:1] - cls_boxes[:,3:4]/2.0
+        y1 = cls_boxes[:,1:2] - cls_boxes[:,4:5]/2.0
+        x2 = cls_boxes[:,0:1] + cls_boxes[:,3:4]/2.0
+        y2 = cls_boxes[:,1:2] + cls_boxes[:,4:5]/2.0
+        cls_boxes_aabb = torch.cat((x1,y1,x2,y2), dim=1)
     #[cls_var,cls_boxes,cls_scores]
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)

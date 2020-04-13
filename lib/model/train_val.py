@@ -419,6 +419,7 @@ class SolverWrapper(object):
                                                                                                     blobs_val['info'],
                                                                                                     self.db.num_classes,self.val_thresh,self.db.type)
                         bbox_pred_val = np.array(bbox_pred_val)
+                    #Final stage is stage 1
                     else:
                         rois_val = rois_val.data.cpu().numpy()
                         roi_labels_val = roi_labels_val.data.cpu().numpy()

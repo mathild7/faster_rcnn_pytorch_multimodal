@@ -22,7 +22,7 @@ class cam_enum(Enum):
     SIDE_RIGHT  = 5
 
 save_imgs = True
-mypath = '/home/mat/thesis/data2/waymo/val'
+mypath = '/home/mat/thesis/data2/waymo/train'
 tfrec_path = os.path.join(mypath,'compressed_tfrecords')
 top_crop = 550
 bbox_top_min = 30
@@ -32,6 +32,8 @@ file_list = sorted(file_list)
 with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_file:
     json_struct = []
     for i,filename in enumerate(file_list):
+        if(i > 500):
+            break
         if('.tfrecord' in filename):
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')

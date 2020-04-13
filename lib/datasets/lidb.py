@@ -183,24 +183,24 @@ class lidb(object):
             return None
 
 
-
-    def nms_hstack(self,scores,mean_boxes,thresh,c):
-        inds         = np.where(scores[:, c] > thresh)[0]
-        #No detections over threshold
-        if(inds.size == 0):
-            print('no detections for image over threshold {}'.format(thresh))
-            return np.empty(0),[],[]
-        cls_scores   = scores[inds, c]
-        cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
-        #[cls_var,cls_boxes,cls_scores]
-        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-            .astype(np.float32, copy=False)
-        keep = nms(
-            torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
-            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
-        cls_dets = cls_dets[keep, :]
-        #Only if this variable has been provided
-        return cls_dets, inds, keep
+    #DEPRECATED
+    #def nms_hstack(self,scores,mean_boxes,thresh,c):
+    #    inds         = np.where(scores[:, c] > thresh)[0]
+    #    #No detections over threshold
+    #    if(inds.size == 0):
+    #        print('no detections for image over threshold {}'.format(thresh))
+    #        return np.empty(0),[],[]
+    #    cls_scores   = scores[inds, c]
+    #    cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
+    #    #[cls_var,cls_boxes,cls_scores]
+    #    cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
+    #        .astype(np.float32, copy=False)
+    #    keep = nms(
+    #        torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
+    #        cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
+    #    cls_dets = cls_dets[keep, :]
+    #    #Only if this variable has been provided
+    #    return cls_dets, inds, keep
 
     @staticmethod
     def merge_roidbs(a, b):

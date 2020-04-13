@@ -353,7 +353,7 @@ __C.ENABLE_ALEATORIC_CLS_VAR           = False
 __C.ENABLE_EPISTEMIC_BBOX_VAR          = False
 __C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
-__C.NUM_SCENES               = 300
+__C.NUM_SCENES               = 210
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
@@ -364,7 +364,7 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
-__C.NET_TYPE                 = 'lidar'
+__C.NET_TYPE                 = 'image'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -394,8 +394,8 @@ __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
 #ONE OF
-__C.PRELOAD                  = False
-__C.PRELOAD_RPN              = True
+__C.PRELOAD                  = True
+__C.PRELOAD_RPN              = False
 
 __C.ENABLE_FULL_NET          = True
 __C.TRAIN_ITER               = 1

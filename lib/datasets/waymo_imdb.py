@@ -115,7 +115,7 @@ class waymo_imdb(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -561,7 +561,7 @@ class waymo_imdb(imdb):
                                 dets[k, 0], dets[k, 1], 
                                 dets[k, 2], dets[k, 3]))
                         #Write uncertainties
-                        for l in range(4,dets.shape[1]):
+                        for l in range(5,dets.shape[1]):
                             f.write(' {:.2f}'.format(dets[k,l]))
                         f.write('\n')
 
@@ -597,7 +597,8 @@ class waymo_imdb(imdb):
                 cls,
                 cachedir,
                 mode,
-                ovthresh=ovt)
+                ovthresh=ovt,
+                eval_type='2d')
             aps[i-1,:] = ap
             #Tell user of AP
             print(('AP for {} = {:.4f}'.format(cls,ap)))

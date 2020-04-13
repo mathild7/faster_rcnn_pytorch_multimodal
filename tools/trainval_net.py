@@ -169,9 +169,9 @@ if __name__ == '__main__':
         args.out_dir = 'output/'
         args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_fe_100k.pth')
+        #args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_fe_100k.pth')
         #IMAGE
-        #args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
     print('Called with args:')

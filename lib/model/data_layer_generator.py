@@ -37,7 +37,7 @@ class data_layer_generator(object):
             self.data_layer = RoIDataLayer(roidb, num_classes, 'train')
         elif(mode == 'val'):
             self.data_layer = RoIDataLayer(roidb, num_classes, 'val', random=True)      
-        self._queue = Queue(maxsize=16)
+        self._queue = Queue(maxsize=8)
         #self._ptr_queue = Queue(maxsize=32)
         #self._perm_queue = Queue(maxsize=32)
         #self._v_queue = Queue(maxsize=32)

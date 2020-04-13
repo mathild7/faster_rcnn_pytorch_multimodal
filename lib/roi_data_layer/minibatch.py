@@ -163,7 +163,7 @@ def get_image_minibatch(roidb, num_classes, augment_en):
       format(num_frames, cfg.TRAIN.BATCH_SIZE)
 
     # Get the input image blob, formatted for caffe
-    target_size = cfg.TRAIN.SCALES[random_scale_inds[i]]
+    target_size = cfg.TRAIN.SCALES[random_scale_inds[0]]
     infos, im_blob, local_roidb = _get_image_blob(roidb, target_size, augment_en)
     #print('got image {}'.format(roidb[0]['filename']))
     #print('token {}'.format(roidb[0]['imgname']))
@@ -171,8 +171,8 @@ def get_image_minibatch(roidb, num_classes, augment_en):
     #Contains actual image
     blobs = {'data': im_blob}
     blobs['info'] = infos[0]
-    im_scales = infos[0][6]
-    assert len(im_scales) == 1, "Single batch only"
+    im_scale = infos[0][6]
+    #assert len(im_scales) == 1, "Single batch only"
     assert len(roidb) == 1, "Single batch only"
 
     # gt boxes: (x1, y1, x2, y2, cls)
@@ -185,13 +185,13 @@ def get_image_minibatch(roidb, num_classes, augment_en):
     #print(blobs['filename'])
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     #print('scaling gt boxes by {}'.format(im_scales[0]))
-    gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scales[0]
+    gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scale
     gt_boxes[:, 4] = local_roidb[0]['gt_classes'][gt_inds]
     blobs['gt_boxes'] = gt_boxes
     gt_boxes_dc = np.empty((dc_len, 5), dtype=np.float32)
     if cfg.TRAIN.IGNORE_DC:
         gt_ind_dc = np.arange(dc_len)
-        gt_boxes_dc[:, 0:4] = local_roidb[0]['boxes_dc'][gt_ind_dc, :] * im_scales[0]
+        gt_boxes_dc[:, 0:4] = local_roidb[0]['boxes_dc'][gt_ind_dc, :] * im_scale
         gt_boxes_dc[:, 4] = np.zeros(dc_len)
     blobs['gt_boxes_dc'] = gt_boxes_dc
     #print('gt boxes')
@@ -439,7 +439,7 @@ def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
         im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, target_size,
                                         cfg.TRAIN.MAX_SIZE)
             #x_min, x_max, y_min, y_max, scale
-        info = np.array([0, im.shape[2]-1, 0, im.shape[1]-1, 0, 0, im_scale], dtype=np.float32)
+        info = np.array([0, im.shape[1]-1, 0, im.shape[0]-1, 0, 0, im_scale], dtype=np.float32)
         im_infos.append(info)
         processed_ims.append(im)
     # Create a blob to hold the input images

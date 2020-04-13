@@ -104,7 +104,7 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        args.weights_file = 'weights/{}_lidar_full_128k.pth'.format(args.net)
+        args.weights_file = 'weights/{}_image_140k.pth'.format(args.net)
         args.out_dir = 'output/'
         args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
     print('Called with args:')
@@ -127,14 +127,14 @@ if __name__ == '__main__':
     #tag = tag if tag else 'default'
     #filename = tag + '/' + filename
     if(cfg.NET_TYPE == 'image'):
-        if(args.imdb_name == 'kitti'):
+        if(args.db_name == 'kitti'):
             db = kitti_imdb(mode='eval')
-        elif(args.imdb_name == 'nuscenes'):
+        elif(args.db_name == 'nuscenes'):
             db = nuscenes_imdb(mode='val',limiter=1000)
-        elif(args.imdb_name == 'waymo'):
-            db = waymo_imdb(mode='val',limiter=0, shuffle_en=False)
+        elif(args.db_name == 'waymo'):
+            db = waymo_imdb(mode='val',limiter=100, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
-        db = waymo_lidb(mode='val',limiter=100, shuffle_en=True)
+        db = waymo_lidb(mode='val',limiter=1000, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):
@@ -179,4 +179,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.65,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.6,draw_det=True,eval_det=True)
