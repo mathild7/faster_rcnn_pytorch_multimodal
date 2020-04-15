@@ -317,7 +317,7 @@ class lidarnet(Network):
         bbox_s_pred  = self.bbox_pred_net(bbox_pred_in)
         num_samp = bbox_s_pred.shape[0]
         heading_pred = self.heading_pred_net(bbox_pred_in)
-        heading_pred = torch.tanh(heading_pred)
+        #heading_pred = torch.tanh(heading_pred)
         bbox_z_pred  = self.bbox_z_pred_net(bbox_pred_in)
         #Mix heading back into bbox pred
         bbox_pred    = torch.cat((bbox_s_pred.view(num_samp,-1,4),bbox_z_pred.view(num_samp,-1,2),heading_pred.view(num_samp,-1,1)),dim=2)

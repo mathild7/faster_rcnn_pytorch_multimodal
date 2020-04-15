@@ -72,6 +72,7 @@ class SolverWrapper(object):
                  val_sum_size,
                  epoch_size,
                  batch_size,
+                 val_batch_size,
                  val_thresh,
                  augment_en,
                  val_augment_en,
@@ -86,7 +87,7 @@ class SolverWrapper(object):
         self.val_sum_size    = val_sum_size
         self.epoch_size      = epoch_size
         self.batch_size      = batch_size
-        self.val_batch_size  = batch_size
+        self.val_batch_size  = val_batch_size
         self._val_augment_en = val_augment_en
         self._augment_en     = augment_en
         self.val_thresh      = val_thresh
@@ -359,6 +360,7 @@ class SolverWrapper(object):
         #timers['data_gen']   = utils.timer.Timer()
         #timers['losses']     = utils.timer.Timer()
         #timers['backprop']   = utils.timer.Timer()
+        timers['summary']     = utils.timer.Timer()
         self.net.timers = timers
         loss_cumsum = 0
         killer = GracefulKiller()
@@ -446,8 +448,8 @@ class SolverWrapper(object):
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
-
             if iter % self.sum_size == 0:
+                timers['summary'].tic()
                 print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
@@ -457,7 +459,7 @@ class SolverWrapper(object):
                     #print(_sum)
                     self.writer.add_summary(_sum, float(iter))
                 last_summary_time = now
-
+                timers['summary'].toc()
             else:
                 # Compute the graph without summary
                 #https://stackoverflow.com/questions/46561390/4-step-alternating-rpn-faster-r-cnn-training-tensorflow-object-detection-mo/46981671#46981671
@@ -559,6 +561,7 @@ def train_net(network,
               sum_size=128,
               val_sum_size=1000,
               batch_size=16,
+              val_batch_size=16,
               val_thresh=0.1,
               augment_en=True,
               val_augment_en=False):
@@ -578,6 +581,7 @@ def train_net(network,
         val_sum_size,
         epoch_size,
         batch_size,
+        val_batch_size,
         val_thresh,
         augment_en,
         val_augment_en,

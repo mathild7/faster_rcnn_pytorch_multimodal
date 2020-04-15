@@ -104,9 +104,9 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        args.weights_file = 'weights/{}_image_140k.pth'.format(args.net)
+        args.weights_file = 'weights/{}_lidar_180k.pth'.format(args.net)
         args.out_dir = 'output/'
-        args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
+        #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
     if args.cfg_file is not None:
@@ -132,9 +132,9 @@ if __name__ == '__main__':
         elif(args.db_name == 'nuscenes'):
             db = nuscenes_imdb(mode='val',limiter=1000)
         elif(args.db_name == 'waymo'):
-            db = waymo_imdb(mode='val',limiter=100, shuffle_en=True)
+            db = waymo_imdb(mode='val',limiter=300, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
-        db = waymo_lidb(mode='val',limiter=1000, shuffle_en=True)
+        db = waymo_lidb(mode='val',limiter=500, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):
@@ -172,11 +172,12 @@ if __name__ == '__main__':
     net.eval()
 
     print(('Loading initial weights from {:s}').format(args.weights_file))
-    params = torch.load(args.db_root_dir + args.weights_file, map_location=lambda storage, loc: storage)
+    file_dir = os.path.join(DATA_DIR,args.db_name,args.weight_file)
+    params = torch.load(file_dir, map_location=lambda storage, loc: storage)
     net.load_state_dict(params)
     print('Loaded.')
     if not torch.cuda.is_available():
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.6,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=True,eval_det=True)

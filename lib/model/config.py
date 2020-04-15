@@ -28,7 +28,7 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.001
+__C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.1
@@ -41,7 +41,7 @@ __C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #WAYMO ~15,000 images in train set
 #__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
 # Iteration intervals for showing the loss during training, on command line interface
-__C.TRAIN.DISPLAY = 200
+__C.TRAIN.DISPLAY = 1000
 
 # Whether to double the learning rate for bias
 __C.TRAIN.DOUBLE_BIAS = False
@@ -253,7 +253,7 @@ __C.RESNET.MAX_POOL = False
 
 # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
 # Range: 0 (none) to 3 (all)
-__C.RESNET.FIXED_BLOCKS = 1
+__C.RESNET.FIXED_BLOCKS = 0
 
 #
 # MobileNet options
@@ -364,7 +364,7 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
-__C.NET_TYPE                 = 'image'
+__C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -372,9 +372,9 @@ __C.LIDAR.Z_RANGE            = [-3,3]
 __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12
-__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 2
-__C.LIDAR.MAX_PTS_PER_VOXEL  = 32
-__C.LIDAR.MAX_NUM_VOXEL      = 20000
+__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
+__C.LIDAR.MAX_PTS_PER_VOXEL  = 40
+__C.LIDAR.MAX_NUM_VOXEL      = 25000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
@@ -394,13 +394,13 @@ __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
 #ONE OF
-__C.PRELOAD                  = True
-__C.PRELOAD_RPN              = False
+__C.PRELOAD                  = False
+__C.PRELOAD_RPN              = True
 
 __C.ENABLE_FULL_NET          = True
-__C.TRAIN_ITER               = 1
+__C.TRAIN_ITER               = 2
 
-def get_output_dir(db, weights_filename):
+def get_output_dir(db, weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.
 

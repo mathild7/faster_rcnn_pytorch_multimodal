@@ -24,7 +24,7 @@ from shapely.geometry import MultiPoint, box
 #Useful for debugging without a IDE
 #import traceback
 from .waymo_eval import waymo_eval
-from model.config import cfg
+from model.config import cfg, get_output_dir
 
 
 import re
@@ -179,7 +179,8 @@ class waymo_imdb(imdb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
         print('deleting files in dir {}'.format(out_file))
-        shutil.rmtree(out_file)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
@@ -209,20 +210,34 @@ class waymo_imdb(imdb):
                     print('Saving drawn file at location {}'.format(outfile))
                     source_img.save(outfile,self._imtype)
 
+    #def delete_eval_draw_folder(self,im_folder,mode):
+    #    datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+    #    print('deleting files in dir {}'.format(datapath))
+    #    shutil.rmtree(datapath)
+    #    os.makedirs(datapath)
+
     def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
         print('deleting files in dir {}'.format(datapath))
-        shutil.rmtree(datapath)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name)
 
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
+        out_dir = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        #out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        #out_file = os.path.join(out_dir,out_file)
         if(iter != 0):
-            out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
+            out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+            #out_file = filename.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
-            out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
-        source_img = Image.open(imfile)
+            out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+            #out_file = filename.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
+        out_file = os.path.join(out_dir,out_file)
+        source_img = Image.open(filename)
         draw = ImageDraw.Draw(source_img)
         #TODO: Magic numbers
         limiter = 15
@@ -262,7 +277,7 @@ class waymo_imdb(imdb):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
-                    print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
+                    print('draw and save: No detections for image {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0

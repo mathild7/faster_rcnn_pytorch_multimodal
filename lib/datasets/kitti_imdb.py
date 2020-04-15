@@ -238,7 +238,8 @@ class kitti_imdb(imdb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(mode),'drawn')
         print('deleting files in dir {}'.format(out_file))
-        shutil.rmtree(out_file)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
@@ -270,8 +271,9 @@ class kitti_imdb(imdb):
 
     def delete_eval_draw_folder(self,im_folder,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(im_folder),'{}_drawn'.format(mode))
-        print('deleting files in dir {}'.format(datapath))
-        shutil.rmtree(datapath)
+        if(os.path.isdir(datapath)):
+            print('deleting files in dir {}'.format(datapath))
+            shutil.rmtree(datapath)
         os.makedirs(datapath)
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):

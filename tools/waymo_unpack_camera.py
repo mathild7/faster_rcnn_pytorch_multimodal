@@ -32,13 +32,13 @@ file_list = sorted(file_list)
 with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_file:
     json_struct = []
     for i,filename in enumerate(file_list):
-        if(i > 500):
-            break
+        #if(i > 500):
+        #    break
         if('.tfrecord' in filename):
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%5 == 0):
+                if(j%2 == 0):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))

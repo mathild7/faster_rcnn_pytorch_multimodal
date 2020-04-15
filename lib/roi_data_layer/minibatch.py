@@ -26,11 +26,16 @@ from scipy.ndimage.filters import gaussian_filter
 import spconv
 import utils.bbox as bbox_utils
 import shutil
+import re
 from datasets.waymo_lidb import waymo_lidb
 
 def draw_and_save_minibatch(im,roidb):
-    datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
-    out_file = roidb['imgname'].replace('images/','img-')
+
+    datapath = os.path.join(cfg.ROOT_DIR, 'debug')
+    if not os.path.exists(datapath):
+        os.makedirs(datapath)
+    #datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
+    out_file = os.path.basename(roidb['imgname'])
     out_file = os.path.join(datapath,out_file)
     source_img = Image.fromarray(im)
     draw = ImageDraw.Draw(source_img)
@@ -53,10 +58,12 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     height  = int(info[3] - info[2] + 1)
     lidb._imheight = height
     lidb._imwidth  = width
-
-    datapath = os.path.join(cfg.DATA_DIR, 'debug')
+    datapath = os.path.join(cfg.ROOT_DIR, 'debug')
+    if not os.path.exists(datapath):
+        os.makedirs(datapath)
     #out_file = filename.replace('/point_clouds/','/minibatch_drawn/').replace('.{}'.format('npy'),'.{}'.format('png'))
-    out_file  = os.path.join(datapath,'{}_minibatch_drawn.png'.format(cnt))
+    filenum = re.sub('[^0-9]','',(os.path.basename(filename)))
+    out_file  = os.path.join(datapath,'{}_{}_minibatch.png'.format(cnt,filenum))
     #source_bin = np.load(filename)
 
     #draw_file  = Image.new('RGB', (width, height), (255,255,255))
@@ -246,7 +253,6 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         #Shift up to have voxel grid be at bottom of pc_extents
         pc_extents[5] -= pc_extents[2]
         pc_extents[2] = 0
-
         assert vertical_voxel_size == cfg.LIDAR.VOXEL_HEIGHT
         voxel_generator = spconv.utils.VoxelGeneratorV2(
             voxel_size=[cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_HEIGHT],
@@ -290,13 +296,13 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         bev_map[intensity_tuple] = tanh_intensity
 
         #Scatter elongation into bev_map
-        #elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
-        #elongation_coords = np.hstack((xy_coords,elongation_loc))
-        #elongation_tuple = tuple(zip(*elongation_coords))
-        #bev_map[elongation_tuple] = voxel_elongation
+        elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+        elongation_coords = np.hstack((xy_coords,elongation_loc))
+        elongation_tuple = tuple(zip(*elongation_coords))
+        bev_map[elongation_tuple] = np.tanh(voxel_elongation)
 
         #Scatter density into bev_map
-        density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+        density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
         density_coords    = np.hstack((xy_coords,density_loc))
         density_tuple     = tuple(zip(*density_coords))
         bev_map[density_tuple] = voxel_density

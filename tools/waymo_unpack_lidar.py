@@ -48,7 +48,7 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%2 == 0):
+                    if(j%6 == 0):
                         frame = open_dataset.Frame()
                         frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                         proc_data = (i,j,frame,mypath)
@@ -63,6 +63,8 @@ def frame_loop(proc_data):
     import tensorflow as tfp
     tfp.enable_eager_execution()
     (i,j,frame,mypath) = proc_data
+    if(len(frame.no_label_zones) != 0):
+        print('found a NLZ')
     if(not skip_binaries):
         (range_images, range_image_top_pose) = parse_range_image(frame,tfp)
         points     = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)

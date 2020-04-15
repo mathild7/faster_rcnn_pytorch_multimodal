@@ -213,10 +213,14 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     # timers
     _t = {'frame_detect': Timer(), 'misc': Timer()}
 
-    datapath = os.path.join(cfg.DATA_DIR, 'waymo',mode,'{}_drawn'.format(mode))
-    print('deleting files in dir {}'.format(datapath))
-    shutil.rmtree(datapath)
-    os.makedirs(datapath)
+
+    #TODO: Move to the db
+    test_mode = 'test'
+    db.delete_eval_draw_folder(None,test_mode)
+    #datapath = os.path.join(cfg.DATA_DIR, 'waymo',mode,'{}_drawn'.format(mode))
+    #print('deleting files in dir {}'.format(datapath))
+    #shutil.rmtree(datapath)
+    #os.makedirs(datapath)
     area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
     #for i in range(10):
     for i in range(num_images):
@@ -232,7 +236,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         #Put frame into array, single element only supported
         frame = [frame]
         blobs = _get_blobs(frame)
-        assert len(scales) == 1, "Only single-image batch implemented"
+        #assert len(blobs) == 1, "Only single-image batch implemented"
         rois, bbox, uncertainties = frame_detect(net, blobs, db.num_classes,thresh)
         _t['frame_detect'].toc()
         _t['misc'].tic()
@@ -267,13 +271,13 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
             gt_boxes = db.find_gt_for_frame(filename,'val')
             if(gt_boxes is None):
                 #print('Draw and save: image {} had no GT boxes'.format(imfile))
-                db.draw_and_save_eval(filename,[],[],bbox,uncertainties,0,mode)
+                db.draw_and_save_eval(filename,[],[],bbox,uncertainties,0,test_mode)
             else:   
                 if(cfg.NET_TYPE == 'lidar'):
                     boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'])
                 elif(cfg.NET_TYPE == 'image'):
                     boxes = gt_boxes['boxes']
-                db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,mode)
+                db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode)
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

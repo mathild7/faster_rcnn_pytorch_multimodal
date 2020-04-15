@@ -167,11 +167,11 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         args.out_dir = 'output/'
-        args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
+        #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        #args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_fe_100k.pth')
+        args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_20k.pth')
         #IMAGE
-        args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+        #args.weight = os.path.join('/home/mat/thesis/data2/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
     print('Called with args:')
@@ -235,8 +235,9 @@ if __name__ == '__main__':
         pretrained_model=args.weight,
         max_iters=args.max_iters,
         sum_size=256,
-        val_sum_size=1000,
+        val_sum_size=2000,
         batch_size=16,
+        val_batch_size=32,
         val_thresh=0.4,
         augment_en=False,
         val_augment_en=False)

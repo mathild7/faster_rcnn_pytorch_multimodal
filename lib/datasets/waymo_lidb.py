@@ -24,10 +24,10 @@ from shapely.geometry import MultiPoint, box
 #Useful for debugging without a IDE
 #import traceback
 from .waymo_eval import waymo_eval
-from model.config import cfg
+from model.config import cfg, get_output_dir
 import utils.bbox as bbox_utils
-
 import re
+
 def atoi(text):
     return int(text) if text.isdigit() else text
 def natural_keys(text):
@@ -182,7 +182,8 @@ class waymo_lidb(lidb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
         print('deleting files in dir {}'.format(out_file))
-        shutil.rmtree(out_file)
+        if(os.path.isdir(out_file)):
+            shutil.rmtree(out_file)
         os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
@@ -340,9 +341,11 @@ class waymo_lidb(lidb):
         return z_max, z_min
 
     def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
-        print('deleting files in dir {}'.format(datapath))
-        shutil.rmtree(datapath)
+        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        #datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+        if(os.path.isdir(datapath)):
+            print('deleting files in dir {}'.format(datapath))
+            shutil.rmtree(datapath)
         os.makedirs(datapath)
 
 
@@ -420,8 +423,12 @@ class waymo_lidb(lidb):
 
         
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name)
-        out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        out_dir = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        out_file = os.path.join(out_dir,out_file)
+        #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         source_bin = np.load(filename)
         draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
