@@ -88,6 +88,12 @@ def parse_args(manual_mode):
         help='set config keys',
         default=None,
         nargs=argparse.REMAINDER)
+    parser.add_argument(
+        '--net_type',
+        dest='net_type',
+        help='lidar or camera',
+        type=str)
+
 
     if len(sys.argv) == 1 and manual_mode is False:
         parser.print_help()
@@ -104,11 +110,17 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        args.weights_file = 'weights/{}_lidar_180k.pth'.format(args.net)
+        #args.weights_file = 'weights/{}_lidar_156k.pth'.format(args.net)
         args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
+
+    #TODO: Merge into cfg_from_list()
+    if(args.net_type is not None):
+        cfg.NET_TYPE = args.net_type
+
+
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
@@ -132,7 +144,7 @@ if __name__ == '__main__':
         elif(args.db_name == 'nuscenes'):
             db = nuscenes_imdb(mode='val',limiter=1000)
         elif(args.db_name == 'waymo'):
-            db = waymo_imdb(mode='val',limiter=300, shuffle_en=True)
+            db = waymo_imdb(mode='val',limiter=500, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
         db = waymo_lidb(mode='val',limiter=500, shuffle_en=True)
 
@@ -172,7 +184,7 @@ if __name__ == '__main__':
     net.eval()
 
     print(('Loading initial weights from {:s}').format(args.weights_file))
-    file_dir = os.path.join(DATA_DIR,args.db_name,args.weight_file)
+    file_dir = os.path.join(cfg.DATA_DIR,args.db_name,args.weights_file)
     params = torch.load(file_dir, map_location=lambda storage, loc: storage)
     net.load_state_dict(params)
     print('Loaded.')

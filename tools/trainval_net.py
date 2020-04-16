@@ -77,7 +77,29 @@ def parse_args(manual_mode=False):
         help='set config keys',
         default=None,
         nargs=argparse.REMAINDER)
-
+    parser.add_argument(
+        '--net_type',
+        dest='net_type',
+        help='lidar or camera',
+        type=str)
+    parser.add_argument(
+        '--en_full_net',
+        dest='en_full_net',
+        help='enable just first stage or both stages of net',
+        default=None,
+        type=int)
+    parser.add_argument(
+        '--train_iter',
+        dest='train_iter',
+        help='what specific folder to save in',
+        default=None,
+        type=int)
+    parser.add_argument(
+        '--preload',
+        dest='preload',
+        help='0: None, 1: preload resnet, 2: preload faster rcnn',
+        default=None,
+        type=int)
     if len(sys.argv) == 1 and manual_mode is False:
         parser.print_help()
         sys.exit(1)
@@ -169,11 +191,30 @@ if __name__ == '__main__':
         args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_20k.pth')
+        #args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_20k.pth')
         #IMAGE
-        #args.weight = os.path.join('/home/mat/thesis/data2/', 'weights', '{}-caffe.pth'.format(args.net))
+        #args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
+    
+    #TODO: Merge into cfg_from_list()
+    if(args.net_type is not None):
+        cfg.NET_TYPE = args.net_type
+    if(args.en_full_net is not None):
+        if(args.en_full_net == 1):
+            cfg.ENABLE_FULL_NET = True
+        elif(args.en_full_net == 0):
+            cfg.ENABLE_FULL_NET = False
+    if(args.train_iter is not None):
+        cfg.TRAIN_ITER = args.train_iter
+    if(args.preload is not None):
+        cfg.PRELOAD     = False
+        cfg.PRELOAD_RPN = False
+        if(args.preload == 1):
+            cfg.PRELOAD = True
+        if(args.preload == 2):
+            cfg.PRELOAD_RPN = True
+
     print('Called with args:')
     print(args)
     if args.cfg_file is not None:

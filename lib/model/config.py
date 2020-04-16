@@ -395,10 +395,10 @@ __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.EN                 = False
 #ONE OF
 __C.PRELOAD                  = False
-__C.PRELOAD_RPN              = True
+__C.PRELOAD_RPN              = False
 
 __C.ENABLE_FULL_NET          = True
-__C.TRAIN_ITER               = 2
+__C.TRAIN_ITER               = 1
 
 def get_output_dir(db, weights_filename=None):
   """Return the directory where experimental artifacts are placed.
