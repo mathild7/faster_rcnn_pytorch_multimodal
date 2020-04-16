@@ -106,6 +106,7 @@ class resnetv1(Network):
         self._num_layers = num_layers
         self._net_conv_channels = 1024
         self._fc7_channels = 2048
+        self._roi_pooling_channels = 1024
 
     def _crop_pool_layer(self, bottom, rois):
         return Network._crop_pool_layer(self, bottom, rois,
@@ -117,7 +118,10 @@ class resnetv1(Network):
 
         return net_conv
 
-    def _head_to_tail(self, pool5):
+    def _head_to_tail(self, pool5, dropout_en):
+        #pool5 = pool5.unsqueeze(0).repeat(self._num_mc_run,1,1,1,1)
+        #Reshape due to limitation on nn.conv2d (only one dim can be batch)
+        #pool5 = pool5.view(-1,pool5.shape[2],pool5.shape[3],pool5.shape[4])
         fc7 = self.resnet.layer4(pool5).mean(3).mean(
             2)  # average pooling after layer4
         return fc7

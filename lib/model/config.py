@@ -28,7 +28,7 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.0001
+__C.TRAIN.WEIGHT_DECAY = 0.001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.1
@@ -39,7 +39,7 @@ __C.TRAIN.GAMMA = 0.1
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [150000]
+__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 200
 
@@ -118,8 +118,7 @@ __C.TRAIN.BBOX_INSIDE_WEIGHTS = (1.0, 1.0, 1.0, 1.0)
 
 # Normalize the targets using "precomputed" (or made up) means and stdevs
 # (BBOX_NORMALIZE_TARGETS must also be True)
-__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED = True
-
+__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED  = True
 __C.TRAIN.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 
 __C.TRAIN.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -191,6 +190,8 @@ __C.TEST.SCALES  = (730,)
 #NUSCENES
 #__C.TEST.MAX_SIZE  = 450
 #WAYMO 1/2
+#__C.TEST.MAX_SIZE = 960
+#WAYMO FULL SCALE
 __C.TEST.MAX_SIZE  = 1920
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
@@ -228,6 +229,7 @@ __C.TEST.MODE = 'nms'
 # Only useful when TEST.MODE is 'top', specifies the number of top proposals to select
 __C.TEST.RPN_TOP_N = 5000
 
+__C.TEST.IGNORE_DC = False
 #
 # ResNet options
 #
@@ -261,7 +263,7 @@ __C.MOBILENET.FIXED_LAYERS = 5
 __C.MOBILENET.WEIGHT_DECAY = 0.00004
 
 # Depth multiplier
-__C.MOBILENET.DEPTH_MULTIPLIER = 1.
+__C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 
 #
 # MISC
@@ -328,6 +330,31 @@ __C.ANCHOR_RATIOS = [0.5,1,2]
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512
 
+__C.FREEZE_DB      = False
+__C.FREEZE_DB_INDS = 1
+
+#Bayesian Config
+__C.ENABLE_RPN_BBOX_VAR      = False
+__C.ENABLE_RPN_CLS_VAR       = False
+__C.ENABLE_ALEATORIC_BBOX_VAR          = False
+__C.ENABLE_ALEATORIC_CLS_VAR           = False
+__C.ENABLE_EPISTEMIC_BBOX_VAR          = False
+__C.ENABLE_EPISTEMIC_CLS_VAR           = False
+__C.ENABLE_CUSTOM_TAIL       = False
+__C.NUM_SCENES               = 100
+__C.MAX_IMG_PER_SCENE        = 1000
+__C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
+__C.TRAIN.DRAW_ROIDB_GEN     = False
+__C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
+__C.NUM_BBOX_SAMPLE          = 50
+__C.NUM_CE_SAMPLE            = 300
+__C.NUM_ALEATORIC_SAMPLE     = 40
+__C.NUM_MC_RUNS              = 40
+__C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
+#Need to turn this on in order to debug
+#Slows
+__C.DEBUG_EN                 = False
+
 
 def get_output_dir(imdb, weights_filename):
   """Return the directory where experimental artifacts are placed.
@@ -338,7 +365,27 @@ def get_output_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    mode = ''
+    if __C.ENABLE_ALEATORIC_BBOX_VAR:
+      mode = mode + 'bbox_var_'
+    if __C.ENABLE_ALEATORIC_CLS_VAR:
+      mode = mode + 'cls_var_'
+    if __C.ENABLE_RPN_BBOX_VAR:
+      mode = mode + 'rpn_bbox_var_'
+    if __C.ENABLE_RPN_CLS_VAR:
+      mode = mode + 'rpn_cls_var_'
+    #catch all, if nothing is enabled
+    if(mode == ''):
+      mode = 'vanilla_'
+    if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
+      train_filter = 'all'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Day'):
+      train_filter = 'day'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Night'):
+      train_filter = 'night'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
+      train_filter = 'dawn_dusk'
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -354,7 +401,28 @@ def get_output_tb_dir(imdb, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
   if weights_filename is None:
-    weights_filename = 'default'
+    mode = ''
+    if __C.ENABLE_ALEATORIC_BBOX_VAR:
+      mode = mode + 'bbox_var_'
+    if __C.ENABLE_ALEATORIC_CLS_VAR:
+      mode = mode + 'cls_var_'
+    if __C.ENABLE_RPN_BBOX_VAR:
+      mode = mode + 'rpn_bbox_var_'
+    if __C.ENABLE_RPN_CLS_VAR:
+      mode = mode + 'rpn_cls_var_'
+    #catch all, if nothing is enabled
+    if(mode == ''):
+      mode = 'vanilla_'
+    
+    if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
+      train_filter = 'all'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Day'):
+      train_filter = 'day'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Night'):
+      train_filter = 'night'
+    elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
+      train_filter = 'dawn_dusk'
+    weights_filename = '{}train_{}_1'.format(mode,train_filter)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

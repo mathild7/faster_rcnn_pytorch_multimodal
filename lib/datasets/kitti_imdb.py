@@ -209,7 +209,7 @@ class kitti_imdb(imdb):
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'img_index': index,
-            'imagefile': img_filename,
+            'filename': img_filename,
             'det': ignore[0:ix].copy(),
             'ignore':ignore[0:ix],
             'hit': ignore[0:ix].copy(),
@@ -223,14 +223,14 @@ class kitti_imdb(imdb):
         }
 
 
-
+    #TODO: make dependence of ROIDB in test mode, gone.
     def find_gt_for_img(self,imfile,mode):
         if(mode == 'train'):
             roidb = self.roidb
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['imagefile'] == imfile):
+            if(roi['filename'] == imfile):
                 return roi
         return None
 
@@ -248,11 +248,11 @@ class kitti_imdb(imdb):
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+                    outfile = roi['filename'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
-                    outfile = roi['imagefile'].replace('/image_2','/drawn')
+                    outfile = roi['filename'].replace('/image_2','/drawn')
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"
@@ -274,7 +274,7 @@ class kitti_imdb(imdb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
+    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = imfile.replace('/image_2/','/{}_drawn/iter_{}_'.format(mode,iter))
         source_img = Image.open(imfile)

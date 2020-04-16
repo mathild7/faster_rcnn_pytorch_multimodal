@@ -24,7 +24,7 @@ from scipy.ndimage.filters import gaussian_filter
 
 def draw_and_save_minibatch(im,roidb):
     datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
-    out_file = roidb['img_index'].replace('images/','img-')
+    out_file = roidb['imgname'].replace('images/','img-')
     out_file = os.path.join(datapath,out_file)
     source_img = Image.fromarray(im)
     draw = ImageDraw.Draw(source_img)
@@ -49,8 +49,8 @@ def get_minibatch(roidb, num_classes, augment_en):
 
     # Get the input image blob, formatted for caffe
     im_blob, im_scales, local_roidb = _get_image_blob(roidb, random_scale_inds, augment_en)
-    #print('got image {}'.format(roidb[0]['imagefile']))
-    #print('token {}'.format(roidb[0]['img_index']))
+    #print('got image {}'.format(roidb[0]['filename']))
+    #print('token {}'.format(roidb[0]['imgname']))
     #print('is it flipped?: {}'.format(roidb[0]['flipped']))
     #Contains actual image
     blobs = {'data': im_blob}
@@ -63,7 +63,9 @@ def get_minibatch(roidb, num_classes, augment_en):
     #print(local_roidb[0]['ignore'])
     gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
     dc_len  = local_roidb[0]['boxes_dc'].shape[0]
-    blobs['imagefile'] = local_roidb[0]['imagefile']
+    blobs['filename'] = local_roidb[0]['filename']
+    print('from get_image_minibatch')
+    print(blobs['filename'])
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     #print('scaling gt boxes by {}'.format(im_scales[0]))
     gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scales[0]
@@ -78,7 +80,7 @@ def get_minibatch(roidb, num_classes, augment_en):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
     #print('gt boxes')
-    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['imagefile'])
+    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['filename'])
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
         return None
@@ -94,10 +96,10 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        im = cv2.imread(roidb[i]['imagefile'])
+        im = cv2.imread(roidb[i]['filename'])
         #im  = cv2.imread('/home/mat/black.png')
-        #print(roidb[i]['imagefile'])
-        #if('000318' in roidb[i]['imagefile']):
+        #print(roidb[i]['filename'])
+        #if('000318' in roidb[i]['filename']):
         #    print('--------------------------')
         #    print('minibatch images')
         #    print('--------------------------')
@@ -107,7 +109,7 @@ def _get_image_blob(roidb, scale_inds, augment_en=False):
         sigma    = 2
         local_roidb = deepcopy(roidb)
         if(augment_en):
-            #print('augmenting image {}'.format(roidb[i]['img_index']))
+            #print('augmenting image {}'.format(roidb[i]['imgname']))
             #shape 0 -> height
             #shape 1 -> width
             flip_num = np.random.normal(1.0, 2.0)

@@ -14,6 +14,7 @@ import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
 from .data_layer_generator import data_layer_generator
 import utils.timer
+from utils.filter_predictions import *
 try:
     import cPickle as pickle
 except ImportError:
@@ -48,43 +49,6 @@ class GracefulKiller:
     signal.signal(signal.SIGTERM, self.orig_sigterm)
     self.kill_now = True
 
-
-
-
-#TODO: Could use original imwidth/imheight
-def compute_bbox(rois, cls_score, bbox_pred, imheight, imwidth, imscale, num_classes,thresh=0.1):
-    #print('validation img properties h: {} w: {} s: {} '.format(imheight,imwidth,imscale))
-    rois = rois[:, 1:5] / imscale
-    #Deleting extra dim
-    cls_score = np.reshape(cls_score, [cls_score.shape[0], -1])
-    bbox_pred = np.reshape(bbox_pred, [bbox_pred.shape[0], -1])
-    pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
-    # x1 >= 0
-    pred_boxes[:, 0::4] = np.maximum(pred_boxes[:, 0::4], 0)
-    # y1 >= 0
-    pred_boxes[:, 1::4] = np.maximum(pred_boxes[:, 1::4], 0)
-    # x2 < imwidth
-    pred_boxes[:, 2::4] = np.minimum(pred_boxes[:, 2::4], imwidth/imscale - 1)
-    # y2 < imheight 3::4 means start at 3 then jump every 4
-    pred_boxes[:, 3::4] = np.minimum(pred_boxes[:, 3::4], imheight/imscale - 1)
-    all_boxes = []
-    # skip j = 0, because it's the background class
-    #for i,score in enumerate(cls_score):
-    #    for j,cls_s in enumerate(score):
-    #        if((cls_s > thresh or cls_s < 0.0) and j > 0):
-                #print('score for entry {} and class {} is {}'.format(i,j,cls_s))
-    for j in range(1, num_classes):
-        inds = np.where(cls_score[:, j] > thresh)[0]
-        cls_scores = cls_score[inds, j]
-        cls_boxes = pred_boxes[inds, j * 4:(j + 1) * 4]
-        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-            .astype(np.float32, copy=False)
-        keep = nms(
-            torch.from_numpy(cls_boxes), torch.from_numpy(cls_scores),
-            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
-        cls_dets = cls_dets[keep, :]
-        all_boxes.append(cls_dets)
-    return rois, all_boxes
 
 def scale_lr(optimizer, scale):
     """Scale the learning rate of the optimizer"""
@@ -378,6 +342,9 @@ class SolverWrapper(object):
         self.data_gen_val.start()
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
+
+            #if(iter >= 20000 and cfg.ENABLE_ALEATORIC_BBOX_VAR is False):
+            #    cfg.ENABLE_ALEATORIC_BBOX_VAR = True
             #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % self.batch_size == 0 and iter != 0:
@@ -408,11 +375,27 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-                    summary_val, rois_val, roi_labels_val, bbox_pred_val, cls_prob_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                    self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
+                    summary_val, rois_val, roi_labels_val, \
+                        bbox_pred_val, a_bbox_var_val, e_bbox_var_val, \
+                        cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                    self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
-                    #Add ability to do compute_bbox on rois_val and pass to draw&save
-                    rois_val, bbox_pred_val = compute_bbox(rois_val,cls_prob_val,bbox_pred_val,blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2], self.imdb.num_classes,self.val_im_thresh)
-                    self.imdb.draw_and_save_eval(blobs_val['imagefile'],rois_val,roi_labels_val,bbox_pred_val,iter+i,'trainval')
+                    #Add ability to do filter_pred on rois_val and pass to draw&save
+                    #torch.set_printoptions(profile="full")
+                    #print(bbox_pred_val)
+                    #print(cls_prob_val)
+                    #print(a_cls_var_val)
+                    #torch.set_printoptions(profile="default")   
+                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
+                                                                             bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
+                                                                             blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
+                                                                             self.imdb.num_classes,self.val_im_thresh)
+                    #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
+                    bbox_pred_val = np.array(bbox_pred_val)
+                    #if(bbox_pred_val.size != 0):
+                    #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
+                    self.imdb.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
 
                     #for obj in gc.get_objects():
                     #    try:
@@ -427,8 +410,7 @@ class SolverWrapper(object):
             if iter % self.sum_size == 0:
                 #print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
-                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
-                  self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
+                total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss
                 for _sum in summary:
                     #print('summary')
@@ -447,8 +429,7 @@ class SolverWrapper(object):
                     #This solution was not used as more difficult to implement. The RoI pooling is made differentiable w.r.t the box coordinates using a RoI warping layer.
                 #4-Step Alternating training: 
                     #The strategy chosen takes 4 steps: In the first of one the RPN is trained. In the second, Fast-RCNN is trained using pre-computed RPN proposals. For the third step, the trained Fast-RCNN is used to initialize a new RPN where only RPN’s layers are fine-tuned. Finally in the fourth step RPN’s layers are frozen and only Fast-RCNN is fine-tuned.
-                rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss = \
-                  self.net.train_step(blobs, self.optimizer, update_weights)
+                total_loss = self.net.train_step(blobs, self.optimizer, update_weights)
                 loss_cumsum += total_loss
             t.toc()
 

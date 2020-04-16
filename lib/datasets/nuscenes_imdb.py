@@ -194,9 +194,9 @@ class nuscenes_imdb(imdb):
         #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
-                outfile = roi['imagefile'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/{}'.format(mode))
+                outfile = roi['filename'].replace('samples/CAM_FRONT/','samples/cam_front_drawn/{}'.format(mode))
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"
@@ -474,7 +474,7 @@ class nuscenes_imdb(imdb):
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
             'img_index': img['token'],
-            'imagefile': filename,
+            'filename': filename,
             'ignore': ignore[0:ix_new],
             'det': ignore[0:ix_new].copy(),
             'cat': filtered_cat,
@@ -509,6 +509,9 @@ class nuscenes_imdb(imdb):
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
                     dets = all_boxes[cls_ind][im_ind]
+                    #TODO: Include in file write
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:] 
                     #print('index: ' + index)
                     #print(dets)
                     if dets == []:
@@ -516,10 +519,10 @@ class nuscenes_imdb(imdb):
                     # expects 1-based indices
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
                                 im_ind, img['token'], dets[k, -1], dets[k, 0],
                                 dets[k, 1], dets[k, 2],
-                                dets[k, 3]))
+                                dets[k, 3], dets[k, 4], dets[k, 5], dets[k, 6], dets[k, 7]))
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files

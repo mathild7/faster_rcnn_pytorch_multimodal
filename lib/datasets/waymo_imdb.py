@@ -51,13 +51,18 @@ class waymo_imdb(imdb):
         self._val_image_index = []
         self._test_image_index = []
         self._devkit_path = self._get_default_path()
-
-
+        if(mode == 'test'):
+            self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
+        else:
+            self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
+        self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
+        self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
 
         self._imwidth  = 1920
         self._imheight = 730
         self._imtype   = 'PNG'
         self._mode = mode
+        print('imdb mode: {}'.format(mode))
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
@@ -137,8 +142,7 @@ class waymo_imdb(imdb):
                     #print(img_labels['assoc_frame'])
                     if(img_labels['assoc_frame'] == img.replace('.{}'.format(self._imtype.lower()),'')):
                         img = os.path.join(mode,'images',img)
-                        #TODO: filter if not in preferred scene
-                        roi = self._load_waymo_annotation(img,img_labels)
+                        roi = self._load_waymo_annotation(img,img_labels,tod_filter_list=self._tod_filter_list)
                         if(roi is None):
                             sub_total += 1
                         else:
@@ -155,9 +159,19 @@ class waymo_imdb(imdb):
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['imagefile'] == imfile):
+            if(roi['filename'] == imfile):
                 return roi
         return None
+
+    def scene_from_index(self,idx,mode='train'):
+        if(mode == 'train'):
+            return self._train_image_index[i]
+        elif(mode == 'val'):
+            return self._val_image_index[i]
+        elif(mode == 'test'):
+            return self._test_image_index[i]
+        else:
+            return None
 
 
     def draw_and_save(self,mode,image_token=None):
@@ -174,11 +188,11 @@ class waymo_imdb(imdb):
         for i, roi in enumerate(roidb):
             if(i % 250 == 0):
                 if(roi['flipped']):
-                    outfile = roi['imagefile'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+                    outfile = roi['filename'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
                 else:
-                    outfile = roi['imagefile'].replace('/images','/drawn')
+                    outfile = roi['filename'].replace('/images','/drawn')
                 if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['imagefile'])
+                    source_img = Image.open(roi['filename'])
                     if(roi['flipped'] is True):
                         source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
                         text = "Flipped"
@@ -200,18 +214,54 @@ class waymo_imdb(imdb):
         shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,iter,mode):
+    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
+
         if(iter != 0):
             out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
             out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         source_img = Image.open(imfile)
         draw = ImageDraw.Draw(source_img)
-        for class_dets in dets:
+        #TODO: Magic numbers
+        limiter = 15
+        y_start = self._imheight - 10*(limiter+2)
+        #TODO: Swap axes of dets
+        for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
-            for det in class_dets:
-                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
+            #Ignore background
+            if(j > 0):
+                if(len(class_dets) > 0):
+                    cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    avg_det_string = 'image average: '
+                    num_det = len(det_idx)
+                    if(num_det < limiter):
+                        limiter = num_det
+                    else:
+                        limiter = 15
+                    for i,idx in enumerate(det_idx):
+                        uc_gradient = int((limiter-i)/limiter*255.0)
+                        det = class_dets[idx]
+                        draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),uc_gradient),width=2)
+                        det_string = '{:02} '.format(i)
+                        if(i < limiter):
+                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
+                        for key,val in cls_uncertainties.items():
+                            if('cls' in key):
+                                if(i == 0):
+                                    avg_det_string += '{}: {:5.4f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.4f} '.format(key,np.mean(val[idx]))
+                            else:
+                                if(i == 0):
+                                    avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
+                        det_string += 'confidence: {:5.4f} '.format(det[4])
+                        if(i < limiter):
+                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
+                    draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
+                else:
+                    print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -221,6 +271,49 @@ class waymo_imdb(imdb):
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)    
 
+    def _normalize_uncertainties(self,dets,uncertainties):
+        normalized_uncertainties = {}
+        for key,uc in uncertainties.items():
+            if('bbox' in key):
+                bbox_width  = dets[:,2] - dets[:,0]
+                bbox_height = dets[:,3] - dets[:,1]
+                bbox_size = np.sqrt(bbox_width*bbox_height)
+                uc[:,0] = uc[:,0]/bbox_size
+                uc[:,2] = uc[:,2]/bbox_size
+                uc[:,1] = uc[:,1]/bbox_size
+                uc[:,3] = uc[:,3]/bbox_size
+                normalized_uncertainties[key] = np.mean(uc,axis=1)
+            elif('mutual_info' in key):
+                normalized_uncertainties[key] = uc.squeeze(1)*10*(-np.log(dets[:,4]))
+            else:
+                normalized_uncertainties[key] = uc.squeeze(1)
+        return normalized_uncertainties
+                
+    def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
+        sampled_det = np.zeros((5,self._num_bbox_samples))
+        det_width = max(int((entropy)*10),-1)+2
+        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
+        sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+        sampled_det[4][:] = np.repeat(softmax,self._num_bbox_samples)
+        return sampled_det
+
+    def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
+        if(cfg.ENABLE_ALEATORIC_BBOX_VAR and self._uncertainty_sort_type == 'a_bbox_var'):
+            sortable = uncertainties['a_bbox_var']
+        elif(cfg.ENABLE_EPISTEMIC_BBOX_VAR and self._uncertainty_sort_type == 'e_bbox_var'):
+            sortable = uncertainties['e_bbox_var']
+        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_entropy'):
+            sortable = uncertainties['a_cls_entropy']
+        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_var'):
+            sortable = uncertainties['a_cls_var']
+        elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
+            sortable = uncertainties['e_cls_mutual_info']
+        else:
+            sortable = np.arange(len(dets))
+        if(descending is True):
+            return np.argsort(-sortable)
+        else:
+            return np.argsort(sortable)
 
     def get_class(self,idx):
        return self._classes[idx]
@@ -246,7 +339,7 @@ class waymo_imdb(imdb):
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True):
+    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
         filename = os.path.join(self._devkit_path, img)
         num_objs = len(img_labels['box'])
 
@@ -259,7 +352,13 @@ class waymo_imdb(imdb):
         # "Seg" area for pascal is just the box area
         weather = img_labels['scene_type'][0]['weather']
         tod = img_labels['scene_type'][0]['tod']
-        if(tod != 'Day'):
+        scene_desc = json.dumps(img_labels['scene_type'][0])
+        #TODO: Magic number
+        scene_idx  = int(int(img_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
+        img_idx    = int(int(img_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
+        #Removing night-time/day-time ROI's
+        if(tod not in tod_filter_list):
+            print('TOD {} not in specified filter list'.format(tod))
             return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
         camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
@@ -267,7 +366,6 @@ class waymo_imdb(imdb):
         # Load object bounding boxes into a data frame.
         ix = 0
         ix_dc = 0
-        filter_boxes = True
         for i, bbox in enumerate(img_labels['box']):
             difficulty = img_labels['difficulty'][i]
             anno_cat   = img_labels['class'][i]
@@ -299,14 +397,14 @@ class waymo_imdb(imdb):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
-                if(anno_cat == 'vehicle.car'):
+                if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
-                    if(y2 - y1 < 10 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.2):
+                    if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
                         continue
-                if(anno_cat == 'vehicle.bicycle'):
+                if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
                         continue
-                if(anno_cat == 'human.pedestrian'):
+                if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
                         continue
                 cat.append(anno_cat)
@@ -322,99 +420,106 @@ class waymo_imdb(imdb):
                 ix_dc = ix_dc + 1
             
         if(ix == 0 and remove_without_gt is True):
-            print('removing element {}'.format(img))
+            print('removing image {} with no GT boxes specified'.format(img))
             return None
         overlaps = scipy.sparse.csr_matrix(overlaps)
+        #TODO: Double return
         return {
-            'img_index': img,
-            'imagefile': filename,
-            'ignore': ignore[0:ix],
-            'det': ignore[0:ix].copy(),
-            'cat': cat,
-            'hit': ignore[0:ix].copy(),
-            'boxes': boxes[0:ix],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': gt_classes[0:ix],
+            'imgname':     img,
+            'img_idx':     img_idx,
+            'scene_idx':   scene_idx,
+            'scene_desc':  scene_desc,
+            'filename':   filename,
+            'ignore':      ignore[0:ix],
+            'det':         ignore[0:ix].copy(),
+            'cat':         cat,
+            'hit':         ignore[0:ix].copy(),
+            'boxes':       boxes[0:ix],
+            'boxes_dc':    boxes_dc[0:ix_dc],
+            'gt_classes':  gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix]
+            'flipped':     False,
+            'seg_areas':   seg_areas[0:ix]
         }
 
-       #Post Process Step
-        filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
-        filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
-        filtered_cat        = []
-        filtered_gt_class   = np.zeros((ix), dtype=np.int32)
-        filtered_overlaps   = np.zeros((ix, self.num_classes), dtype=np.float32)
-        ix_new = 0
+        #Post Process Step
+        #filtered_boxes      = np.zeros((ix, 4), dtype=np.uint16)
+        #filtered_boxes_dc   = np.zeros((ix_dc, 4), dtype=np.uint16)
+        #filtered_cat        = []
+        #filtered_gt_class   = np.zeros((ix), dtype=np.int32)
+        #filtered_overlaps   = np.zeros((ix, self.num_classes), dtype=np.float32)
+        #ix_filter = 0
         #Remove occluded examples
-        if(filter_boxes is True):
-            for i in range(ix):
-                remove = False
+        #if(filter_boxes is True):
+        #    for i in range(ix):
+        #        remove = False
                 #Any GT that overlaps with another
                 #Pedestrians will require a larger overlap than cars.
                 #Need overlap
                 #OR
                 #box behind is fully inside foreground object
-                for j in range(ix):
-                    if(i == j):
-                        continue
+                #for j in range(ix):
+                    #if(i == j):
+                    #    continue
                     #How many LiDAR points?
                     
                     #i is behind j
-                    z_diff = dists[i][0] - dists[j][0]
-                    n_diff = dists[i][1] - dists[j][1]
-                    if(boxes[i][0] > boxes[j][0] and boxes[i][1] > boxes[j][1] and boxes[i][2] < boxes[j][2] and boxes[i][3] < boxes[j][3]):
-                        fully_inside = True
-                    else:
-                        fully_inside = False
+                    #z_diff = dists[i][0] - dists[j][0]
+                    #n_diff = dists[i][1] - dists[j][1]
+                    #if(boxes[i][0] > boxes[j][0] and boxes[i][1] > boxes[j][1] and boxes[i][2] < boxes[j][2] and boxes[i][3] < boxes[j][3]):
+                    #    fully_inside = True
+                    #else:
+                    #    fully_inside = False
                     #overlap_comp(boxes[i],boxes[j])
-                    if(n_diff > 0.3 and fully_inside):
-                        remove = True
-                for j in range(ix_dc):  
+                    #if(n_diff > 0.3 and fully_inside):
+                    #    remove = True
+                #for j in range(ix_dc):  
                     #i is behind j
-                    z_diff = dists[i][0] - dists_dc[j][0]
-                    n_diff = dists[i][1] - dists_dc[j][1]
-                    if(boxes[i][0] > boxes_dc[j][0] and boxes[i][1] > boxes_dc[j][1] and boxes[i][2] < boxes_dc[j][2] and boxes[i][3] < boxes_dc[j][3]):
-                        fully_inside = True
-                    else:
-                        fully_inside = False
+                #    z_diff = dists[i][0] - dists_dc[j][0]
+                #    n_diff = dists[i][1] - dists_dc[j][1]
+                #    if(boxes[i][0] > boxes_dc[j][0] and boxes[i][1] > boxes_dc[j][1] and boxes[i][2] < boxes_dc[j][2] and boxes[i][3] < boxes_dc[j][3]):
+                #        fully_inside = True
+                #    else:
+                #        fully_inside = False
                     #overlap_comp(boxes[i],boxes[j])
-                    if(n_diff > 0.3 and fully_inside):
-                        remove = True
-                if(remove is False):
-                    filtered_boxes[ix_new] = boxes[i]
-                    filtered_gt_class[ix_new] = gt_classes[i]
-                    filtered_cat.append(cat[i])
-                    filtered_overlaps[ix_new] = overlaps[i]
-                    ix_new = ix_new + 1
+                #    if(n_diff > 0.3 and fully_inside):
+                #        remove = True
+                #if(remove is False):
+                #    filtered_boxes[ix_filter] = boxes[i]
+                #    filtered_gt_class[ix_filter] = gt_classes[i]
+                #    filtered_cat.append(cat[i])
+                #    filtered_overlaps[ix_filter] = overlaps[i]
+                #    ix_filter = ix_filter + 1
 
-            if(ix_new == 0 and remove_without_gt is True):
-                print('removing element {}'.format(img['token']))
-                return None
-        else:
-            ix_new = ix
-            filtered_boxes = boxes
-            filtered_gt_class = gt_classes[0:ix]
-            filtered_cat      = cat[0:ix]
-            filtered_overlaps = overlaps
+            #if(ix_filter == 0 and remove_without_gt is True):
+            #    print('removing element {}'.format(img['token']))
+            #    return None
+        #else:
+        #    ix_filter = ix
+        #    filtered_boxes = boxes
+        #    filtered_gt_class = gt_classes[0:ix]
+        #    filtered_cat      = cat[0:ix]
+        #    filtered_overlaps = overlaps
 
-        filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
+        #filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
-        return {
-            'img_index': img['token'],
-            'imagefile': filename,
-            'ignore': ignore[0:ix_new],
-            'det': ignore[0:ix_new].copy(),
-            'cat': filtered_cat,
-            'hit': ignore[0:ix_new].copy(),
-            'boxes': filtered_boxes[0:ix_new],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': filtered_gt_class[0:ix_new],
-            'gt_overlaps': filtered_overlaps[0:ix_new],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix_new]
-        }
+        #return {
+        #    'imgname':     img,
+        #    'img_idx':     img_idx,
+        #    'scene_idx':   scene_idx,
+        #    'scene_desc':  scene_desc,
+        #    'filename': filename,
+        #    'ignore': ignore[0:ix_filter],
+        #    'det': ignore[0:ix_filter].copy(),
+        #    'cat': filtered_cat,
+        #    'hit': ignore[0:ix_filter].copy(),
+        #    'boxes': filtered_boxes[0:ix_filter],
+        #    'boxes_dc': boxes_dc[0:ix_dc],
+        #    'gt_classes': filtered_gt_class[0:ix_filter],
+        #    'gt_overlaps': filtered_overlaps[0:ix_filter],
+        #    'flipped': False,
+        #    'seg_areas': seg_areas[0:ix_filter]
+        #}
 
 
     def _get_waymo_results_file_template(self, mode,class_name):
@@ -439,17 +544,26 @@ class waymo_imdb(imdb):
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
                     dets = all_boxes[cls_ind][im_ind]
+                    #TODO: Add this to dets file
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:]
                     #print('index: ' + index)
                     #print(dets)
-                    if dets == []:
+                    if dets.size == 0:
                         continue
                     # expects 1-based indices
+                    #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.format(
-                                im_ind, img, dets[k, -1], dets[k, 0],
-                                dets[k, 1], dets[k, 2],
-                                dets[k, 3]))
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}'.format(
+                                im_ind, img, dets[k, 4], 
+                                dets[k, 0], dets[k, 1], 
+                                dets[k, 2], dets[k, 3]))
+                        #Write uncertainties
+                        for l in range(4,dets.shape[1]):
+                            f.write(' {:.2f}'.format(dets[k,l]))
+                        f.write('\n')
+
 
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files

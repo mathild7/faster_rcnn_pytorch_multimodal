@@ -33,8 +33,10 @@ def bbox_transform(ex_rois, gt_rois):
 
 
 #Box defines original ROI and then is adjusted by the regression deltas
-def bbox_transform_inv(boxes, deltas):
+def bbox_transform_inv(boxes, deltas, scales=None):
     # Input should be both tensor or both Variable and on the same device
+    if(scales is not None):
+        boxes = boxes/scales
     if len(boxes) == 0:
         return deltas.detach() * 0
 
@@ -43,7 +45,7 @@ def bbox_transform_inv(boxes, deltas):
     #Re-centering top left hand corner
     ctr_x = boxes[:, 0] + 0.5 * widths
     ctr_y = boxes[:, 1] + 0.5 * heights
-    #16 elements for 4 classes
+    #e.g. 16 elements for 4 classes
     dx = deltas[:, 0::4]
     dy = deltas[:, 1::4]
     dw = deltas[:, 2::4]
@@ -61,6 +63,36 @@ def bbox_transform_inv(boxes, deltas):
                                 pred_ctr_y + 0.5 * pred_h]], 2).view(len(boxes), -1)
 
     return pred_boxes
+
+def bbox_transform_inv_all_boxes(boxes, deltas):
+    # Input should be both tensor or both Variable and on the same device
+    if len(boxes) == 0:
+        return deltas.detach() * 0
+
+    widths = boxes[:, 2] - boxes[:, 0] + 1.0
+    heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    #Re-centering top left hand corner
+    ctr_x = boxes[:, 0] + 0.5 * widths
+    ctr_y = boxes[:, 1] + 0.5 * heights
+    #e.g. 16 elements for 4 classes
+    dx = deltas[:, 0::4]
+    dy = deltas[:, 1::4]
+    dw = deltas[:, 2::4]
+    dh = deltas[:, 3::4]
+
+    pred_ctr_x = dx * widths.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * heights.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_w = torch.exp(dw) * widths.unsqueeze(1)
+    pred_h = torch.exp(dh) * heights.unsqueeze(1)
+
+    pred_boxes = torch.cat(\
+      [_.unsqueeze(2) for _ in [pred_ctr_x - 0.5 * pred_w,\
+                                pred_ctr_y - 0.5 * pred_h,\
+                                pred_ctr_x + 0.5 * pred_w,\
+                                pred_ctr_y + 0.5 * pred_h]], 2).view(len(boxes), -1)
+
+    return pred_boxes
+
 
 
 def clip_boxes(boxes, im_shape):
