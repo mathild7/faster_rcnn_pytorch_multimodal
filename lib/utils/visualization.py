@@ -68,22 +68,22 @@ def _draw_single_box(image, xmin, ymin, xmax, ymax, display_str, font, color='bl
 
   return image
 
-def draw_bounding_boxes(image, gt_boxes, im_info):
+def draw_bounding_boxes(image, gt_boxes, scale):
   num_boxes = gt_boxes.shape[0]
   gt_boxes_new = gt_boxes.copy()
-  gt_boxes_new[:,:4] = np.round(gt_boxes_new[:,:4].copy() / im_info[2])
+  gt_boxes_new[:,:4] = np.round(gt_boxes_new[:,:4].copy() / scale)
   disp_image = Image.fromarray(np.uint8(image[0]))
 
   for i in range(num_boxes):
     this_class = int(gt_boxes_new[i, 4])
-    disp_image = _draw_single_box(disp_image, 
-                                gt_boxes_new[i, 0],
-                                gt_boxes_new[i, 1],
-                                gt_boxes_new[i, 2],
-                                gt_boxes_new[i, 3],
-                                'N%02d-C%02d' % (i, this_class),
-                                FONT,
-                                color=STANDARD_COLORS[this_class % NUM_COLORS])
+    disp_image = _draw_single_box(disp_image,
+                                  gt_boxes_new[i, 0],
+                                  gt_boxes_new[i, 1],
+                                  gt_boxes_new[i, 2],
+                                  gt_boxes_new[i, 3],
+                                  'N%02d-C%02d' % (i, this_class),
+                                  FONT,
+                                  color=STANDARD_COLORS[this_class % NUM_COLORS])
 
   image[0, :] = np.array(disp_image)
   return image

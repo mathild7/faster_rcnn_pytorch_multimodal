@@ -43,9 +43,9 @@ class nuscenes_imdb(imdb):
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_image_index = []
-        self._val_image_index = []
-        self._test_image_index = []
+        self._train_index = []
+        self._val_index = []
+        self._test_index = []
         self._devkit_path = self._get_default_path()
         self._mode = mode
         self._nusc = None
@@ -81,20 +81,20 @@ class nuscenes_imdb(imdb):
                     rec_tmp['anns'] = sample['anns']
                     rec_tmp['lidar_token'] = sample['data']['LIDAR_TOP']
                     if(scene_name in self._train_scenes):
-                        self._train_image_index.append(rec_tmp)
+                        self._train_index.append(rec_tmp)
                     elif(scene_name in self._val_scenes):
-                        self._val_image_index.append(rec_tmp)
+                        self._val_index.append(rec_tmp)
                     elif(scene_name in self._train_scenes):
-                        self._test_image_index.append(rec_tmp)
+                        self._test_index.append(rec_tmp)
         rand = SystemRandom()
         #Get global image info
         if(mode == 'train'):
-            img_index = self._train_image_index
-            rand.shuffle(self._val_image_index)
+            img_index = self._train_index
+            rand.shuffle(self._val_index)
         elif(mode == 'val'):
-            img_index = self._val_image_index
+            img_index = self._val_index
         elif(mode == 'test'):
-            img_index = self._test_image_index
+            img_index = self._test_index
         self._imwidth  = img_index[0]['width']
         self._imheight = img_index[0]['height']
         self._imtype   = img_index[0]['fileformat']
@@ -103,11 +103,11 @@ class nuscenes_imdb(imdb):
         if(limiter != 0):
             img_index = img_index[:limiter]
         if(mode == 'train'):
-            self._train_image_index = img_index
+            self._train_index = img_index
         elif(mode == 'val'):
-            self._val_image_index = img_index
+            self._val_index = img_index
         elif(mode == 'test'):
-            self._test_image_index = img_index
+            self._test_index = img_index
         assert os.path.exists(self._devkit_path), 'nuscenes dataset path does not exist: {}'.format(self._devkit_path)
         #DEPRECATED
         #assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)
@@ -169,9 +169,9 @@ class nuscenes_imdb(imdb):
         image_index = None
         sub_total   = 0
         if(mode == 'train'):
-            image_index = self._train_image_index
+            image_index = self._train_index
         elif(mode == 'val'):
-            image_index = self._val_image_index
+            image_index = self._val_index
         gt_roidb = []
         for img in image_index:
             roi = self._load_nuscenes_annotation(img)
@@ -495,11 +495,11 @@ class nuscenes_imdb(imdb):
 
     def _write_nuscenes_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            img_idx = self._val_image_index
+            img_idx = self._val_index
         elif(mode == 'train'):
-            img_idx = self._train_image_index
+            img_idx = self._train_index
         elif(mode == 'test'):
-            img_idx = self._test_image_index
+            img_idx = self._test_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -528,11 +528,11 @@ class nuscenes_imdb(imdb):
         #Not needed anymore, self._image_index has all files
         #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
         if(mode == 'train'):
-            imageset = self._train_image_index
+            imageset = self._train_index
         elif(mode == 'val'):
-            imageset = self._val_image_index
+            imageset = self._val_index
         elif(mode == 'test'):
-            imageset = self._test_image_index
+            imageset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):

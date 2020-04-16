@@ -54,3 +54,26 @@ def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, target_size, 
     # Prevent the biggest axis from being more than MAX_SIZE
 
     return im, im_scale
+
+
+def bev_map_list_to_blob(bev_maps):
+    """Convert a list of images into a network input.
+
+  Assumes images are already prepared (means subtracted, BGR order, ...).
+  """
+    max_shape = np.array([bm.shape for bm in bev_maps]).max(axis=0)
+    num_bev_maps = len(bev_maps)
+    blob = np.zeros((num_bev_maps, max_shape[0], max_shape[1], max_shape[2]),
+                    dtype=np.float32)
+    for i in range(num_bev_maps):
+        bev_map = bev_maps[i]
+        blob[i, 0:bev_map.shape[0], 0:bev_map.shape[1], 0:bev_map.shape[2]] = bev_map
+
+    return blob
+
+
+def prep_bev_map_for_blob(bev_map, means, vars, scale):
+    bev_map_resize = np.resize(bev_map,bev_map.shape*scale)
+    bev_map_resize = bev_map_resize/np.sqrt(vars)
+    bev_map_resize = bev_map_resize-means
+    return bev_map_resize

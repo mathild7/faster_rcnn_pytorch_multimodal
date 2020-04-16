@@ -28,6 +28,7 @@ class RoIDataLayer(object):
         self._num_classes = num_classes
         # Also set a random flag
         self._random = random
+        self._cnt = 0
         self._shuffle_roidb_inds()
 
     def _shuffle_roidb_inds(self):
@@ -50,13 +51,13 @@ class RoIDataLayer(object):
     def _get_next_minibatch_inds(self):
         """Return the roidb indices for the next minibatch."""
         #TODO: Should we really be shuffling once roidb is rolled over? (for training at least)
-        if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb):
+        if self._cur + cfg.TRAIN.FRAMES_PER_BATCH >= len(self._roidb):
             print('shuffling indices')
             self._shuffle_roidb_inds()
         if(cfg.FREEZE_DB):
             self._cur = cfg.FREEZE_DB_INDS
-        db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.IMS_PER_BATCH]
-        self._cur += cfg.TRAIN.IMS_PER_BATCH
+        db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.FRAMES_PER_BATCH]
+        self._cur += cfg.TRAIN.FRAMES_PER_BATCH
         #print('getting db inds {}'.format(db_inds))
         return db_inds
 
@@ -72,9 +73,10 @@ class RoIDataLayer(object):
             minibatch_db = [self._roidb[i] for i in db_inds]
             #print('minibatch')
             #print(minibatch_db)
-            minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en)
+            minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en, self._cnt)
             #if(minibatch is None):
                 #print('skipping image, augmentation resulted in 0 GT boxes')
+            self._cnt += 1
         return minibatch
 
     def forward(self,augment_en):

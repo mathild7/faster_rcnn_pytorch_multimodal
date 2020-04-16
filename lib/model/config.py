@@ -28,20 +28,20 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.001
+__C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
 __C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-#__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
+__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
+#__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
 # Iteration intervals for showing the loss during training, on command line interface
-__C.TRAIN.DISPLAY = 200
+__C.TRAIN.DISPLAY = 1000
 
 # Whether to double the learning rate for bias
 __C.TRAIN.DOUBLE_BIAS = False
@@ -76,8 +76,8 @@ __C.TRAIN.SCALES  = (730,)
 #__C.TRAIN.MAX_SIZE  = 450
 #WAYMO 1/2
 __C.TRAIN.MAX_SIZE  = 1920
-# Images to use per minibatch
-__C.TRAIN.IMS_PER_BATCH = 1
+# Images/Lidar frames to use per minibatch
+__C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
 __C.TRAIN.BATCH_SIZE = 128
@@ -104,7 +104,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 10000
+__C.TRAIN.SNAPSHOT_ITERS = 4000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -171,6 +171,15 @@ __C.TRAIN.USE_ALL_GT = True
 
 #Whether or not to ignore dont care areas when training
 __C.TRAIN.IGNORE_DC = False
+
+__C.TRAIN.LIDAR = edict()
+
+__C.TRAIN.IMAGE = edict()
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
+
+__C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
+__C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 #
 # Testing options
 #
@@ -244,7 +253,7 @@ __C.RESNET.MAX_POOL = False
 
 # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
 # Range: 0 (none) to 3 (all)
-__C.RESNET.FIXED_BLOCKS = 1
+__C.RESNET.FIXED_BLOCKS = 0
 
 #
 # MobileNet options
@@ -292,6 +301,9 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 #[B,G,R] to [R,G,B]
 #__C.PIXEL_ARRANGE = [2,1,0]
 
+#Maximum value to clip at when performing backprop
+__C.GRAD_MAX_CLIP = 20
+
 #cafferesnet101
 __C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 __C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
@@ -304,7 +316,7 @@ __C.RNG_SEED = 3
 __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 
 # Data directory
-__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
+__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data2'))
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'
@@ -341,7 +353,7 @@ __C.ENABLE_ALEATORIC_CLS_VAR           = False
 __C.ENABLE_EPISTEMIC_BBOX_VAR          = False
 __C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
-__C.NUM_SCENES               = 100
+__C.NUM_SCENES               = 210
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
@@ -351,21 +363,53 @@ __C.NUM_CE_SAMPLE            = 300
 __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
+#Lidar Config
+__C.NET_TYPE                 = 'lidar'
+__C.LIDAR = edict()
+__C.LIDAR.X_RANGE            = [0,70]
+__C.LIDAR.Y_RANGE            = [-40,40]
+__C.LIDAR.Z_RANGE            = [-3,3]
+__C.LIDAR.VOXEL_LEN          = 0.1
+__C.LIDAR.VOXEL_HEIGHT       = 0.5
+__C.LIDAR.NUM_SLICES         = 12
+__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
+__C.LIDAR.MAX_PTS_PER_VOXEL  = 40
+__C.LIDAR.MAX_NUM_VOXEL      = 25000
+__C.LIDAR.USE_FPN            = True
+#height -> R, Intensity -> G, Elongation/Density -> B
+#TODO: Broken, dont use..
+#__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
+#__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
+#(l,w,h) corresponding to (x,y,z)
+__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
+__C.LIDAR.ANCHOR_SCALES = np.array([[1]])
+__C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
+__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
+
 #Need to turn this on in order to debug
-#Slows
-__C.DEBUG_EN                 = False
+__C.DEBUG                    = edict()
+__C.DEBUG.DRAW_ANCHORS       = False
+__C.DEBUG.DRAW_ANCHOR_T      = False
+__C.DEBUG.DRAW_PROPOSAL_T    = False
+__C.DEBUG.DRAW_MINIBATCH     = False
+__C.DEBUG.EN                 = False
+#ONE OF
+__C.PRELOAD                  = False
+__C.PRELOAD_RPN              = False
 
+__C.ENABLE_FULL_NET          = True
+__C.TRAIN_ITER               = 1
 
-def get_output_dir(imdb, weights_filename):
+def get_output_dir(db, weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.
 
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = ''
+    mode = '{}_'.format(__C.NET_TYPE)
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
     if __C.ENABLE_ALEATORIC_CLS_VAR:
@@ -385,23 +429,24 @@ def get_output_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_1'.format(mode,train_filter)
+    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
   return outdir
 
 
-def get_output_tb_dir(imdb, weights_filename):
+def get_output_tb_dir(db, weights_filename):
   """Return the directory where tensorflow summaries are placed.
   If the directory does not exist, it is created.
 
   A canonical path is built using the name from an imdb and a network
   (if not None).
   """
-  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, imdb.name))
+  outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = ''
+    mode = '{}_'.format(__C.NET_TYPE)
+    
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
       mode = mode + 'bbox_var_'
     if __C.ENABLE_ALEATORIC_CLS_VAR:
@@ -422,7 +467,7 @@ def get_output_tb_dir(imdb, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_1'.format(mode,train_filter)
+    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

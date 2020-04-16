@@ -24,7 +24,7 @@ from shapely.geometry import MultiPoint, box
 #Useful for debugging without a IDE
 #import traceback
 from .waymo_eval import waymo_eval
-from model.config import cfg
+from model.config import cfg, get_output_dir
 
 
 import re
@@ -44,12 +44,13 @@ class waymo_imdb(imdb):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
         imdb.__init__(self, name)
+        self.type = 'image'
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_image_index = []
-        self._val_image_index = []
-        self._test_image_index = []
+        self._train_index = []
+        self._val_index = []
+        self._test_index = []
         self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
@@ -61,6 +62,7 @@ class waymo_imdb(imdb):
         self._imwidth  = 1920
         self._imheight = 730
         self._imtype   = 'PNG'
+        self._filetype = 'png'
         self._mode = mode
         print('imdb mode: {}'.format(mode))
         self._scene_sel = True
@@ -79,17 +81,17 @@ class waymo_imdb(imdb):
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
 
-        self._train_image_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
-        self._val_image_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
-        self._val_image_index.sort(key=natural_keys)
+        self._train_index = os.listdir(os.path.join(self._devkit_path,'train','images'))
+        self._val_index   = os.listdir(os.path.join(self._devkit_path,'val','images'))
+        self._val_index.sort(key=natural_keys)
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling image indices')
-            rand.shuffle(self._val_image_index)
-            rand.shuffle(self._train_image_index)
+            rand.shuffle(self._val_index)
+            rand.shuffle(self._train_index)
         if(limiter != 0):
-            self._val_image_index   = self._val_image_index[:limiter]
-            self._train_image_index = self._train_image_index[:limiter]
+            self._val_index   = self._val_index[:limiter]
+            self._train_index = self._train_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 
@@ -114,7 +116,7 @@ class waymo_imdb(imdb):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -123,7 +125,7 @@ class waymo_imdb(imdb):
                     roidb = pickle.load(fid, encoding='bytes')
             print('{} gt roidb loaded from {}'.format(self._name, cache_file))
             return roidb
-        labels_filename = os.path.join(self._devkit_path, mode,'labels/labels.json')
+        labels_filename = os.path.join(self._devkit_path, mode,'labels/image_labels.json')
         gt_roidb = []
         with open(labels_filename,'r') as labels_file:
             data = labels_file.read()
@@ -133,9 +135,9 @@ class waymo_imdb(imdb):
             image_index = None
             sub_total   = 0
             if(mode == 'train'):
-                image_index = self._train_image_index
+                image_index = self._train_index
             elif(mode == 'val'):
-                image_index = self._val_image_index
+                image_index = self._val_index
             for img in image_index:
                 #print(img)
                 for img_labels in labels:
@@ -153,23 +155,23 @@ class waymo_imdb(imdb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_img(self,imfile,mode):
+    def find_gt_for_frame(self,filename,mode):
         if(mode == 'train'):
             roidb = self.roidb
         elif(mode == 'val'):
             roidb = self.val_roidb
         for roi in roidb:
-            if(roi['filename'] == imfile):
+            if(roi['filename'] == filename):
                 return roi
         return None
 
     def scene_from_index(self,idx,mode='train'):
         if(mode == 'train'):
-            return self._train_image_index[i]
+            return self._train_index[i]
         elif(mode == 'val'):
-            return self._val_image_index[i]
+            return self._val_index[i]
         elif(mode == 'test'):
-            return self._test_image_index[i]
+            return self._test_index[i]
         else:
             return None
 
@@ -178,7 +180,8 @@ class waymo_imdb(imdb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
         print('deleting files in dir {}'.format(out_file))
-        shutil.rmtree(out_file)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
@@ -208,20 +211,34 @@ class waymo_imdb(imdb):
                     print('Saving drawn file at location {}'.format(outfile))
                     source_img.save(outfile,self._imtype)
 
+    #def delete_eval_draw_folder(self,im_folder,mode):
+    #    datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+    #    print('deleting files in dir {}'.format(datapath))
+    #    shutil.rmtree(datapath)
+    #    os.makedirs(datapath)
+
     def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
         print('deleting files in dir {}'.format(datapath))
-        shutil.rmtree(datapath)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(datapath)
 
-    def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name)
 
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
+        out_dir = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        #out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        #out_file = os.path.join(out_dir,out_file)
         if(iter != 0):
-            out_file = imfile.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
+            out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+            #out_file = filename.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
-            out_file = imfile.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
-        source_img = Image.open(imfile)
+            out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+            #out_file = filename.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
+        out_file = os.path.join(out_dir,out_file)
+        source_img = Image.open(filename)
         draw = ImageDraw.Draw(source_img)
         #TODO: Magic numbers
         limiter = 15
@@ -233,7 +250,7 @@ class waymo_imdb(imdb):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
-                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
                     avg_det_string = 'image average: '
                     num_det = len(det_idx)
                     if(num_det < limiter):
@@ -261,7 +278,7 @@ class waymo_imdb(imdb):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
                 else:
-                    print('draw and save: No detections for image {}, class: {}'.format(imfile,j))
+                    print('draw and save: No detections for image {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
                 color = 0
@@ -399,6 +416,9 @@ class waymo_imdb(imdb):
                 boxes[ix, :] = [x1, y1, x2, y2]
                 if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
+
+                    if(float(x2 - x1) <= 0):
+                        continue
                     if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
                         continue
                 if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
@@ -530,11 +550,11 @@ class waymo_imdb(imdb):
 
     def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            img_idx = self._val_image_index
+            img_idx = self._val_index
         elif(mode == 'train'):
-            img_idx = self._train_image_index
+            img_idx = self._train_index
         elif(mode == 'test'):
-            img_idx = self._test_image_index
+            img_idx = self._test_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -560,7 +580,7 @@ class waymo_imdb(imdb):
                                 dets[k, 0], dets[k, 1], 
                                 dets[k, 2], dets[k, 3]))
                         #Write uncertainties
-                        for l in range(4,dets.shape[1]):
+                        for l in range(5,dets.shape[1]):
                             f.write(' {:.2f}'.format(dets[k,l]))
                         f.write('\n')
 
@@ -569,11 +589,11 @@ class waymo_imdb(imdb):
         #Not needed anymore, self._image_index has all files
         #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
         if(mode == 'train'):
-            imageset = self._train_image_index
+            imageset = self._train_index
         elif(mode == 'val'):
-            imageset = self._val_image_index
+            imageset = self._val_index
         elif(mode == 'test'):
-            imageset = self._test_image_index
+            imageset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
@@ -596,7 +616,8 @@ class waymo_imdb(imdb):
                 cls,
                 cachedir,
                 mode,
-                ovthresh=ovt)
+                ovthresh=ovt,
+                eval_type='2d')
             aps[i-1,:] = ap
             #Tell user of AP
             print(('AP for {} = {:.4f}'.format(cls,ap)))

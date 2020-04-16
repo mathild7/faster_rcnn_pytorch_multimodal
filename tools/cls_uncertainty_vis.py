@@ -38,7 +38,7 @@ for var in var_arr:
     elu_dist_vector = []
     custom_vector = []
     for value in pred_values:
-        value = value - 1
+        value = value
         #Normal classification CE loss
         logit_pair = torch.tensor([value,wrong_val],dtype=torch.float32).unsqueeze(1).permute(1,0) #permute to 1,C
         ce_loss    = F.cross_entropy(logit_pair,torch.tensor([0],dtype=torch.long),reduction='none')
@@ -92,7 +92,7 @@ for var in var_arr:
 #axs[3].grid(True)
 axs[2].set_title('distorted loss + regularizers')
 axs[2].set_ylabel('loss')
-#axs[2].set_xlabel('diff(pred_logit-wrong_logit)')
+axs[2].set_xlabel('diff(pred_logit-wrong_logit)')
 axs[2].grid(True)
 axs[1].set_title('distorted loss')
 axs[1].set_ylabel('loss')

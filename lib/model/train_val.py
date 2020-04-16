@@ -14,7 +14,7 @@ import roi_data_layer.roidb as rdl_roidb
 from roi_data_layer.layer import RoIDataLayer
 from .data_layer_generator import data_layer_generator
 import utils.timer
-from utils.filter_predictions import *
+from utils.filter_predictions import filter_and_draw_prep
 try:
     import cPickle as pickle
 except ImportError:
@@ -31,6 +31,7 @@ import time
 import signal
 import gc
 from torch.multiprocessing import Pool, Process, Queue
+from torchvision.ops import nms
 
 
 class GracefulKiller:
@@ -62,7 +63,7 @@ class SolverWrapper(object):
 
     def __init__(self,
                  network,
-                 imdb,
+                 db,
                  roidb,
                  val_roidb,
                  output_dir,
@@ -71,24 +72,25 @@ class SolverWrapper(object):
                  val_sum_size,
                  epoch_size,
                  batch_size,
-                 val_im_thresh,
+                 val_batch_size,
+                 val_thresh,
                  augment_en,
                  val_augment_en,
                  pretrained_model=None):
-        self.net = network
-        self.imdb = imdb
-        self.roidb = roidb
-        self.val_roidb = val_roidb
-        self.output_dir = output_dir
-        self.tbdir = tbdir
-        self.sum_size = sum_size
-        self.val_sum_size = val_sum_size
-        self.epoch_size = epoch_size
-        self.batch_size = batch_size
-        self.val_batch_size = batch_size
+        self.net             = network
+        self.db              = db
+        self.roidb           = roidb
+        self.val_roidb       = val_roidb
+        self.output_dir      = output_dir
+        self.tbdir           = tbdir
+        self.sum_size        = sum_size
+        self.val_sum_size    = val_sum_size
+        self.epoch_size      = epoch_size
+        self.batch_size      = batch_size
+        self.val_batch_size  = val_batch_size
         self._val_augment_en = val_augment_en
         self._augment_en     = augment_en
-        self.val_im_thresh = val_im_thresh
+        self.val_thresh      = val_thresh
         # Simply put '_val' at the end to save the summaries from the validation set
         self.tbvaldir = tbdir + '_val'
         if not os.path.exists(self.tbvaldir):
@@ -102,14 +104,14 @@ class SolverWrapper(object):
             os.makedirs(self.output_dir)
 
         # Store the model snapshot
-        filename = cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
+        filename = cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
             iter) + '.pth'
         filename = os.path.join(self.output_dir, filename)
         torch.save(self.net.state_dict(), filename)
         print('Wrote snapshot to: {:s}'.format(filename))
 
         # Also store some meta information, random state, etc.
-        nfilename = cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
+        nfilename = cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_{:d}'.format(
             iter) + '.pkl'
         nfilename = os.path.join(self.output_dir, nfilename)
         # current state of numpy random
@@ -166,11 +168,19 @@ class SolverWrapper(object):
         # Set the random seed
         torch.manual_seed(cfg.RNG_SEED)
         # Build the main computation graph
-        self.net.create_architecture(
-            self.imdb.num_classes,
-            tag='default',
-            anchor_scales=cfg.ANCHOR_SCALES,
-            anchor_ratios=cfg.ANCHOR_RATIOS)
+        if(cfg.NET_TYPE == 'lidar'):
+            #TODO: Magic numbers, need to sort this out to flow through 3d anchor gen properly
+            self.net.create_architecture(
+                self.db.num_classes,
+                tag='default',
+                anchor_scales=cfg.LIDAR.ANCHOR_SCALES,
+                anchor_ratios=cfg.LIDAR.ANCHOR_ANGLES)
+        elif(cfg.NET_TYPE == 'image'):
+            self.net.create_architecture(
+                self.db.num_classes,
+                tag='default',
+                anchor_scales=cfg.ANCHOR_SCALES,
+                anchor_ratios=cfg.ANCHOR_RATIOS)
         # Define the loss
         # loss = layers['total_loss']
         # Set learning rate and momentum
@@ -203,7 +213,7 @@ class SolverWrapper(object):
         return lr, self.optimizer
 
     def find_previous(self):
-        sfiles = os.path.join(self.output_dir,
+        sfiles = os.path.join(self.output_dir,cfg.NET_TYPE + '_' +
                               cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_*.pth')
         sfiles = glob.glob(sfiles)
         sfiles.sort(key=os.path.getmtime)
@@ -212,11 +222,11 @@ class SolverWrapper(object):
         for stepsize in cfg.TRAIN.STEPSIZE:
             redfiles.append(
                 os.path.join(
-                    self.output_dir, cfg.TRAIN.SNAPSHOT_PREFIX +
+                    self.output_dir, cfg.NET_TYPE + '_' + cfg.TRAIN.SNAPSHOT_PREFIX +
                     '_iter_{:d}.pth'.format(stepsize + 1)))
         sfiles = [ss for ss in sfiles if ss not in redfiles]
 
-        nfiles = os.path.join(self.output_dir,
+        nfiles = os.path.join(self.output_dir,cfg.NET_TYPE + '_' +
                               cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_*.pkl')
         nfiles = glob.glob(nfiles)
         nfiles.sort(key=os.path.getmtime)
@@ -233,9 +243,16 @@ class SolverWrapper(object):
         np_paths = []
         ss_paths = []
         # Fresh train directly from ImageNet weights
-        print('Loading initial model weights from {:s}'.format(
-            self.pretrained_model))
-        self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
+        if(cfg.PRELOAD):
+            print('Loading initial model weights from {:s}'.format(
+                self.pretrained_model))
+            self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
+        elif(cfg.PRELOAD_RPN):
+            print('Loading initial first stage weights {:s}'.format(
+                self.pretrained_model))
+            self.net.load_pretrained_rpn(torch.load(self.pretrained_model))
+        else:
+            print('initializing model from scratch')
         #self.net.load_trimmed_pretrained_cnn(torch.load(self.pretrained_model))
         #sys.exit('test ended')
         print('Loaded.')
@@ -290,10 +307,10 @@ class SolverWrapper(object):
         val_augment_en = self._val_augment_en
         augment_en     = self._augment_en
         val_batch_size = self.batch_size
-        #self.data_layer = RoIDataLayer(self.roidb, self.imdb.num_classes, 'train')
-        #self.data_layer_val = RoIDataLayer(self.val_roidb, self.imdb.num_classes, 'val', random=True)    
-        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.imdb.num_classes)
-        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.imdb.num_classes)
+        #self.data_layer = RoIDataLayer(self.roidb, self.db.num_classes, 'train')
+        #self.data_layer_val = RoIDataLayer(self.val_roidb, self.db.num_classes, 'val', random=True)    
+        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.db.num_classes)
+        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.db.num_classes)
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -319,27 +336,40 @@ class SolverWrapper(object):
         #Switch to train mode
         self.net.train()
         self.net.to(self.net._device)
+        #TEST CODE TO TRY TO EXTRACT ONNX MODEL
         #self.net.eval()
         #dummy_input = torch.randn(1, 3, 1920, 730, device='cuda')
-        #torch.onnx.export(self.net, dummy_input, '{}.onnx'.format(self.imdb.name), verbose=True)
-# Providing input and output names sets the display names for values
-# within the model's graph. Setting these does not change the semantics
-# of the graph; it is only for readability.
-#
-# The inputs to the network consist of the flat list of inputs (i.e.
-# the values you would pass to the forward() method) followed by the
-# flat list of parameters. You can partially specify names, i.e. provide
-# a list here shorter than the number of inputs to the model, and we will
-# only set that subset of names, starting from the beginning.
-        t = utils.timer.timer
-        t_net = utils.timer.timer
+        #torch.onnx.export(self.net, dummy_input, '{}.onnx'.format(self.db.name), verbose=True)
+
+        # Providing input and output names sets the display names for values
+        # within the model's graph. Setting these does not change the semantics
+        # of the graph; it is only for readability.
+        #
+        # The inputs to the network consist of the flat list of inputs (i.e.
+        # the values you would pass to the forward() method) followed by the
+        # flat list of parameters. You can partially specify names, i.e. provide
+        # a list here shorter than the number of inputs to the model, and we will
+        # only set that subset of names, starting from the beginning.
+        t = utils.timer.Timer()
+        timers = {}
+        #timers['net'] = utils.timer.Timer()
+        #timers['anchor_gen'] = utils.timer.Timer()
+        #timers['proposal']   = utils.timer.Timer()
+        #timers['proposal_t'] = utils.timer.Timer()
+        #timers['anchor_t']   = utils.timer.Timer()
+        #timers['data_gen']   = utils.timer.Timer()
+        #timers['losses']     = utils.timer.Timer()
+        #timers['backprop']   = utils.timer.Timer()
+        timers['summary']     = utils.timer.Timer()
+        self.net.timers = timers
         loss_cumsum = 0
         killer = GracefulKiller()
         if(iter < 10):
-            self.imdb.delete_eval_draw_folder('val','trainval')
+            self.db.delete_eval_draw_folder('val','trainval')
         #    scale_lr(self.optimizer,0.1)
         self.data_gen.start()
         self.data_gen_val.start()
+        #Wait for samples to be pre-buffered
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
 
@@ -365,7 +395,9 @@ class SolverWrapper(object):
             t.tic()
             # Get training data, one batch at a time
             #blobs = self.data_layer.forward(augment_en)
+            #timers['data_gen'].tic()
             blobs  = self.data_gen.next()
+            #timers['data_gen'].toc()
             now = time.time()
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
             if iter % self.val_sum_size == 0:
@@ -375,40 +407,50 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == val_batch_size - 1):
                         update_summaries = True
-                    self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
+                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+                        self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
-                        bbox_pred_val, a_bbox_var_val, e_bbox_var_val, \
-                        cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
-                    self.net.set_num_mc_run(1)
+                        cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+                        self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
-                    #Add ability to do filter_pred on rois_val and pass to draw&save
-                    #torch.set_printoptions(profile="full")
-                    #print(bbox_pred_val)
-                    #print(cls_prob_val)
-                    #print(a_cls_var_val)
-                    #torch.set_printoptions(profile="default")   
-                    rois_val, bbox_pred_val, uncertainties_val = filter_pred(rois_val, cls_prob_val, a_cls_entropy_val, a_cls_var_val, e_cls_mutual_info_val,
-                                                                             bbox_pred_val, a_bbox_var_val, e_bbox_var_val,
-                                                                             blobs_val['im_info'][0],blobs_val['im_info'][1],blobs_val['im_info'][2],
-                                                                             self.imdb.num_classes,self.val_im_thresh)
+                    if(cfg.ENABLE_FULL_NET):
+                        rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
+                                                                                                    bbox_pred_val,
+                                                                                                    uncertainties_val,
+                                                                                                    blobs_val['info'],
+                                                                                                    self.db.num_classes,self.val_thresh,self.db.type)
+                        bbox_pred_val = np.array(bbox_pred_val)
+                    #Final stage is stage 1
+                    else:
+                        rois_val = rois_val.data.cpu().numpy()
+                        roi_labels_val = roi_labels_val.data.cpu().numpy()
+                        bbox_pred_val = bbox_pred_val
+                        cls_prob_val  = cls_prob_val
+                        keep = nms(bbox_pred_val, cls_prob_val.squeeze(1), self.val_thresh).cpu().numpy() if cls_prob_val.shape[0] > 0 else []
+                        bbox_pred_val = bbox_pred_val[keep,:].cpu().numpy()
+                        cls_prob_val  = cls_prob_val[keep, :].cpu().numpy()
+                        bbox_pred_val = np.concatenate((bbox_pred_val,cls_prob_val),axis=1)[np.newaxis,:,:]
+                        bbox_pred_val = np.repeat(bbox_pred_val,2,axis=0)
+                        sorted_uncertainties_val = [{},{}]
+                        #bbox_pred_val = bbox_
+                    #else:
+                    #    rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
+                    #                                                                             bbox_pred_val,
+                    #                                                                             uncertainties_val,
+                    #                                                                             blobs_val['info'],
+                    #                                                                             self.db.num_classes,self.val_thresh,'image')
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
-                    bbox_pred_val = np.array(bbox_pred_val)
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.imdb.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,uncertainties_val,iter+i,'trainval')
+                    self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'trainval')
 
-                    #for obj in gc.get_objects():
-                    #    try:
-                    #        if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                    #            print(type(obj), obj.size())
-                    #    except:
-                    #        pass
                 #Need to add AP calculation here
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
-
             if iter % self.sum_size == 0:
-                #print('performing summary at iteration: {:d}'.format(iter))
+                timers['summary'].tic()
+                print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
                 loss_cumsum += total_loss
@@ -417,6 +459,7 @@ class SolverWrapper(object):
                     #print(_sum)
                     self.writer.add_summary(_sum, float(iter))
                 last_summary_time = now
+                timers['summary'].toc()
             else:
                 # Compute the graph without summary
                 #https://stackoverflow.com/questions/46561390/4-step-alternating-rpn-faster-r-cnn-training-tensorflow-object-detection-mo/46981671#46981671
@@ -435,9 +478,11 @@ class SolverWrapper(object):
 
             # Display training information
             if (iter % cfg.TRAIN.DISPLAY) == 0:
-                self.net.print_cumulative_loss(iter-(iter%self.batch_size),iter, max_iters, lr)
+                #self.net.print_cumulative_loss(iter-(iter%self.batch_size),iter, max_iters, lr)
                 print('speed: {:.3f}s / iter'.format(
                     t.average_time()))
+                for key, timer in timers.items():
+                    print('{} timer: {:.3f}s / iter'.format(key,timer.average_time()))
             if iter % self.epoch_size == 0:
                 print('----------------------------------------------------')
                 print('epoch average loss: {:f}'.format(float(loss_cumsum)/float(self.epoch_size)))
@@ -508,7 +553,7 @@ def filter_roidb(roidb):
 
 
 def train_net(network,
-              imdb,
+              db,
               output_dir,
               tb_dir,
               pretrained_model=None,
@@ -516,26 +561,28 @@ def train_net(network,
               sum_size=128,
               val_sum_size=1000,
               batch_size=16,
-              val_im_thresh=0.1,
+              val_batch_size=16,
+              val_thresh=0.1,
               augment_en=True,
               val_augment_en=False):
     """Train a Faster R-CNN network."""
-    #roidb = filter_roidb(imdb.roidb)
-    epoch_size = len(imdb.roidb)
-    #val_roidb = filter_roidb(imdb.val_roidb)
+    #roidb = filter_roidb(db.roidb)
+    epoch_size = len(db.roidb)
+    #val_roidb = filter_roidb(db.val_roidb)
     #TODO: merge with train_val as one entire object
     sw = SolverWrapper(
         network,
-        imdb,
-        imdb.roidb,
-        imdb.val_roidb,
+        db,
+        db.roidb,
+        db.val_roidb,
         output_dir,
         tb_dir,
         sum_size,
         val_sum_size,
         epoch_size,
         batch_size,
-        val_im_thresh,
+        val_batch_size,
+        val_thresh,
         augment_en,
         val_augment_en,
         pretrained_model=pretrained_model)

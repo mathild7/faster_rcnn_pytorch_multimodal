@@ -1,2 +1,4 @@
 /output
 /tensorboard
+.mypy_cache/
+.__pycache__/

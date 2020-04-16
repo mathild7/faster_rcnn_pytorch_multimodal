@@ -103,31 +103,31 @@ class imdb(object):
 
     def _get_widths(self):
         return [
-            PIL.Image.open(self.image_path_at(i)).size[0]
+            PIL.Image.open(self.path_at(i)).size[0]
             for i in range(self.num_images)
         ]
 
 
-    def image_path_at(self, i, mode='train'):
+    def path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
     """
         if(mode == 'train'):
-            return self.image_path_from_index(mode, self._train_image_index[i])
+            return self.image_path_from_index(mode, self._train_index[i])
         elif(mode == 'val'):
-            return self.image_path_from_index(mode, self._val_image_index[i])
+            return self.image_path_from_index(mode, self._val_index[i])
         elif(mode == 'test'):
-            return self.image_path_from_index(mode, self._test_image_index[i])
+            return self.image_path_from_index(mode, self._test_index[i])
         else:
             return None
             
     def image_index_at(self, i, mode='train'):
         if(mode == 'train'):
-            return self._train_image_index[i]
+            return self._train_index[i]
         elif(mode == 'val'):
-            return self._val_image_index[i]
+            return self._val_index[i]
         elif(mode == 'test'):
-            return self._test_image_index[i]
+            return self._test_index[i]
         else:
             return None
 
@@ -329,24 +329,24 @@ class imdb(object):
             return None
 
 
-
-    def nms_hstack(self,scores,mean_boxes,thresh,c):
-        inds         = np.where(scores[:, c] > thresh)[0]
-        #No detections over threshold
-        if(inds.size == 0):
-            print('no detections for image over threshold {}'.format(thresh))
-            return np.empty(0),[],[]
-        cls_scores   = scores[inds, c]
-        cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
-        #[cls_var,cls_boxes,cls_scores]
-        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-            .astype(np.float32, copy=False)
-        keep = nms(
-            torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
-            cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
-        cls_dets = cls_dets[keep, :]
-        #Only if this variable has been provided
-        return cls_dets, inds, keep
+    #DEPRECATED
+    #def nms_hstack(self,scores,mean_boxes,thresh,c):
+    #    inds         = np.where(scores[:, c] > thresh)[0]
+    #    #No detections over threshold
+    #    if(inds.size == 0):
+    #        print('no detections for image over threshold {}'.format(thresh))
+    #        return np.empty(0),[],[]
+    #    cls_scores   = scores[inds, c]
+    #    cls_boxes    = mean_boxes[inds, c * 4:(c + 1) * 4]
+    #    #[cls_var,cls_boxes,cls_scores]
+    #    cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
+    #        .astype(np.float32, copy=False)
+    #    keep = nms(
+    #        torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
+    #        cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
+    #    cls_dets = cls_dets[keep, :]
+    #    #Only if this variable has been provided
+    #    return cls_dets, inds, keep
 
     @staticmethod
     def merge_roidbs(a, b):

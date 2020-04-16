@@ -10,12 +10,16 @@ from __future__ import print_function
 import xml.etree.ElementTree as ET
 import os
 from model.config import cfg
+from shapely.geometry import Polygon
 import pickle
 import numpy as np
+import utils.bbox as bbox_utils
 from scipy.interpolate import InterpolatedUnivariateSpline
 import sys
 import operator
 import json
+import re
+from scipy.spatial import ConvexHull
 
 #Values    Name      Description
 #----------------------------------------------------------------------------
@@ -23,12 +27,12 @@ import json
 #                     'Pedestrian', 'Person_sitting', 'Cyclist', 'Tram',
 #                     'Misc' or 'DontCare'
 #   1    truncated    Float from 0 (non-truncated) to 1 (truncated), where
-#                     truncated refers to the object leaving image boundaries
+#                     truncated refers to the object leaving frame boundaries
 #   1    occluded     Integer (0,1,2,3) indicating occlusion state:
 #                     0 = fully visible, 1 = partly occluded
 #                     2 = largely occluded, 3 = unknown
 #   1    alpha        Observation angle of object, ranging [-pi..pi]
-#   4    bbox         2D bounding box of object in the image (0-based index):
+#   4    bbox         2D bounding box of object in the frame (0-based index):
 #                     contains left, top, right, bottom pixel coordinates
 #   3    dimensions   3D object dimensions: height, width, length (in meters)
 #   3    location     3D object location x,y,z in camera coordinates (in meters)
@@ -38,7 +42,7 @@ import json
 
 
 def parse_rec(filename):
-    """ Parse the labels for the specific image """
+    """ Parse the labels for the specific frame """
     label_lines = open(filename, 'r').readlines()
     objects = []
     for line in label_lines:
@@ -104,16 +108,17 @@ def waymo_ap(rec, prec):
     return ap
 
 def waymo_eval(detpath,
-               imdb,
-               imageset,
+               db,
+               frameset,
                classname,
                cachedir,
                mode,
-               ovthresh=0.5):
+               ovthresh=0.5,
+               eval_type='2d'):
     #Min overlap is 0.7 for cars, 0.5 for ped/bike
     """rec, prec, ap = waymo_eval(detpath,
                               annopath,
-                              imagesetfile,
+                              framesetfile,
                               classname,
                               [ovthresh])
 
@@ -122,8 +127,8 @@ def waymo_eval(detpath,
   detpath: Path to detections
       detpath.format(classname) should produce the detection results file.
   annopath: Path to annotations
-      annopath.format(imagename) should be the xml annotations file.
-  imagesetfile: Text file containing the list of images, one image per line.
+      annopath.format(framename) should be the xml annotations file.
+  framesetfile: Text file containing the list of frames, one frame per line.
   classname: Category name (duh)
   cachedir: Directory for caching the annotations
   [ovthresh]: Overlap threshold (default = 0.5)
@@ -131,63 +136,24 @@ def waymo_eval(detpath,
       (default False)
   """
     # assumes detections are in detpath.format(classname)
-    # assumes annotations are in annopath.format(imagename)
-    # assumes imagesetfile is a text file with each line an image name
+    # assumes annotations are in annopath.format(framename)
+    # assumes framesetfile is a text file with each line an frame name
     # cachedir caches the annotations in a pickle file
     idx = 0
     # first load gt
-    if not os.path.isdir(cachedir):
-        os.mkdir(cachedir)
-    cachefile = os.path.join(cachedir, '{}_{}_annots.pkl'.format(mode,classname))
-    # read list of images
-    imagenames = imageset
+    #if not os.path.isdir(cachedir):
+    #    os.mkdir(cachedir)
+    #cachefile = os.path.join(cachedir, '{}_{}_annots.pkl'.format(mode,classname))
     #if not os.path.isfile(cachefile):
         # load annotations
-    class_recs = []
-    for i, img in enumerate(imageset):
-        #Load annotations for image, cut any elements not in classname
-        labels_filename = os.path.join(imdb._devkit_path, mode, 'labels/labels.json')
-        with open(labels_filename,'r') as labels_file:
-            data = labels_file.read()
-            #print(data)
-            labels = json.loads(data)
-            for img_labels in labels:
-                #print(img_labels['assoc_frame'])
-                if(img_labels['assoc_frame'] == img.replace('.png','')):
-                    img = os.path.join(mode,'images',img)
-                    #TODO: filter if not in preferred scene
-                    #TODO: here is where I get my ROI for the image. Can use this as well as the variance to get average entropy
-                    #Do I really want multiple paths in which ROI's can be loaded? I should really fetch this from the existing ROIDB
-                    tmp_rec = imdb._load_waymo_annotation(img,img_labels,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
-                    break
-        if(tmp_rec is None):
-            tmp_rec = {}
-            print('skipping image {}, it does not exist in the ROIDB'.format(img))
-            tmp_rec['imgname'] = img
-            tmp_rec['ignore_img'] = True
-        elif(tmp_rec['boxes'].size == 0):
-            print('skipping image {}, as it has no GT boxes'.format(img))
-            tmp_rec['ignore_img'] = True
-        else:
-            tmp_rec['ignore_img'] = False
-            if(len(tmp_rec['gt_classes']) > 0):
-                gt_class_idx = np.where(tmp_rec['gt_classes'] == imdb._class_to_ind[classname])
-            else:
-                gt_class_idx = []
-            tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
-            tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
-            tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
-            tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
-            tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
-            tmp_rec['scene_idx'] = tmp_rec['scene_idx']
-            tmp_rec['scene_desc'] = tmp_rec['scene_desc']
-        #List of all images with GT boxes for a specific class
-        class_recs.append(tmp_rec)
-        #Only print every hundredth annotation?
-        if i % 10 == 0:
-            #print(recs[idx_name])
-            print('Reading annotation for {:d}/{:d}'.format(
-                i + 1, len(imageset)))
+    if(eval_type == 'bev' or eval_type == '3d' or eval_type == 'bev_aa'):
+        frame_path = os.path.join(db._devkit_path, mode, 'point_clouds')
+        labels_filename = 'lidar_labels.json'
+    elif(eval_type == '2d'):
+        frame_path = os.path.join(db._devkit_path, mode, 'images')
+        labels_filename = 'image_labels.json'
+
+    class_recs = eval_load_recs(frameset, frame_path, labels_filename, db, mode, classname)
         # save
         #print('Saving cached annotations to {:s}'.format(cachefile))
         #with open(cachefile, 'wb') as f:
@@ -212,13 +178,20 @@ def waymo_eval(detpath,
 
     splitlines = [x.strip().split(' ') for x in lines]
     #Many entries have the same idx & token
-    image_idx = [x[0] for x in splitlines] #TODO: I dont like how this is along many images
-    image_tokens = [x[1] for x in splitlines]
+    frame_idx = [x[0] for x in splitlines] #TODO: I dont like how this is along many frames
+    frame_tokens = [x[1] for x in splitlines]
     confidence = np.array([float(x[2]) for x in splitlines])
     #All detections for specific class
-    BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
+    if(eval_type == '3d' or eval_type == 'bev' or eval_type == 'bev_aa'):
+        BB = np.array([[float(z) for z in x[3:10]] for x in splitlines])
+        u_start = 10
+    elif(eval_type == '2d'):
+        BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
+        u_start = 7
+    else:
+        print('invalid evaluation type {}'.format(eval_type))
+        return
     #TODO: Add variance read here
-    u_start = 7
     if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
         a_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
         u_start += 4
@@ -233,15 +206,18 @@ def waymo_eval(detpath,
     if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
         e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
-    #Repeated for X detections along every image presented
-    idx = len(image_idx)
-    #3 types, easy medium hard
+    #Repeated for X detections along every frame presented
+    idx = len(frame_idx)
+    #DEPRECATED ---- 3 types, easy medium hard
     tp = np.zeros((idx))
     fp = np.zeros((idx))
     fn = np.zeros((idx))
-    npos = np.zeros((len(class_recs)))
+    tp_frame = np.zeros(cfg.NUM_SCENES*cfg.MAX_IMG_PER_SCENE)
+    fp_frame = np.zeros(cfg.NUM_SCENES*cfg.MAX_IMG_PER_SCENE)
+    npos     = np.zeros(len(class_recs))
+    #Count number of total labels in all frames
     for i, rec in enumerate(class_recs):
-        if(rec['ignore_img'] is False):
+        if(rec['ignore_frame'] is False):
             for ignore_elem in rec['ignore']:
                 if(not ignore_elem):
                     npos[i] += 1
@@ -251,44 +227,43 @@ def waymo_eval(detpath,
         sorted_scores = np.sort(-confidence)
         #No need to sort BB if you just access via sorted_ind
         #BB = BB[sorted_ind, :]
-        image_idx_sorted = [int(image_idx[x]) for x in sorted_ind]
-        image_tokens_sorted = [image_tokens[x] for x in sorted_ind]
-        #print(image_ids)
+        idx_sorted = [int(frame_idx[x]) for x in sorted_ind]
+        frame_tokens_sorted = [frame_tokens[x] for x in sorted_ind]
+        #print(frame_ids)
 
         avg_scene_var  = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
         img_det_cnt    = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
         scene_desc     = ["" for x in range(cfg.NUM_SCENES)]
 
         # go down dets and mark true positives and false positives
-        #Zip together sorted_ind with image tokens sorted. 
+        #Zip together sorted_ind with frame tokens sorted. 
         #sorted_ind -> Needed to know which detection we are selecting next
-        #image_tokens_sorted -> Needed to know which set of GT's are for the same image as the det
+        #frame_tokens_sorted -> Needed to know which set of GT's are for the same frame as the det
         print('num dets {}'.format(len(sorted_ind)))
-        for det_idx,token in zip(sorted_ind,image_tokens_sorted):
+        for det_idx,token in zip(sorted_ind,frame_tokens_sorted):
             #R is a subset of detections for a specific class
-            #print('doing det for image {}'.format(image_idx[d]))
-            #Need to find associated GT image ID alongside its detection id 'd'
-            #Only one such image, why appending?
+            #print('doing det for frame {}'.format(frame_idx[d]))
+            #Need to find associated GT frame ID alongside its detection id 'd'
+            #Only one such frame, why appending?
             R = None
-            skip_iter = False
+            skip_iter = True
             for rec in class_recs:
-                #TODO: Janky fix...
-                if(rec['imgname'].replace('val/images/','') == token):
-                    if(rec['ignore_img'] is False):
+                if(rec['idx'] == re.sub('[^0-9]','',token)):
+                    if(rec['ignore_frame'] is False):
                         R = rec
-                    else:
-                        skip_iter = True
-                    break
+                        skip_iter = False
+                        break
             if(skip_iter):
                 continue
             #Deprecated
-            #R = class_recs[image_ids[d]]
+            #R = class_recs[frame_ids[d]]
             bb = BB[det_idx, :].astype(float)
             #Variance extraction, collect on a per scene basis
-            bb_var = a_bbox_var[det_idx, :].astype(float)
-            avg_scene_var[R['scene_idx']][R['img_idx']] += np.average(bb_var)
+            if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+                bb_var = a_bbox_var[det_idx, :].astype(float)
+                avg_scene_var[R['scene_idx']][R['frame_idx']] += np.average(bb_var)
             #print('setting mask to true for: {}-{}-{}'.format(R['scene_idx'],R['img_idx'],det_idx))
-            img_det_cnt[R['scene_idx']][R['img_idx']] += 1
+            img_det_cnt[R['scene_idx']][R['frame_idx']] += 1
             scene_desc[R['scene_idx']] = R['scene_desc']
             ovmax = -np.inf
             cat = []
@@ -302,46 +277,14 @@ def waymo_eval(detpath,
             #    BBGT_height = BBGT_elem[3] - BBGT_elem[1]
             ovmax_dc = 0
             if BBGT_dc.size > 0 and cfg.TEST.IGNORE_DC:
-                #print('performing dont care filtering')
-                ixmin_dc = np.maximum(BBGT_dc[:, 0], bb[0])
-                iymin_dc = np.maximum(BBGT_dc[:, 1], bb[1])
-                ixmax_dc = np.minimum(BBGT_dc[:, 2], bb[2])
-                iymax_dc = np.minimum(BBGT_dc[:, 3], bb[3])
-                iw_dc = np.maximum(ixmax_dc - ixmin_dc + 1., 0.)
-                ih_dc = np.maximum(iymax_dc - iymin_dc + 1., 0.)
-                #This is the intersection of both BB's
-                inters_dc = iw_dc * ih_dc
-
-                # union
-                uni_dc = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
-                       (BBGT_dc[:, 2] - BBGT_dc[:, 0] + 1.) *
-                       (BBGT_dc[:, 3] - BBGT_dc[:, 1] + 1.) - inters_dc)
-                #IoU - intersection over union
-                overlaps_dc = inters_dc / uni_dc
+                overlaps_dc = eval_iou(BBGT_dc,bb,eval_type)
                 ovmax_dc = np.max(overlaps_dc)
+            #Compute IoU
             if BBGT.size > 0:
-                # compute overlaps
-                # intersection
-                #BBGT = [xmin,ymin,xmax,ymax]
-                ixmin = np.maximum(BBGT[:, 0], bb[0])
-                iymin = np.maximum(BBGT[:, 1], bb[1])
-                ixmax = np.minimum(BBGT[:, 2], bb[2])
-                iymax = np.minimum(BBGT[:, 3], bb[3])
-                iw = np.maximum(ixmax - ixmin + 1., 0.)
-                ih = np.maximum(iymax - iymin + 1., 0.)
-                #This is the intersection of both BB's
-                inters = iw * ih
-
-                # union
-                uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
-                       (BBGT[:, 2] - BBGT[:, 0] + 1.) *
-                       (BBGT[:, 3] - BBGT[:, 1] + 1.) - inters)
-                #IoU - intersection over union
-                overlaps = inters / uni
+                overlaps = eval_iou(BBGT,bb,eval_type)
                 ovmax = np.max(overlaps)
                 #Index of max overlap between a BBGT and BB
                 jmax = np.argmax(overlaps)
-                ovmax_bbgt_height = BBGT[jmax, 3] - BBGT[jmax, 1]
             # Minimum IoU Threshold for a true positive
             if ovmax > ovthresh and ovmax_dc < ovthresh_dc:
                 #if ovmax > ovthresh:
@@ -349,24 +292,27 @@ def waymo_eval(detpath,
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
                         tp[det_idx] += 1
+                        tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
                     else:
                         #If it already exists, cant double classify on same spot.
                         fp[det_idx] += 1
+                        fp_frame[int(R['idx'])] += 1
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[det_idx] += 1
-        else:
-            print('waymo eval, no GT boxes detected ')
-
-    for scene_idx, scene_var in enumerate(avg_scene_var):
-        if(scene_desc[scene_idx] != ""):
-            scene_det_cnt = img_det_cnt[scene_idx]
-            img_mask = np.array(scene_det_cnt,dtype=bool)
-            avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
-            #avg_var = np.average(scene_var[img_mask[scene_idx]])
-            print('Scene: {} \n    num images {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
+                fp_frame[int(R['idx'])] += 1
+    else:
+        print('waymo eval, no GT boxes detected')
+    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+        for scene_idx, scene_var in enumerate(avg_scene_var):
+            if(scene_desc[scene_idx] != ""):
+                scene_det_cnt = img_det_cnt[scene_idx]
+                img_mask = np.array(scene_det_cnt,dtype=bool)
+                avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
+                #avg_var = np.average(scene_var[img_mask[scene_idx]])
+                print('Scene: {} \n    num frames {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
     map = mrec = mprec = 0
     prec = 0
     rec  = 0
@@ -380,12 +326,9 @@ def waymo_eval(detpath,
         npos_sum = np.sum([1])
     #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
     #recall
-    #Per image per class AP
+    #Per frame per class AP
     rec = tp_sum[:] / npos_sum.astype(float)
     prec = tp_sum[:] / np.maximum(tp_sum[:] + fp_sum[:], np.finfo(np.float64).eps)
-    #if(i == 2):
-    #    print(tp_sum[-1])
-    #    print(fp_sum[-1])
     # avoid divide by zero in case the first detection matches a difficult
     # ground truth precision
     mprec = np.average(prec)
@@ -393,3 +336,157 @@ def waymo_eval(detpath,
     rec, prec = zip(*sorted(zip(rec, prec)))
     map = waymo_ap(rec, prec)
     return mrec, mprec, map
+
+def eval_load_recs(frameset, frame_path, labels_filename, db, mode, classname):
+    class_recs = []
+    filename = os.path.join(db._devkit_path, mode, 'labels',labels_filename)
+    with open(filename,'r') as labels_file:
+        data = labels_file.read()
+        #print(data)
+        labels = json.loads(data)
+        for i, filename in enumerate(frameset):
+            frame_idx = re.sub('[^0-9]','',filename)
+            #Load annotations for frame, cut any elements not in classname
+            tmp_rec = eval_load_rec(labels,frame_path,frame_idx,filename,db,mode)
+            if(tmp_rec is None):
+                tmp_rec = {}
+                print('skipping frame {}, it does not exist in the ROIDB'.format(filename))
+                tmp_rec['ignore_frame'] = True
+            elif(tmp_rec['boxes'].size == 0):
+                print('skipping frame {}, as it has no GT boxes'.format(filename))
+                tmp_rec['ignore_frame'] = True
+            else:
+                tmp_rec['ignore_frame'] = False
+                if(len(tmp_rec['gt_classes']) > 0):
+                    gt_class_idx = np.where(tmp_rec['gt_classes'] == db._class_to_ind[classname])
+                else:
+                    gt_class_idx = []
+                tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
+                tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+                tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
+                tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
+                tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+                tmp_rec['scene_idx'] = tmp_rec['scene_idx']
+                tmp_rec['scene_desc'] = tmp_rec['scene_desc']
+            tmp_rec['filename'] = filename
+            tmp_rec['frame_idx']   = int(int(frame_idx)/cfg.MAX_IMG_PER_SCENE)
+            tmp_rec['idx'] = frame_idx
+            #List of all frames with GT boxes for a specific class
+            class_recs.append(tmp_rec)
+            #Only print every hundredth annotation?
+            if i % 10 == 0:
+                #print(recs[idx_name])
+                print('Reading annotation for {:d}/{:d}'.format(
+                    i + 1, len(frameset)))
+    return class_recs
+
+
+def eval_load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
+    tmp_rec = None
+    for label in labels:
+        #print(img_labels['assoc_frame'])
+        if(label['assoc_frame'] == frame_idx):
+            frame = os.path.join(frame_path,frame_file)
+            #TODO: filter if not in preferred scene
+            #TODO: here is where I get my ROI for the frame. Can use this as well as the variance to get average entropy
+            #Do I really want multiple paths in which ROI's can be loaded? I should really fetch this from the existing ROIDB
+            tmp_rec = db._load_waymo_annotation(frame,label,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
+            break
+    return tmp_rec
+
+
+def eval_iou(bbgt,bbdet,eval_type):
+    if(eval_type == '2d' or eval_type == 'bev_aa'):
+        overlaps = eval_2d_iou(bbgt,bbdet)
+    elif(eval_type == 'bev'):
+        overlaps = eval_bev_iou(bbgt,bbdet)
+    elif(eval_type == '3d'):
+        overlaps = eval_3d_iou(bbgt,bbdet)
+    else:
+        overlaps = None
+    return overlaps
+
+"""
+function: eval_2d_iou
+Inputs:
+bbgt: (N,4) ground truth boxes
+bbdet: (4,) detection box
+output:
+overlaps: (N) total overlap for each bbgt with the bbdet
+"""
+def eval_2d_iou(bbgt,bbdet):
+    # compute overlaps
+    # intersection
+    #bbgt = [xmin,ymin,xmax,ymax]
+    ixmin = np.maximum(bbgt[:, 0], bbdet[0])
+    iymin = np.maximum(bbgt[:, 1], bbdet[1])
+    ixmax = np.minimum(bbgt[:, 2], bbdet[2])
+    iymax = np.minimum(bbgt[:, 3], bbdet[3])
+    iw = np.maximum(ixmax - ixmin + 1., 0.)
+    ih = np.maximum(iymax - iymin + 1., 0.)
+    #This is the intersection of both BB's
+    inters = iw * ih
+
+    # union
+    uni = ((bbdet[2] - bbdet[0] + 1.) * (bbdet[3] - bbdet[1] + 1.) +
+            (bbgt[:, 2] - bbgt[:, 0] + 1.) *
+            (bbgt[:, 3] - bbgt[:, 1] + 1.) - inters)
+    #IoU - intersection over union
+    overlaps = inters / uni
+    return overlaps
+
+
+"""
+function: eval_bev_iou
+Inputs:
+bbgt: (N,7) ground truth boxes
+bbdet: (7,) detection box
+output:
+overlaps: (N) total overlap for each bbgt with the bbdet
+"""
+def eval_bev_iou(bbgt, bbdet):
+    det_4pt = bbox_utils.bbox_3d_to_bev_4pt(bbdet[np.newaxis,:])[0]
+    gts_4pt  = bbox_utils.bbox_3d_to_bev_4pt(bbgt)
+    overlaps = np.zeros((bbgt.shape[0]))
+    for i, gt_4pt in enumerate(gts_4pt):
+        gt_height = bbgt[i,5]
+        gt_poly = bbox_to_polygon_2d(gt_4pt)
+        det_poly = bbox_to_polygon_2d(det_4pt)
+        inter = gt_poly.intersection(det_poly).area
+        iou_2d = inter/(gt_poly.area + det_poly.area - inter)
+        overlaps[i] = iou_2d
+    return overlaps
+
+"""
+function: eval_bev_iou
+Inputs:
+bbgt: (N,7) ground truth boxes
+bbdet: (7,) detection box
+output:
+overlaps: (N) total overlap for each bbgt with the bbdet
+"""
+def eval_3d_iou(bbgt, bbdet):
+    overlaps = np.zeros((bbgt.shape[0]))
+    det_4pt = bbox_utils.bbox_3d_to_bev_4pt(bbdet[np.newaxis,:])[0]
+    gts_4pt  = bbox_utils.bbox_3d_to_bev_4pt(bbgt)
+    det_z    = [bbdet[2]-bbdet[5]/2,bbdet[2]+bbdet[5]/2]
+    gt_z     = [bbgt[:,2]-bbgt[:,5]/2,bbgt[:,2]+bbgt[:,5]/2]
+    det_height = bbdet[5]
+    for i, gt_4pt in enumerate(gts_4pt):
+        gt_height = bbgt[i,5]
+        inter_max = min(gt_z[1][i],det_z[1]) 
+        inter_min = max(gt_z[0][i],det_z[0])
+        inter_height = max(0.0,inter_max - inter_min)
+        gt_poly = bbox_to_polygon_2d(gt_4pt)
+        det_poly = bbox_to_polygon_2d(det_4pt)
+        inter = gt_poly.intersection(det_poly).area
+        iou_2d = inter/(gt_poly.area + det_poly.area - inter)
+        inter_vol = inter*inter_height
+        #Compute iou 3d by including heights, as height is axis aligned
+        iou_3d = inter_vol/(gt_poly.area*gt_height + det_poly.area*det_height - inter_vol)
+        overlaps[i] = iou_3d
+    return overlaps
+
+def bbox_to_polygon_2d(bbox):
+    return Polygon([(bbox[0,0], bbox[0,1]), (bbox[1,0], bbox[1,1]), (bbox[2,0], bbox[2,1]), (bbox[3,0], bbox[3,1])])
+

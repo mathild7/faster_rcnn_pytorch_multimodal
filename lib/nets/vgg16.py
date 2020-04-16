@@ -46,7 +46,7 @@ class vgg16(Network):
         self._layers['head'] = nn.Sequential(
             *list(self.vgg.features._modules.values())[:-1])
 
-    def _image_to_head(self):
+    def _input_to_head(self):
         net_conv = self._layers['head'](self._image)
         self._act_summaries['conv'] = net_conv
 

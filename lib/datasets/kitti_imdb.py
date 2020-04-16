@@ -58,9 +58,9 @@ class kitti_imdb(imdb):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_image_index = sorted([d.replace('.png', '') for d in os.listdir(self._train_image_dir) if d.endswith('.png')])
-        self._val_image_index = sorted([d.replace('.png', '') for d in os.listdir(self._val_image_dir) if d.endswith('.png')])
-        self._test_image_index = sorted([d.replace('.png', '') for d in os.listdir(self._test_image_dir) if d.endswith('.png')])
+        self._train_index = sorted([d.replace('.png', '') for d in os.listdir(self._train_image_dir) if d.endswith('.png')])
+        self._val_index = sorted([d.replace('.png', '') for d in os.listdir(self._val_image_dir) if d.endswith('.png')])
+        self._test_index = sorted([d.replace('.png', '') for d in os.listdir(self._test_image_dir) if d.endswith('.png')])
         #Limiter
 
         assert os.path.exists(self._devkit_path), \
@@ -106,11 +106,11 @@ class kitti_imdb(imdb):
         #    print(line.strip())
         cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_gt_roidb.pkl')
         if(mode == 'train'):
-            image_index = self._train_image_index
+            image_index = self._train_index
         elif(mode == 'val'):
-            image_index = self._val_image_index
+            image_index = self._val_index
         elif(mode == 'test'):
-            image_index = self._test_image_index
+            image_index = self._test_index
         else:
             image_index = None
         if os.path.exists(cache_file):
@@ -238,7 +238,8 @@ class kitti_imdb(imdb):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(mode),'drawn')
         print('deleting files in dir {}'.format(out_file))
-        shutil.rmtree(out_file)
+        if(os.path.isdir(datapath)):
+            shutil.rmtree(datapath)
         os.makedirs(out_file)
         if(mode == 'val'):
             roidb = self.val_roidb
@@ -270,8 +271,9 @@ class kitti_imdb(imdb):
 
     def delete_eval_draw_folder(self,im_folder,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(im_folder),'{}_drawn'.format(mode))
-        print('deleting files in dir {}'.format(datapath))
-        shutil.rmtree(datapath)
+        if(os.path.isdir(datapath)):
+            print('deleting files in dir {}'.format(datapath))
+            shutil.rmtree(datapath)
         os.makedirs(datapath)
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
@@ -300,11 +302,11 @@ class kitti_imdb(imdb):
 
     def _write_kitti_results_file(self, all_boxes, mode='train'):
         if(mode == 'train'):
-            image_index = self._train_image_index
+            image_index = self._train_index
         elif(mode == 'val'):
-            image_index = self._val_image_index
+            image_index = self._val_index
         elif(mode == 'test'):
-            image_index = self._test_image_index
+            image_index = self._test_index
         else:
             image_index = []
         for cls_ind, cls in enumerate(self.classes):
@@ -330,11 +332,11 @@ class kitti_imdb(imdb):
 
     def _do_python_eval(self, output_dir='output', mode='train'):
         if(mode == 'train'):
-            image_index = self._train_image_index
+            image_index = self._train_index
         elif(mode == 'val'):
-            image_index = self._val_image_index
+            image_index = self._val_index
         elif(mode == 'test'):
-            image_index = self._test_image_index
+            image_index = self._test_index
         else:
             image_index = []
         #annopath is for labels and only labelled images
