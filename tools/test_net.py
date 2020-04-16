@@ -93,6 +93,18 @@ def parse_args(manual_mode):
         dest='net_type',
         help='lidar or camera',
         type=str)
+    parser.add_argument(
+        '--train_iter',
+        dest='train_iter',
+        help='what specific folder to save in',
+        default=None,
+        type=int)
+    parser.add_argument(
+        '--num_frames',
+        dest='num_frames',
+        help='how many frames to test',
+        default=0,
+        type=int)
 
 
     if len(sys.argv) == 1 and manual_mode is False:
@@ -119,12 +131,14 @@ if __name__ == '__main__':
     #TODO: Merge into cfg_from_list()
     if(args.net_type is not None):
         cfg.NET_TYPE = args.net_type
-
+    if(args.train_iter is not None):
+        cfg.TRAIN_ITER = args.train_iter
 
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
         cfg_from_list(args.set_cfgs)
+
 
     print('Using config:')
     pprint.pprint(cfg)
@@ -146,7 +160,7 @@ if __name__ == '__main__':
         elif(args.db_name == 'waymo'):
             db = waymo_imdb(mode='val',limiter=500, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
-        db = waymo_lidb(mode='val',limiter=500, shuffle_en=True)
+        db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):

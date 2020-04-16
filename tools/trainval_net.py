@@ -41,8 +41,8 @@ def parse_args(manual_mode=False):
         default=None,
         type=str)
     parser.add_argument(
-        '--weight',
-        dest='weight',
+        '--weights_file',
+        dest='weights_file',
         help='initialize with pretrained model weights',
         type=str)
     parser.add_argument(
@@ -86,7 +86,7 @@ def parse_args(manual_mode=False):
         '--en_full_net',
         dest='en_full_net',
         help='enable just first stage or both stages of net',
-        default=None,
+        default=1,
         type=int)
     parser.add_argument(
         '--train_iter',
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         db,
         output_dir,
         tb_dir,
-        pretrained_model=args.weight,
+        pretrained_model=args.weights_file,
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=2000,
