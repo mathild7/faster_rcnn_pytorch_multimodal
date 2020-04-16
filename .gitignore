@@ -1,4 +1,5 @@
 /output
 /tensorboard
+/debug
 .mypy_cache/
 .__pycache__/
