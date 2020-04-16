@@ -13,9 +13,3 @@ Current L2 mAP for vehicles: 0.3760
 Image
 Since its pretrained on caffe, only one command to run
 python3 ./trainval_net.py --net_type image --weights_file ~/thesis/data/weights/res101-caffe.pth --train_iter 1 --preload 1
-Current L2 mAP for vehicles: 0.4523
-
-
-
-
-

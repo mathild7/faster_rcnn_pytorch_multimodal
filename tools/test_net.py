@@ -133,7 +133,6 @@ if __name__ == '__main__':
         cfg.NET_TYPE = args.net_type
     if(args.train_iter is not None):
         cfg.TRAIN_ITER = args.train_iter
-
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
