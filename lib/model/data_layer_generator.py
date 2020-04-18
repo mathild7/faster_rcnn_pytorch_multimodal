@@ -110,7 +110,7 @@ class data_layer_generator(object):
         #    time.sleep(1)
         
     def join(self):
-        print(self._queue.empty())
+        print('Is queue empty?: {}'.format(self._queue.empty()))
         self._proc.join()
 
     def clear(self):

@@ -29,17 +29,15 @@ def im_list_to_blob(ims):
     return blob
 
 
-def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, target_size, max_size):
+def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, im_scale):
     """Mean subtract and scale an image for use in a blob."""
     im_shape = im.shape
-    im_size_min = np.min(im_shape[0:2])
-    im_size_max = np.max(im_shape[0:2])
-    im_scale = float(target_size) / float(im_size_min)
+    #im_size_min = np.min(im_shape[0:2])
+    #im_size_max = np.max(im_shape[0:2])
+    #im_scale = float(target_size) / float(im_size_min)
 
     im = im.astype(np.float32, copy=False)
 
-    if np.round(im_scale * im_size_max) > max_size:
-        im_scale = float(max_size) / float(im_size_max)
     im = cv2.resize(
         im,
         None,
@@ -53,7 +51,7 @@ def prep_im_for_blob(im, pixel_means, pixel_stddev, pixel_arrange, target_size, 
     im = im/pixel_stddev
     # Prevent the biggest axis from being more than MAX_SIZE
 
-    return im, im_scale
+    return im
 
 
 def bev_map_list_to_blob(bev_maps):

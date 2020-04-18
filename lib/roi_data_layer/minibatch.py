@@ -29,21 +29,20 @@ import shutil
 import re
 from datasets.waymo_lidb import waymo_lidb
 
-def draw_and_save_minibatch(im,roidb):
+def draw_and_save_image_minibatch(blobs,cnt):
 
     datapath = os.path.join(cfg.ROOT_DIR, 'debug')
     if not os.path.exists(datapath):
         os.makedirs(datapath)
     #datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
-    out_file = os.path.basename(roidb['imgname'])
+    out_file = os.path.basename(blobs['filename'])
     out_file = os.path.join(datapath,out_file)
-    source_img = Image.fromarray(im)
+    img = blobs['data'][0]*cfg.PIXEL_STDDEVS + cfg.PIXEL_MEANS
+    img = img.astype(dtype='uint8')
+    source_img = Image.fromarray(img)
     draw = ImageDraw.Draw(source_img)
-    for det,label in zip(roidb['boxes'],roidb['ignore']):
-        if(label == 0):
-            color = 0
-        else:
-            color = 255
+    for det in blobs['gt_boxes']:
+        color = int(255*det[4])
         draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
     print('Saving file at location {}'.format(out_file))
     source_img.save(out_file,'PNG')  
@@ -51,13 +50,14 @@ def draw_and_save_minibatch(im,roidb):
 def draw_and_save_lidar_minibatch(blob,cnt):
     filename = blob['filename']
     info = blob['info']
+    scale = info[6]
     lidb = waymo_lidb()
     #Extract voxel grid size
-    width   = int(info[1] - info[0] + 1)
+    #width   = int(info[1] - info[0])
     #Y is along height axis in image domain
-    height  = int(info[3] - info[2] + 1)
-    lidb._imheight = height
-    lidb._imwidth  = width
+    #height  = int(info[3] - info[2])
+    #lidb._imheight = height
+    #lidb._imwidth  = width
     datapath = os.path.join(cfg.ROOT_DIR, 'debug')
     if not os.path.exists(datapath):
         os.makedirs(datapath)
@@ -70,7 +70,7 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     #draw = ImageDraw.Draw(draw_file)
     #lidb.draw_bev(source_bin,draw)
     #for bbox in blob['gt_boxes']:
-    #    lidb.draw_bev_bbox(draw,bbox,None,transform=False)
+    #    lidb.draw_bev_bbox(draw,bbox,transform=False)
     #draw_file.save(out_file.replace('.png','_bev.png'),'png')
     voxel_grid = blob['data'][0]
     voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
@@ -83,73 +83,85 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
     img = Image.fromarray(voxel_grid_rgb,'RGB')
     draw = ImageDraw.Draw(img)
+    if(blob['flipped'] is True):
+        draw.text((0,0),'flipped')
+    else:
+        draw.text((0,0),'normal')
     for bbox in blob['gt_boxes']:
-        lidb.draw_bev_bbox(draw,bbox,None,transform=False)
+        #bbox[0:2] = bbox[0:2]*scale
+        #bbox[3:5] = bbox[3:5]*scale
+        lidb.draw_bev_bbox(draw,bbox,transform=False)
     #for bbox_dc in enumerate(blob['gt_boxes_dc']):
-    #    lidb.draw_bev_bbox(draw,bbox_dc,None)
+    #    lidb.draw_bev_bbox(draw,bbox_dc)
     print('Saving BEV map file at location {}'.format(out_file))
     img.save(out_file,'png')
 
 def get_minibatch(roidb, num_classes, augment_en,cnt):
+    num_frames = len(roidb)
+    assert num_frames == 1, "Single batch only"
+    # Sample random scales to use for each image in this batch
+    random_scale_inds = npr.randint(
+        0, high=len(cfg.TRAIN.SCALES), size=num_frames)
+    assert(cfg.TRAIN.BATCH_SIZE % num_frames == 0), \
+      'num_frames ({}) must divide BATCH_SIZE ({})'. \
+      format(num_frames, cfg.TRAIN.BATCH_SIZE)
+
+    # Get the input image blob, formatted for caffe
+    scale = cfg.TRAIN.SCALES[random_scale_inds[0]]
     if(cfg.NET_TYPE == 'image'):
-        return get_image_minibatch(roidb,num_classes,augment_en)
+        return get_image_minibatch(roidb,num_classes,augment_en,scale,cnt)
     elif(cfg.NET_TYPE == 'lidar'):
-        return get_lidar_minibatch(roidb,num_classes,augment_en,cnt)
+        return get_lidar_minibatch(roidb,num_classes,augment_en,scale,cnt)
     else:
         print('getting minibatch failed. Invalid NET TYPE in cfg')
         return None
 
-def get_lidar_minibatch(roidb, num_classes, augment_en,cnt):
+def get_lidar_minibatch(roidb, num_classes, augment_en, scale, cnt):
     """Given a roidb, construct a minibatch sampled from it."""
 
-    num_images = len(roidb)
-    gt_box_size = 7 + 1  #BBox + Cls
+    gt_box_size = cfg.LIDAR.NUM_BBOX_ELEM + 1  #BBox + Cls
     #X1,Y1,Z1,X2,Y2,Z2
     area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
-    #Removed input scaling capability. Unused.
-    # Sample random scales to use for each image in this batch
-    #random_scale_inds = npr.randint(
-    #    0, high=len(cfg.TRAIN.SCALES), size=num_images)
 
-    assert(cfg.TRAIN.BATCH_SIZE % num_images == 0), 'num_images ({}) must divide BATCH_SIZE ({})'.format(num_images, cfg.TRAIN.BATCH_SIZE)
-
-    # Get the input image blob, formatted for caffe
-    dummy_scale_value = 1
-    info, pc_blob, local_roidb = _get_lidar_blob(roidb, area_extents, dummy_scale_value, augment_en)
-
+    # Get the input lidar blob
+    infos, pc_blob, local_roidb = _get_lidar_blob(roidb, area_extents, scale, augment_en)
+    info = infos[0]
+    roi_entry = local_roidb[0]
     #Create numpy array storage for bounding boxes (enforce type)
-    gt_len  = local_roidb[0]['boxes'].shape[0]
-    dc_len  = local_roidb[0]['boxes_dc'].shape[0]
+    gt_len  = roi_entry['boxes'].shape[0]
+    dc_len  = roi_entry['boxes_dc'].shape[0]
     gt_boxes = np.empty((gt_len, gt_box_size), dtype=np.float32)
     gt_boxes_dc = np.empty((dc_len, gt_box_size), dtype=np.float32)
 
     #Contains point cloud tensor
     blobs = {'data': pc_blob}
-
+    blobs['flipped'] = roi_entry['flipped']
     #assert len(pc_scales) == 1, "Single batch only"
     assert len(local_roidb) == 1, "Single batch only"
 
     # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
-    gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
-    blobs['filename'] = local_roidb[0]['filename']
+    gt_inds = np.where(roi_entry['ignore'] == 0)[0]
+    blobs['filename'] = roi_entry['filename']
     #print(blobs['filename'])
     #TODO: Ground plane estimation and subtraction
     #Transform into voxel_grid form (flip y-axis, scale to image size (e.g. 800,700))
-    gt_boxes[:, 0:-1] = bbox_utils.bbox_pc_to_voxel_grid(local_roidb[0]['boxes'][gt_inds, :],area_extents,info)
+    gt_boxes[:, 0:-1] = bbox_utils.bbox_pc_to_voxel_grid(roi_entry['boxes'][gt_inds, :],area_extents,info)
+    gt_boxes[:, 0:2] = gt_boxes[:, 0:2] * scale
+    gt_boxes[:, 3:5] = gt_boxes[:, 3:5] * scale
     #shift gt_boxes to voxel domain
-    bbox_labels = local_roidb[0]['gt_classes'][gt_inds]
+    bbox_labels = roi_entry['gt_classes'][gt_inds]
     gt_boxes[:, -1] = bbox_labels
     blobs['gt_boxes'] = gt_boxes
     #Do we include don't care areas, so we ignore certain ground truth boxes (Might be kitti only, even tho waymo has NLZ)
     if cfg.TRAIN.IGNORE_DC:
         gt_ind_dc = np.arange(dc_len)
-        gt_boxes_dc[:, 0:-1] = local_roidb[0]['boxes_dc'][gt_ind_dc, :]
+        gt_boxes_dc[:, 0:-1] = roi_entry['boxes_dc'][gt_ind_dc, :]
         gt_boxes_dc[:, -1] = np.zeros(dc_len)
     #TODO: FIX
     #vg_boxes_dc = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes_dc,area_extents,info)
     vg_boxes_dc = np.empty(0)
-    blobs['gt_boxes_dc'] = vg_boxes_dc
-    blobs['info'] = np.array(np.hstack((info,dummy_scale_value)), dtype=np.float32)
+    blobs['gt_boxes_dc'] = vg_boxes_dc * scale
+    blobs['info'] = np.array(np.hstack((info,scale)), dtype=np.float32)
     #blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
     if(cfg.DEBUG.DRAW_MINIBATCH):
         draw_and_save_lidar_minibatch(blobs,cnt)
@@ -159,50 +171,44 @@ def get_lidar_minibatch(roidb, num_classes, augment_en,cnt):
 
     return blobs
 
-def get_image_minibatch(roidb, num_classes, augment_en):
+def get_image_minibatch(roidb, num_classes, augment_en, scale, cnt):
     """Given a roidb, construct a minibatch sampled from it."""
-    num_frames = len(roidb)
-    # Sample random scales to use for each image in this batch
-    random_scale_inds = npr.randint(
-        0, high=len(cfg.TRAIN.SCALES), size=num_frames)
-    assert(cfg.TRAIN.BATCH_SIZE % num_frames == 0), \
-      'num_images ({}) must divide BATCH_SIZE ({})'. \
-      format(num_frames, cfg.TRAIN.BATCH_SIZE)
 
-    # Get the input image blob, formatted for caffe
-    target_size = cfg.TRAIN.SCALES[random_scale_inds[0]]
-    infos, im_blob, local_roidb = _get_image_blob(roidb, target_size, augment_en)
-    #print('got image {}'.format(roidb[0]['filename']))
-    #print('token {}'.format(roidb[0]['imgname']))
-    #print('is it flipped?: {}'.format(roidb[0]['flipped']))
-    #Contains actual image
+    infos, im_blob, local_roidb = _get_image_blob(roidb, scale, augment_en)
+
+    #Only one frame per minibatch allowed
+    info = infos[0]
+    im_scale = info[6]
+    roi_entry = local_roidb[0]
+
     blobs = {'data': im_blob}
-    blobs['info'] = infos[0]
-    im_scale = infos[0][6]
-    #assert len(im_scales) == 1, "Single batch only"
-    assert len(roidb) == 1, "Single batch only"
+    blobs['info'] = info
+
 
     # gt boxes: (x1, y1, x2, y2, cls)
     #gt_inds = np.where(local_roidb[0]['gt_classes'] != 0)[0]
     #print(local_roidb[0]['ignore'])
-    gt_inds = np.where(local_roidb[0]['ignore'] == 0)[0]
-    dc_len  = local_roidb[0]['boxes_dc'].shape[0]
-    blobs['filename'] = local_roidb[0]['filename']
+    gt_inds = np.where(roi_entry['ignore'] == 0)[0]
+    dc_len  = roi_entry['boxes_dc'].shape[0]
+    blobs['filename'] = roi_entry['filename']
     #print('from get_image_minibatch')
     #print(blobs['filename'])
     gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
     #print('scaling gt boxes by {}'.format(im_scales[0]))
-    gt_boxes[:, 0:4] = local_roidb[0]['boxes'][gt_inds, :] * im_scale
-    gt_boxes[:, 4] = local_roidb[0]['gt_classes'][gt_inds]
+    gt_boxes[:, 0:4] = roi_entry['boxes'][gt_inds, :] * im_scale
+    gt_boxes[:, 4] = roi_entry['gt_classes'][gt_inds]
     blobs['gt_boxes'] = gt_boxes
     gt_boxes_dc = np.empty((dc_len, 5), dtype=np.float32)
     if cfg.TRAIN.IGNORE_DC:
         gt_ind_dc = np.arange(dc_len)
-        gt_boxes_dc[:, 0:4] = local_roidb[0]['boxes_dc'][gt_ind_dc, :] * im_scale
+        gt_boxes_dc[:, 0:4] = roi_entry['boxes_dc'][gt_ind_dc, :] * im_scale
         gt_boxes_dc[:, 4] = np.zeros(dc_len)
     blobs['gt_boxes_dc'] = gt_boxes_dc
+
+    if(cfg.DEBUG.DRAW_MINIBATCH):
+        draw_and_save_image_minibatch(blobs,cnt)
     #print('gt boxes')
-    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(local_roidb[0]['filename'])
+    #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(roi_entry['filename'])
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
         return None
@@ -216,7 +222,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
   """
     processed_frames = []
     num_frame = len(roidb)
-
+    infos = []
     for i in range(num_frame):
         if(mode == 'test'):
             assert augment_en is False
@@ -227,7 +233,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             local_roidb = deepcopy(roidb)
         #np.random.shuffle(source_bin)
         if(augment_en):
-            #print('augmenting image {}'.format(roidb[i]['imgname']))
+            #print('augmenting image {}'.format(roidb[i]['filename']))
             #shape 0 -> height
             #shape 1 -> width
             flip_num = np.random.normal(1.0, 2.0)
@@ -238,16 +244,19 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
                 source_bin[:,1]       = -source_bin[:,1]
                 local_roidb[i]['flipped'] = True
                 oldy_c = local_roidb[i]['boxes'][:, 1].copy()
+                old_ry = local_roidb[i]['boxes'][:, 6].copy()
                 y_mean = (cfg.LIDAR.Y_RANGE[0]+cfg.LIDAR.Y_RANGE[1])/2
                 local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
+                local_roidb[i]['boxes'][:, 6] = -old_ry
             else:
                 local_roidb[i]['flipped'] = False
         #print(roidb[i]['filename'])
         #print('min z value: {}'.format(np.amin(source_bin[:,2])))
-        num_x_voxel = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
-        num_y_voxel = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        voxel_len = cfg.LIDAR.VOXEL_LEN/scale
+        num_x_voxel = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/voxel_len))
+        num_y_voxel = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/voxel_len))
         num_z_voxel = int(cfg.LIDAR.NUM_SLICES)
-        info = [0,num_x_voxel-1,0,num_y_voxel-1,0,num_z_voxel-1,scale]
+        infos.append([0,num_x_voxel,0,num_y_voxel,0,num_z_voxel,scale])
         vertical_voxel_size = (cfg.LIDAR.Z_RANGE[1] - cfg.LIDAR.Z_RANGE[0])/(cfg.LIDAR.NUM_SLICES+0.0)
 
         #Shift up to have voxel grid be at bottom of pc_extents
@@ -255,7 +264,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         pc_extents[2] = 0
         assert vertical_voxel_size == cfg.LIDAR.VOXEL_HEIGHT
         voxel_generator = spconv.utils.VoxelGeneratorV2(
-            voxel_size=[cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_LEN, cfg.LIDAR.VOXEL_HEIGHT],
+            voxel_size=[voxel_len, voxel_len, cfg.LIDAR.VOXEL_HEIGHT],
             point_cloud_range=pc_extents,
             max_num_points=cfg.LIDAR.MAX_PTS_PER_VOXEL,
             max_voxels=cfg.LIDAR.MAX_NUM_VOXEL
@@ -313,9 +322,9 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
     # Create a blob to hold the input images
     blob = bev_map_list_to_blob(processed_frames)
 
-    return info, blob, local_roidb
+    return infos, blob, local_roidb
 
-def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
+def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
     """Builds an input blob from the images in the roidb at the specified
   scales.
   """
@@ -333,8 +342,11 @@ def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
         img_arr  = im
         mean     = 0
         sigma    = 2
+        #scale
+
+
         if(augment_en):
-            #print('augmenting image {}'.format(roidb[i]['imgname']))
+            #print('augmenting image {}'.format(roidb[i]['filename']))
             #shape 0 -> height
             #shape 1 -> width
             flip_num = np.random.normal(1.0, 2.0)
@@ -358,11 +370,11 @@ def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
             seq = iaa.Sequential(
                 [
                     iaa.Sometimes(0.6,(iaa.Affine(
-                        scale={"x": (1, 2), "y": (1, 2)},  # scale images to 80-120% of their size, individually per axis
-                        translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent (per axis)
+                        scale={"x": (1, 1.5), "y": (1, 1.5)},  # scale images to 80-120% of their size, individually per axis
+                        translate_percent={"x": (-0.05, 0.05), "y": (-0.05, 0.05)},  # translate by -20 to +20 percent (per axis)
                         order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
                         cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
-                        shear=(-0.5, 0.5),
+                        shear=(-0.1, 0.1),
                         mode='constant'  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
                     ))),
                     #iaa.Sometimes(0.5,iaa.Dropout((0.01, 0.1), per_channel=0.5)),
@@ -371,22 +383,21 @@ def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
                     #    iaa.Invert(0.05, per_channel=True)
                     #]),
                     #iaa.OneOf([
-                    iaa.Sometimes(0.5,iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)),
+                    #iaa.Sometimes(0.5,iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)),
                     #    iaa.PiecewiseAffine(scale=(0.01, 0.05))
                     #]),
                     iaa.SomeOf((0, 2),[
                         iaa.SomeOf((0,3),([
-                            iaa.GaussianBlur((0.5, 3.0)),  # blur images with a sigma between 0 and 3.0
-                            iaa.AverageBlur(k=(3, 7)),  # blur image using local means with kernel sizes between 2 and 7
-                            iaa.MedianBlur(k=(3, 7)),  # blur image using local medians with kernel sizes between 2 and 7
-                            iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),
-                            iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
+                            iaa.GaussianBlur((0.1, 2.0)),  # blur images with a sigma between 0 and 3.0
+                            iaa.AverageBlur(k=(1, 3)),  # blur image using local means with kernel sizes between 2 and 7
+                            iaa.MedianBlur(k=(1, 3)),  # blur image using local medians with kernel sizes between 2 and 7
+                            iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5))
                         ])),
                         iaa.AdditiveGaussianNoise(
                             loc=0,
                             scale=(0.0, 0.08*255),
                             per_channel=0.5),
-                        iaa.AddToHueAndSaturation((-30, 30)),  # change hue and saturation
+                        iaa.AddToHueAndSaturation((-10, 10)),  # change hue and saturation
                     ], random_order=True)
                 ], random_order=False
             )
@@ -442,10 +453,10 @@ def _get_image_blob(roidb, target_size, augment_en=False, mode='train'):
             im = img_arr
         #draw_and_save_minibatch(im,local_roidb[0])
         #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
-        im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, target_size,
-                                        cfg.TRAIN.MAX_SIZE)
+        #TODO: Move scaling to be before imgaug, to save time
+        im = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, im_scale)
             #x_min, x_max, y_min, y_max, scale
-        info = np.array([0, im.shape[1]-1, 0, im.shape[0]-1, 0, 0, im_scale], dtype=np.float32)
+        info = np.array([0, im.shape[1], 0, im.shape[0], 0, 0, im_scale], dtype=np.float32)
         im_infos.append(info)
         processed_ims.append(im)
     # Create a blob to hold the input images

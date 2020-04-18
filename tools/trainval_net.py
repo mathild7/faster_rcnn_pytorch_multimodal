@@ -28,6 +28,16 @@ from nets.resnet_v1 import resnetv1
 from nets.lidarnet import lidarnet
 from nets.mobilenet_v1 import mobilenetv1
 
+#https://stackoverflow.com/questions/46561390/4-step-alternating-rpn-faster-r-cnn-training-tensorflow-object-detection-mo/46981671#46981671
+#https://arthurdouillard.com/post/faster-rcnn/
+#Alternate sharing: 
+    #Similar to some matrix decomposition methods, the authors train RPN, then Fast-RCN, and so on. Each network is trained a bit alternatively.
+#Approximate joint training: 
+    #This strategy consider the two networks as a single unified one. The back-propagation uses both the Fast-RCNN loss and the RPN loss. However the regression of bounding-box coordinates in RPN is considered as pre-computed, and thus its derivative is ignored.
+#Non-approximate joint training:
+    #This solution was not used as more difficult to implement. The RoI pooling is made differentiable w.r.t the box coordinates using a RoI warping layer.
+#4-Step Alternating training: 
+    #The strategy chosen takes 4 steps: In the first of one the RPN is trained. In the second, Fast-RCNN is trained using pre-computed RPN proposals. For the third step, the trained Fast-RCNN is used to initialize a new RPN where only RPN’s layers are fine-tuned. Finally in the fourth step RPN’s layers are frozen and only Fast-RCNN is fine-tuned.
 
 def parse_args(manual_mode=False):
     """
@@ -44,6 +54,7 @@ def parse_args(manual_mode=False):
         '--weights_file',
         dest='weights_file',
         help='initialize with pretrained model weights',
+        default=None,
         type=str)
     parser.add_argument(
         '--db',
@@ -188,12 +199,15 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        args.out_dir = 'output/'
+        #args.out_dir = 'output/'
+        #args.train_iter = 3
+        #args.net_type = 'lidar'
+        #args.preload = 2
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        #args.weight  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_20k.pth')
+        #args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
         #IMAGE
-        #args.weight = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+        #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
     
@@ -206,7 +220,7 @@ if __name__ == '__main__':
         elif(args.en_full_net == 0):
             cfg.ENABLE_FULL_NET = False
     if(args.train_iter is not None):
-        cfg.TRAIN_ITER = args.train_iter
+        cfg.TRAIN.ITER = args.train_iter
     if(args.preload is not None):
         cfg.PRELOAD     = False
         cfg.PRELOAD_RPN = False
@@ -214,6 +228,12 @@ if __name__ == '__main__':
             cfg.PRELOAD = True
         if(args.preload == 2):
             cfg.PRELOAD_RPN = True
+
+    if(args.weights_file is None):
+        if(cfg.NET_TYPE == 'lidar'):
+            args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
+        elif(cfg.NET_TYPE == 'image'):
+            args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
 
     print('Called with args:')
     print(args)
@@ -236,11 +256,11 @@ if __name__ == '__main__':
     print('{:d} roidb entries'.format(len(roidb)))
     print('{:d} val roidb entries'.format(len(val_roidb)))
     # output directory where the models are saved
-    output_dir = get_output_dir(db, args.tag)
+    output_dir = get_output_dir(db, weights_filename=args.tag)
     print('Output will be saved to `{:s}`'.format(output_dir))
 
     # tensorboard directory where the summaries are saved during training
-    tb_dir = get_output_tb_dir(db, args.tag)
+    tb_dir = get_output_tb_dir(db, weights_filename=args.tag)
     print('TensorFlow summaries will be saved to `{:s}`'.format(tb_dir))
 
     # also add the validation set, but with no flipping images
@@ -276,9 +296,9 @@ if __name__ == '__main__':
         pretrained_model=args.weights_file,
         max_iters=args.max_iters,
         sum_size=256,
-        val_sum_size=2000,
+        val_sum_size=5000,
         batch_size=16,
         val_batch_size=32,
         val_thresh=0.4,
-        augment_en=False,
+        augment_en=True,
         val_augment_en=False)

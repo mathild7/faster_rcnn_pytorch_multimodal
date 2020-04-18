@@ -184,20 +184,20 @@ def waymo_eval(detpath,
     #All detections for specific class
     if(eval_type == '3d' or eval_type == 'bev' or eval_type == 'bev_aa'):
         BB = np.array([[float(z) for z in x[3:10]] for x in splitlines])
-        u_start = 10
+        u_start = cfg.LIDAR.NUM_BBOX_ELEM + 3
     elif(eval_type == '2d'):
         BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
-        u_start = 7
+        u_start = cfg.IMAGE.NUM_BBOX_ELEM + 3
     else:
         print('invalid evaluation type {}'.format(eval_type))
         return
     #TODO: Add variance read here
     if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
         a_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += 4
+        u_start += cfg.IMAGE.NUM_BBOX_ELEM
     if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
         e_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += 4
+        u_start += cfg.IMAGE.NUM_BBOX_ELEM
     if(cfg.ENABLE_ALEATORIC_CLS_VAR):
         a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
@@ -214,6 +214,7 @@ def waymo_eval(detpath,
     fn = np.zeros((idx))
     tp_frame = np.zeros(cfg.NUM_SCENES*cfg.MAX_IMG_PER_SCENE)
     fp_frame = np.zeros(cfg.NUM_SCENES*cfg.MAX_IMG_PER_SCENE)
+    npos_frame = np.zeros(cfg.NUM_SCENES*cfg.MAX_IMG_PER_SCENE)
     npos     = np.zeros(len(class_recs))
     #Count number of total labels in all frames
     for i, rec in enumerate(class_recs):
@@ -221,6 +222,7 @@ def waymo_eval(detpath,
             for ignore_elem in rec['ignore']:
                 if(not ignore_elem):
                     npos[i] += 1
+                    npos_frame[int(rec['idx'])] += 1
     if BB.shape[0] > 0:
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
@@ -313,6 +315,21 @@ def waymo_eval(detpath,
                 avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
                 #avg_var = np.average(scene_var[img_mask[scene_idx]])
                 print('Scene: {} \n    num frames {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
+    tp_frame = tp_frame[tp_frame != 0]
+    fp_frame = fp_frame[fp_frame != 0]
+    npos_frame = npos_frame[npos_frame != 0]
+    tp_idx = tp_frame.nonzero()
+    fp_idx = fp_frame.nonzero()
+    npos_idx = npos_frame.nonzero()
+    print('tp')
+    print(tp_frame)
+    print(tp_idx)
+    print('fp')
+    print(fp_frame)
+    print(fp_idx)
+    print('npos')
+    print(npos_frame)
+    print(npos_idx)
     map = mrec = mprec = 0
     prec = 0
     rec  = 0
@@ -449,11 +466,11 @@ def eval_bev_iou(bbgt, bbdet):
     gts_4pt  = bbox_utils.bbox_3d_to_bev_4pt(bbgt)
     overlaps = np.zeros((bbgt.shape[0]))
     for i, gt_4pt in enumerate(gts_4pt):
-        gt_height = bbgt[i,5]
         gt_poly = bbox_to_polygon_2d(gt_4pt)
         det_poly = bbox_to_polygon_2d(det_4pt)
         inter = gt_poly.intersection(det_poly).area
-        iou_2d = inter/(gt_poly.area + det_poly.area - inter)
+        union = gt_poly.union(det_poly).area
+        iou_2d = inter/union
         overlaps[i] = iou_2d
     return overlaps
 
@@ -480,7 +497,7 @@ def eval_3d_iou(bbgt, bbdet):
         gt_poly = bbox_to_polygon_2d(gt_4pt)
         det_poly = bbox_to_polygon_2d(det_4pt)
         inter = gt_poly.intersection(det_poly).area
-        iou_2d = inter/(gt_poly.area + det_poly.area - inter)
+        union = gt_poly.union(det_poly).area
         inter_vol = inter*inter_height
         #Compute iou 3d by including heights, as height is axis aligned
         iou_3d = inter_vol/(gt_poly.area*gt_height + det_poly.area*det_height - inter_vol)

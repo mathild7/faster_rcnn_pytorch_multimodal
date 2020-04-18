@@ -16,11 +16,12 @@ import numpy as np
 import scipy.sparse
 from torchvision.ops import nms
 import torch
-from model.config import cfg
+from model.config import cfg, get_output_dir
+import shutil
 
 
-class lidb(object):
-    """Image database."""
+class db(object):
+    """database base class"""
 
     def __init__(self, name, classes=None):
         self._name = name
@@ -101,13 +102,16 @@ class lidb(object):
     """
         raise NotImplementedError
 
+    #TODO: Modify for any modality
     def _get_widths(self):
         return [
             PIL.Image.open(self.path_at(i)).size[0]
             for i in range(self.num_images)
         ]
 
-
+    def get_class(self,idx):
+       return self._classes[idx]
+       
     def path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
@@ -130,6 +134,25 @@ class lidb(object):
             return self._test_index[i]
         else:
             return None
+
+    def find_gt_for_frame(self,filename,mode):
+        if(mode == 'train'):
+            roidb = self.roidb
+        elif(mode == 'val'):
+            roidb = self.val_roidb
+        for roi in roidb:
+            if(roi['filename'] == filename):
+                return roi
+        return None
+
+    def delete_eval_draw_folder(self,im_folder,mode):
+        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        #datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
+        if(os.path.isdir(datapath)):
+            print('deleting files in dir {}'.format(datapath))
+            shutil.rmtree(datapath)
+        os.makedirs(datapath)
+
 
     def create_roidb_from_box_list(self, box_list, gt_roidb):
         assert len(box_list) == self.num_images, \

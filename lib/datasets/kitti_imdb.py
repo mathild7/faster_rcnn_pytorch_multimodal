@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from datasets.imdb import imdb
+from datasets.db import db
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -24,10 +24,10 @@ from .kitti_eval import kitti_eval
 from model.config import cfg
 import shutil
 
-class kitti_imdb(imdb):
+class kitti_imdb(db):
     def __init__(self, mode='test',limiter=0):
         name = 'kitti'
-        imdb.__init__(self, name)
+        db.__init__(self, name)
         self._year = None
         self._devkit_path = self._get_default_path()
         self._data_path = self._devkit_path
@@ -131,8 +131,6 @@ class kitti_imdb(imdb):
 
         return gt_roidb
 
-    def get_class(self,idx):
-       return self._classes[idx]
 
     def rpn_roidb(self):
         if self._mode != 'test':
@@ -140,7 +138,7 @@ class kitti_imdb(imdb):
             gt_roidb = self.gt_roidb(self._mode)
             print('got here')
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
-            roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
+            roidb = self.merge_roidbs(gt_roidb, rpn_roidb)
         else:
             roidb = self._load_rpn_roidb(None)
 
@@ -268,13 +266,6 @@ class kitti_imdb(imdb):
                         draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
                     print('Saving drawn file at location {}'.format(outfile))
                     source_img.save(outfile,self._imtype)
-
-    def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(im_folder),'{}_drawn'.format(mode))
-        if(os.path.isdir(datapath)):
-            print('deleting files in dir {}'.format(datapath))
-            shutil.rmtree(datapath)
-        os.makedirs(datapath)
 
     def draw_and_save_eval(self,imfile,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
         datapath = os.path.join(cfg.DATA_DIR, self._name)

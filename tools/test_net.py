@@ -41,20 +41,20 @@ def parse_args(manual_mode):
     parser.add_argument(
         '--model', dest='model', help='model to test', default=None, type=str)
     parser.add_argument(
-        '--imdb',
-        dest='imdb_name',
+        '--db',
+        dest='db_name',
         help='dataset to test',
         default='voc_2007_test',
         type=str)
     parser.add_argument(
-        '--imdb_root_dir',
-        dest='imdb_root_dir',
+        '--db_root_dir',
+        dest='db_root_dir',
         help='location of dataset',
         default='/',
         type=str)
     parser.add_argument(
-        '--imdb_out_dir',
-        dest='our_dir',
+        '--db_out_dir',
+        dest='out_dir',
         help='location of output dir',
         default='/',
         type=str)
@@ -94,8 +94,8 @@ def parse_args(manual_mode):
         help='lidar or camera',
         type=str)
     parser.add_argument(
-        '--train_iter',
-        dest='train_iter',
+        '--test_iter',
+        dest='test_iter',
         help='what specific folder to save in',
         default=None,
         type=int)
@@ -122,8 +122,11 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        #args.weights_file = 'weights/{}_lidar_156k.pth'.format(args.net)
-        args.out_dir = 'output/'
+        args.net_type = 'lidar'
+        args.weights_file = 'weights/{}_{}_half_scale_188k.pth'.format(args.net,args.net_type)
+        args.test_iter = 1
+        args.num_frames = 600
+        #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
@@ -131,13 +134,17 @@ if __name__ == '__main__':
     #TODO: Merge into cfg_from_list()
     if(args.net_type is not None):
         cfg.NET_TYPE = args.net_type
-    if(args.train_iter is not None):
-        cfg.TRAIN_ITER = args.train_iter
+    if(args.test_iter is not None):
+        cfg.TEST_ITER = args.test_iter
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
         cfg_from_list(args.set_cfgs)
-
+    if(args.out_dir is None):
+        if(cfg.NET_TYPE == 'lidar'):
+            args.out_dir = 'lidar_test_{}'.format(cfg.TEST_ITER)
+        elif(cfg.NET_TYPE == 'image'):
+            args.out_dir = 'image_test_{}'.format(cfg.TEST_ITER)
 
     print('Using config:')
     pprint.pprint(cfg)
@@ -155,9 +162,9 @@ if __name__ == '__main__':
         if(args.db_name == 'kitti'):
             db = kitti_imdb(mode='eval')
         elif(args.db_name == 'nuscenes'):
-            db = nuscenes_imdb(mode='val',limiter=1000)
+            db = nuscenes_imdb(mode='val',limiter=args.num_frames)
         elif(args.db_name == 'waymo'):
-            db = waymo_imdb(mode='val',limiter=500, shuffle_en=True)
+            db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
         db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 

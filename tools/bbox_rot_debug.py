@@ -219,14 +219,14 @@ def bbox_clip(width,height,bboxes):
 #extants [x1,y1,z1,x2,y2,z2]
 #info: voxel grid size (x_min,x_max,y_min,y_max,z_min,z_max)
 def bbox_to_voxel_grid(bboxes,bev_extants,info):
-    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0])/(bev_extants[3]-bev_extants[0]))
     #Invert Y as left is +40 but left is actually interpreted as most negative value in PC when converted to voxel grid.
     #bboxes[:,1] = -bboxes[:,1]
-    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2])/(bev_extants[4]-bev_extants[1]))
     #bboxes[:,2] = (bboxes[:,2]-bev_extants[2])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
-    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
-    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
-    #bboxes[:,5] = (bboxes[:,5])*((info[4]-info[5]+1)/(bev_extants[5]-bev_extants[2]))
+    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0])/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2])/(bev_extants[4]-bev_extants[1]))
+    #bboxes[:,5] = (bboxes[:,5])*((info[4]-info[5])/(bev_extants[5]-bev_extants[2]))
     #If inverting y axis, also must invert ry
     #bboxes[:,6] = -bboxes[:,6]
     return bboxes

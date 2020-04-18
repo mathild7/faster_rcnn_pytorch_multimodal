@@ -222,7 +222,7 @@ def nuscenes_eval(detpath,
             #Only one such image, why appending?
             R = None
             for rec in class_recs:
-                if(rec['imgname'] == token):
+                if(rec['filename'] == token):
                     R = rec
             #Deprecated
             #R = class_recs[image_ids[d]]

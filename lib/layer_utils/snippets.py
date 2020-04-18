@@ -14,15 +14,17 @@ def generate_anchors_pre(height,
                          width,
                          feat_stride,
                          anchor_scales=(8, 16, 32),
-                         anchor_ratios=(0.5, 1, 2)):
+                         anchor_ratios=(0.5, 1, 2),
+                         frame_scale=1.0):
     """ A wrapper function to generate anchors given different scales
     Also return the number of anchors in variable 'length'
   """
     anchors = generate_anchors(
-        ratios=np.array(anchor_ratios), scales=np.array(anchor_scales))
+        ratios=np.array(anchor_ratios), scales=np.array(anchor_scales), frame_scale=frame_scale)
     A = anchors.shape[0]
     shift_x = np.arange(0, width) * feat_stride
     shift_y = np.arange(0, height) * feat_stride
+    #Meshgrid output as xy (N2, N1)
     shift_x, shift_y = np.meshgrid(shift_x, shift_y)
     shifts = np.vstack((shift_x.ravel(), shift_y.ravel(), shift_x.ravel(),
                         shift_y.ravel())).transpose()

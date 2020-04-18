@@ -112,10 +112,13 @@ vg_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted t
 """
 def bbox_pc_to_voxel_grid(bboxes,bev_extants,info):
     #vg_bboxes = np.zeros((bboxes.shape[0],4))
-    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
-    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
-    bboxes[:,3] = (bboxes[:,3])*((info[1]-info[0]+1)/(bev_extants[3]-bev_extants[0]))
-    bboxes[:,4] = (bboxes[:,4])*((info[3]-info[2]+1)/(bev_extants[4]-bev_extants[1]))
+    #Make it scale invariant
+    scale = info[6]
+    s_info = np.asarray(info[0:6]) * 1/scale
+    bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((s_info[1]-s_info[0])/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((s_info[3]-s_info[2])/(bev_extants[4]-bev_extants[1]))
+    bboxes[:,3] = (bboxes[:,3])*((s_info[1]-s_info[0])/(bev_extants[3]-bev_extants[0]))
+    bboxes[:,4] = (bboxes[:,4])*((s_info[3]-s_info[2])/(bev_extants[4]-bev_extants[1]))
     #DEPRECATED
     #bboxes[:,2] = bboxes[:,2] - bev_extants[2]
     return bboxes
@@ -135,21 +138,23 @@ pc_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted t
 """
 def bbox_voxel_grid_to_pc(bboxes,bev_extants,info,aabb=False):
     #vg_bboxes = np.zeros((bboxes.shape[0],4))
+    scale = info[6]
+    s_info = np.asarray(info[0:6]) * 1/scale
     if(aabb):
         #X1
-        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
+        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(s_info[1]-s_info[0])) + bev_extants[0]
         #Y1
-        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
+        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(s_info[3]-s_info[2])) + bev_extants[1]
         #X2
-        bboxes[:,2] = (bboxes[:,2])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
+        bboxes[:,2] = (bboxes[:,2])*((bev_extants[3]-bev_extants[0])/(s_info[1]-s_info[0])) + bev_extants[0]
         #Y2
-        bboxes[:,3] = (bboxes[:,3])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
+        bboxes[:,3] = (bboxes[:,3])*((bev_extants[4]-bev_extants[1])/(s_info[3]-s_info[2])) + bev_extants[1]
     #X,Y,Z,L,W,H
     else:
-        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1)) + bev_extants[0]
-        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1)) + bev_extants[1]
-        bboxes[:,3] = (bboxes[:,3])*((bev_extants[3]-bev_extants[0])/(info[1]-info[0]+1))
-        bboxes[:,4] = (bboxes[:,4])*((bev_extants[4]-bev_extants[1])/(info[3]-info[2]+1))
+        bboxes[:,0] = (bboxes[:,0])*((bev_extants[3]-bev_extants[0])/(s_info[1]-s_info[0])) + bev_extants[0]
+        bboxes[:,1] = (bboxes[:,1])*((bev_extants[4]-bev_extants[1])/(s_info[3]-s_info[2])) + bev_extants[1]
+        bboxes[:,3] = (bboxes[:,3])*((bev_extants[3]-bev_extants[0])/(s_info[1]-s_info[0]))
+        bboxes[:,4] = (bboxes[:,4])*((bev_extants[4]-bev_extants[1])/(s_info[3]-s_info[2]))
         #DEPRECATED - height starts at 0
         #bboxes[:,2] = bboxes[:,2] + bev_extants[2]
     return bboxes
@@ -194,60 +199,6 @@ def bbox_overlaps_3d(boxes, query_boxes):
     for i, box in enumerate(boxes):
         overlaps[i] = three_d_iou(box,query_boxes)
     return overlaps
-
-#STOLEN FROM WAVEDATA KUJASON https://github.com/kujason/wavedata :-)
-def three_d_iou(box, boxes):
-    """Computes approximate 3D IOU between a 3D bounding box 'box' and a list
-    of 3D bounding boxes 'boxes'. All boxes are assumed to be aligned with
-    respect to gravity. Boxes are allowed to rotate only around their z-axis.
-
-    :param box: a numpy array of the form: [ry, l, h, w, tx, ty, tz]
-    :param boxes: a numpy array of the form:
-        [[ry, l, h, w, tx, ty, tz], [ry, l, h, w, tx, ty, tz]]
-
-    :return iou: a numpy array containing 3D IOUs between box and every element
-        in numpy array boxes.
-    """
-    # First, rule out boxes that do not intersect by checking if the spheres
-    # which inscribes them intersect.
-
-    if len(boxes.shape) == 1:
-        boxes = np.array([boxes])
-
-    box_diag = np.sqrt(np.square(box[1]) +
-                       np.square(box[2]) +
-                       np.square(box[3])) / 2
-
-    boxes_diag = np.sqrt(np.square(boxes[:, 1]) +
-                         np.square(boxes[:, 2]) +
-                         np.square(boxes[:, 3])) / 2
-
-    dist = np.sqrt(np.square(boxes[:, 4] - box[4]) +
-                   np.square(boxes[:, 5] - box[5]) +
-                   np.square(boxes[:, 6] - box[6]))
-
-    non_empty = box_diag + boxes_diag >= dist
-
-    iou = np.zeros(len(boxes), np.float64)
-
-    if non_empty.any():
-        height_int, _ = height_metrics(box, boxes[non_empty])
-        rect_int = get_rectangular_metrics(box, boxes[non_empty])
-
-        intersection = np.multiply(height_int, rect_int)
-
-        vol_box = np.prod(box[1:4])
-
-        vol_boxes = np.prod(boxes[non_empty, 1:4], axis=1)
-
-        union = vol_box + vol_boxes - intersection
-
-        iou[non_empty] = intersection / union
-
-    if iou.shape[0] == 1:
-        iou = iou[0]
-
-    return iou
 
 """
 Function: rotate_in_bev
@@ -342,13 +293,11 @@ def bbaa_graphics_gems(bboxes,width,height,clip=True):
 
 def bbaa_graphics_gems_torch(bboxes,width,height,clip=True):
 
-    rot = bboxes[:,6:7].cpu().numpy()
-    ##rot_top = torch.cat((torch.cos(rot).unsqueeze(0),torch.sin(rot).usqueeze(0)),dim=0)
-    #rot_bot = torch.cat((-torch.sin(rot).unsqueeze(0),torch.cos(rot).usqueeze(0)),dim=0)
-    #rot = torch.cat((rot_top.unsqueeze(0),rot_bot.unsqueeze(0)),dim=0).squeeze(-1).permute((2,0,1))
-    #TODO: Fix this numpy conversion.
-    M = np.asarray([[np.cos(rot), np.sin(rot)],[-np.sin(rot), np.cos(rot)]]).squeeze(-1).transpose((2,0,1))
-    M = torch.from_numpy(M).to(device=bboxes.device)
+    rot = bboxes[:,6] #.cpu().numpy()
+    rot_top = torch.cat((torch.cos(rot).unsqueeze(0),torch.sin(rot).unsqueeze(0)),dim=0)
+    rot_bot = torch.cat((-torch.sin(rot).unsqueeze(0),torch.cos(rot).unsqueeze(0)),dim=0)
+    rot = torch.stack((rot_top,rot_bot),dim=0)
+    M = rot.permute((2,0,1))
     T = bboxes[:,0:2]
     A = bboxes
     Amin = torch.zeros((A.shape[0],2)).to(device=bboxes.device)

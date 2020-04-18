@@ -10,7 +10,7 @@ from __future__ import print_function
 import shutil
 import os
 import json
-from datasets.lidb import lidb
+from datasets.db import db
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -40,11 +40,11 @@ class class_enum(Enum):
     SIGN = 3
     CYCLIST = 4
 
-class waymo_lidb(lidb):
+class waymo_lidb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=False):
         name = 'waymo'
         self.type = 'lidar'
-        lidb.__init__(self, name)
+        db.__init__(self, name)
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
@@ -58,9 +58,8 @@ class waymo_lidb(lidb):
             self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
         self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
         self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
-
-        self._imwidth  = 700
-        self._imheight = 800
+        self._draw_width = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        self._draw_height = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         self._num_slices = cfg.LIDAR.NUM_SLICES
         self._bev_slice_locations = [1,2,3,4,5,7]
         self._filetype   = 'npy'
@@ -157,27 +156,6 @@ class waymo_lidb(lidb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_frame(self,filename,mode):
-        if(mode == 'train'):
-            roidb = self.roidb
-        elif(mode == 'val'):
-            roidb = self.val_roidb
-        for roi in roidb:
-            if(roi['filename'] == filename):
-                return roi
-        return None
-
-    def scene_from_index(self,idx,mode='train'):
-        if(mode == 'train'):
-            return self._train_index[i]
-        elif(mode == 'val'):
-            return self._val_index[i]
-        elif(mode == 'test'):
-            return self._test_index[i]
-        else:
-            return None
-
-
     def draw_and_save(self,mode,pc_token=None):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
@@ -196,7 +174,7 @@ class waymo_lidb(lidb):
                     source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,5))
                     bev_img    = self.point_cloud_to_bev(source_bin)
                     outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-                    draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+                    draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
                     draw = ImageDraw.Draw(draw_file)
                     self.draw_bev(source_bin,draw)
                     for roi_box, cat in zip(roi['boxes'],roi['cat']):
@@ -205,7 +183,7 @@ class waymo_lidb(lidb):
                     draw_file.save(outfile,self._imtype)
                     #for slice_idx, bev_slice in enumerate(bev_img):
                     #    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_{}.{}'.format(slice_idx,self._imtype.lower()))
-                    #    draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (255,255,255))
+                    #    draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
                     #    draw = ImageDraw.Draw(draw_file)
                     #    if(roi['flipped'] is True):
                     #        #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
@@ -222,16 +200,18 @@ class waymo_lidb(lidb):
                     #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
                     #    draw_file.save(outfile,self._imtype)
 
-    def draw_bev_bbox(self,draw,bbox,slice_idx,transform=True,colors=None):
+    def draw_bev_bbox(self,draw,bbox,slice_idx=None,transform=True,colors=None):
         bboxes = bbox[np.newaxis,:]
+        if(colors is None):
+            colors = [255,255,255]
         colors  = np.asarray(colors)[np.newaxis,:]
         self.draw_bev_bboxes(draw,bboxes,slice_idx,transform,colors)
 
     def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True,colors=None):
         bboxes_4pt = bbox_utils.bbox_3d_to_bev_4pt(bboxes)
         #TODO: if clip, keep same angle
-        bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._imwidth-1)
-        bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._imheight-1)
+        bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._draw_width-1)
+        bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._draw_height-1)
         bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
         z1 = bboxes[:,2]-bboxes[:,5]
         z2 = bboxes[:,2]+bboxes[:,5]
@@ -259,9 +239,9 @@ class waymo_lidb(lidb):
             else:
                 xy1 = pixel_coords[i]
                 xy2 = pixel_coords[i-1]
-            #if(xy1[0] >= self._imwidth or xy1[0] < 0):
+            #if(xy1[0] >= self._draw_width or xy1[0] < 0):
             #    print(xy1)
-            #if(xy2[0] >= self._imwidth or xy2[0] < 0):
+            #if(xy2[0] >= self._draw_width or xy2[0] < 0):
             #    print(xy2)
             #print('drawing: {}-{}'.format(xy1,xy2))
             #line = np.concatenate((xy1,xy2))
@@ -269,12 +249,12 @@ class waymo_lidb(lidb):
             draw.point(xy1,fill=(c[0],c[1],c[2]))
 
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
-        y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._imheight/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
-        x = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._imwidth/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
+        y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._draw_height/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
+        x = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._draw_width/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
         if(inv_x):
-            x = self._imwidth - x
+            x = self._draw_width - x
         if(inv_y):
-            y = self._imheight - y
+            y = self._draw_height - y
         return (int(x), int(y))
 
     def draw_voxel_grid(self,voxel_grid,draw):
@@ -340,25 +320,14 @@ class waymo_lidb(lidb):
             z_max = self._bev_slice_locations[i]
         return z_max, z_min
 
-    def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
-        #datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
-        if(os.path.isdir(datapath)):
-            print('deleting files in dir {}'.format(datapath))
-            shutil.rmtree(datapath)
-        os.makedirs(datapath)
-
 
     def _draw_and_save_lidar_targets(self,frame,info,targets,rois,labels,mask,target_type):
         datapath = os.path.join(cfg.DATA_DIR, 'waymo','debug')
         out_file = os.path.join(datapath,'{}_target_{}.png'.format(target_type,self._cnt))
-        #lidb = waymo_lidb()
         #Extract voxel grid size
-        width   = int(info[1] - info[0] + 1)
+        width   = int(info[1] - info[0])
         #Y is along height axis in image domain
-        height  = int(info[3] - info[2] + 1)
-        #lidb._imheight = height
-        #lidb._imwidth  = width
+        height  = int(info[3] - info[2])
         voxel_grid = frame[0]
         voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
         voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
@@ -423,19 +392,19 @@ class waymo_lidb(lidb):
 
         
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        out_dir = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(mode))
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         source_bin = np.load(filename)
-        draw_file  = Image.new('RGB', (self._imwidth,self._imheight), (0,0,0))
+        draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
         #TODO: Magic numbers
         limiter = 15
-        y_start = self._imheight - 10*(limiter+2)
+        y_start = self._draw_height - 10*(limiter+2)
         #TODO: Swap axes of dets
         if(len(roi_dets) > 0):
             if(roi_dets.shape[1] == 4):
@@ -492,10 +461,9 @@ class waymo_lidb(lidb):
                         det_string += 'confidence: {:5.4f} '.format(det[-1])
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
-                    draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
+                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
                 else:
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
-            #self.draw_bev_bbox(draw,det,None)
         print('Saving BEV map file at location {}'.format(out_file))
         draw_file.save(out_file,self._imtype)
 
@@ -543,8 +511,6 @@ class waymo_lidb(lidb):
         else:
             return np.argsort(sortable)
 
-    def get_class(self,idx):
-       return self._classes[idx]
     #UNUSED
     def rpn_roidb(self):
         if self._mode_sub_folder != 'testing':
@@ -571,8 +537,8 @@ class waymo_lidb(lidb):
         filename = os.path.join(self._devkit_path, pc_file_path)
         num_objs = len(pc_labels['box'])
 
-        boxes      = np.zeros((num_objs, 7), dtype=np.float32)
-        boxes_dc   = np.zeros((num_objs, 7), dtype=np.float32)
+        boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
+        boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         cat        = []
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
@@ -664,7 +630,6 @@ class waymo_lidb(lidb):
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'pcname':      pc_id,
             'pc_idx':      pc_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
@@ -742,7 +707,6 @@ class waymo_lidb(lidb):
         #filtered_overlaps = scipy.sparse.csr_matrix(filtered_overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         #return {
-        #    'pcname':     pc,
         #    'pc_idx':     pc_idx,
         #    'scene_idx':   scene_idx,
         #    'scene_desc':  scene_desc,

@@ -10,7 +10,7 @@ from __future__ import print_function
 import shutil
 import os
 import json
-from datasets.imdb import imdb
+from datasets.db import db
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -40,10 +40,10 @@ class class_enum(Enum):
     SIGN = 3
     CYCLIST = 4
 
-class waymo_imdb(imdb):
+class waymo_imdb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
-        imdb.__init__(self, name)
+        db.__init__(self, name)
         self.type = 'image'
         self._train_scenes = []
         self._val_scenes = []
@@ -59,8 +59,8 @@ class waymo_imdb(imdb):
         self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
         self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
 
-        self._imwidth  = 1920
-        self._imheight = 730
+        self._draw_width  = cfg.IM_SIZE[0]
+        self._draw_height = cfg.IM_SIZE[1]
         self._imtype   = 'PNG'
         self._filetype = 'png'
         self._mode = mode
@@ -95,7 +95,7 @@ class waymo_imdb(imdb):
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 
-    def image_path_from_index(self, mode, index):
+    def path_from_index(self, mode, index):
         """
     Construct an image path from the image's "index" identifier.
     """
@@ -155,27 +155,6 @@ class waymo_imdb(imdb):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def find_gt_for_frame(self,filename,mode):
-        if(mode == 'train'):
-            roidb = self.roidb
-        elif(mode == 'val'):
-            roidb = self.val_roidb
-        for roi in roidb:
-            if(roi['filename'] == filename):
-                return roi
-        return None
-
-    def scene_from_index(self,idx,mode='train'):
-        if(mode == 'train'):
-            return self._train_index[i]
-        elif(mode == 'val'):
-            return self._val_index[i]
-        elif(mode == 'test'):
-            return self._test_index[i]
-        else:
-            return None
-
-
     def draw_and_save(self,mode,image_token=None):
         datapath = os.path.join(cfg.DATA_DIR, self._name)
         out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
@@ -211,22 +190,9 @@ class waymo_imdb(imdb):
                     print('Saving drawn file at location {}'.format(outfile))
                     source_img.save(outfile,self._imtype)
 
-    #def delete_eval_draw_folder(self,im_folder,mode):
-    #    datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
-    #    print('deleting files in dir {}'.format(datapath))
-    #    shutil.rmtree(datapath)
-    #    os.makedirs(datapath)
-
-    def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
-        print('deleting files in dir {}'.format(datapath))
-        if(os.path.isdir(datapath)):
-            shutil.rmtree(datapath)
-        os.makedirs(datapath)
-
 
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        out_dir = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(mode))
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
         #out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
@@ -242,7 +208,7 @@ class waymo_imdb(imdb):
         draw = ImageDraw.Draw(source_img)
         #TODO: Magic numbers
         limiter = 15
-        y_start = self._imheight - 10*(limiter+2)
+        y_start = self._draw_height - 10*(limiter+2)
         #TODO: Swap axes of dets
         for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
@@ -276,7 +242,7 @@ class waymo_imdb(imdb):
                         det_string += 'confidence: {:5.4f} '.format(det[4])
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
-                    draw.text((0,self._imheight-10),avg_det_string, fill=(255,255,255,255))
+                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
                 else:
                     print('draw and save: No detections for image {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):
@@ -332,15 +298,13 @@ class waymo_imdb(imdb):
         else:
             return np.argsort(sortable)
 
-    def get_class(self,idx):
-       return self._classes[idx]
     #UNUSED
     def rpn_roidb(self):
         if self._mode_sub_folder != 'testing':
             #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
             gt_roidb = self.gt_roidb()
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
-            roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
+            roidb = self.merge_roidbs(gt_roidb, rpn_roidb)
         else:
             roidb = self._load_rpn_roidb(None)
 
@@ -405,10 +369,10 @@ class waymo_imdb(imdb):
                 print('y1: {}'.format(y1))
             if(x1 < 0):
                 print('x1: {}'.format(x1))
-            if(x2 >= self._imwidth):
-                x2 = self._imwidth - 1
-            if(y2 >= self._imheight):
-                y2 = self._imheight - 1
+            if(x2 >= self._draw_width):
+                x2 = self._draw_width - 1
+            if(y2 >= self._draw_height):
+                y2 = self._draw_height - 1
             if(anno_cat != 'dontcare'):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
@@ -445,11 +409,10 @@ class waymo_imdb(imdb):
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'imgname':     img,
             'img_idx':     img_idx,
             'scene_idx':   scene_idx,
             'scene_desc':  scene_desc,
-            'filename':   filename,
+            'filename':    filename,
             'ignore':      ignore[0:ix],
             'det':         ignore[0:ix].copy(),
             'cat':         cat,

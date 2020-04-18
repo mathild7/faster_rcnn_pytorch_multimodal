@@ -13,6 +13,24 @@ __C = edict()
 #   from fast_rcnn_config import cfg
 cfg = __C
 
+
+
+#Need to turn this on in order to debug
+__C.DEBUG                    = edict()
+__C.DEBUG.DRAW_ANCHORS       = False
+__C.DEBUG.DRAW_ANCHOR_T      = False
+__C.DEBUG.DRAW_PROPOSAL_T    = False
+__C.DEBUG.DRAW_MINIBATCH     = False
+__C.DEBUG.EN                 = False
+#ONE OF
+__C.PRELOAD                  = False
+__C.PRELOAD_RPN              = True
+
+__C.ENABLE_FULL_NET          = True
+__C.NET_TYPE                 = 'lidar'
+__C.SCALE_LOC = 6
+#WAYMO input size
+__C.IM_SIZE = [1920,730]
 #
 # Training options
 #
@@ -41,7 +59,7 @@ __C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #WAYMO ~15,000 images in train set
 #__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
 # Iteration intervals for showing the loss during training, on command line interface
-__C.TRAIN.DISPLAY = 1000
+__C.TRAIN.DISPLAY = 512
 
 # Whether to double the learning rate for bias
 __C.TRAIN.DOUBLE_BIAS = False
@@ -62,20 +80,8 @@ __C.TRAIN.SNAPSHOT_KEPT = 30
 __C.TRAIN.SUMMARY_INTERVAL = 15
 
 # Scale to use during training (can list multiple scales)
-# The scale is the pixel size of an image's shortest side
-#KITTI
-#__C.TRAIN.SCALES = (384,)
-#NUSCENES
-#__C.TRAIN.SCALES  = (900,)
-#WAYMO
-__C.TRAIN.SCALES  = (730,)
-# Max pixel size of the longest side of a scaled input image
-#KITTI fullsize
-#__C.TRAIN.MAX_SIZE = 1280
-#NUSCENES 1/4
-#__C.TRAIN.MAX_SIZE  = 450
-#WAYMO 1/2
-__C.TRAIN.MAX_SIZE  = 1920
+__C.TRAIN.SCALES = (1.0,)
+
 # Images/Lidar frames to use per minibatch
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
@@ -172,6 +178,8 @@ __C.TRAIN.USE_ALL_GT = True
 #Whether or not to ignore dont care areas when training
 __C.TRAIN.IGNORE_DC = False
 
+__C.TRAIN.ITER = 1
+
 __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
@@ -186,22 +194,8 @@ __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 __C.TEST = edict()
 
 # Scale to use during testing (can NOT list multiple scales)
-# The scale is the pixel size of an image's shortest side
-#KITTI
-#__C.TEST.SCALES = (384,)
-#NUSCENES
-#__C.TEST.SCALES  = (900,)
-#WAYMO
-__C.TEST.SCALES  = (730,)
+__C.TEST.SCALES  = (0.5,)
 # Max pixel size of the longest side of a scaled input image
-#KITTI
-#__C.TEST.MAX_SIZE = 1280
-#NUSCENES
-#__C.TEST.MAX_SIZE  = 450
-#WAYMO 1/2
-#__C.TEST.MAX_SIZE = 960
-#WAYMO FULL SCALE
-__C.TEST.MAX_SIZE  = 1920
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 __C.TEST.NMS = 0.3
@@ -239,6 +233,8 @@ __C.TEST.MODE = 'nms'
 __C.TEST.RPN_TOP_N = 5000
 
 __C.TEST.IGNORE_DC = False
+
+__C.TEST.ITER = 1
 #
 # ResNet options
 #
@@ -334,7 +330,7 @@ __C.POOLING_MODE = 'align'
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-__C.ANCHOR_SCALES = [2,4,16] # 32x32, 64x64, 256x256
+__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
 
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]
@@ -364,7 +360,6 @@ __C.NUM_ALEATORIC_SAMPLE     = 40
 __C.NUM_MC_RUNS              = 40
 __C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
-__C.NET_TYPE                 = 'lidar'
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]
@@ -373,7 +368,7 @@ __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
-__C.LIDAR.MAX_PTS_PER_VOXEL  = 40
+__C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
 __C.LIDAR.USE_FPN            = True
 #height -> R, Intensity -> G, Elongation/Density -> B
@@ -385,22 +380,13 @@ __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
+__C.LIDAR.NUM_BBOX_ELEM = 7
 
-#Need to turn this on in order to debug
-__C.DEBUG                    = edict()
-__C.DEBUG.DRAW_ANCHORS       = False
-__C.DEBUG.DRAW_ANCHOR_T      = False
-__C.DEBUG.DRAW_PROPOSAL_T    = False
-__C.DEBUG.DRAW_MINIBATCH     = False
-__C.DEBUG.EN                 = False
-#ONE OF
-__C.PRELOAD                  = False
-__C.PRELOAD_RPN              = False
+__C.IMAGE = edict()
 
-__C.ENABLE_FULL_NET          = True
-__C.TRAIN_ITER               = 1
+__C.IMAGE.NUM_BBOX_ELEM = 4
 
-def get_output_dir(db, weights_filename=None):
+def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.
 
@@ -409,18 +395,18 @@ def get_output_dir(db, weights_filename=None):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = '{}_'.format(__C.NET_TYPE)
+    net_type = '{}_'.format(__C.NET_TYPE)
     if __C.ENABLE_ALEATORIC_BBOX_VAR:
-      mode = mode + 'bbox_var_'
+      net_type = net_type + 'bbox_var_'
     if __C.ENABLE_ALEATORIC_CLS_VAR:
-      mode = mode + 'cls_var_'
+      net_type = net_type + 'cls_var_'
     if __C.ENABLE_RPN_BBOX_VAR:
-      mode = mode + 'rpn_bbox_var_'
+      net_type = net_type + 'rpn_bbox_var_'
     if __C.ENABLE_RPN_CLS_VAR:
-      mode = mode + 'rpn_cls_var_'
+      net_type = net_type + 'rpn_cls_var_'
     #catch all, if nothing is enabled
-    if(mode == ''):
-      mode = 'vanilla_'
+    if(net_type == ''):
+      net_type = 'vanilla_'
     if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
       train_filter = 'all'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Day'):
@@ -429,7 +415,7 @@ def get_output_dir(db, weights_filename=None):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
+    weights_filename = '{}{}_{}_{}'.format(net_type,mode,train_filter,__C.TRAIN.ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)
@@ -467,7 +453,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN_ITER)
+    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN.ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

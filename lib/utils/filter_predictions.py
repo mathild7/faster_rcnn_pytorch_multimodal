@@ -81,7 +81,7 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
     rois = rois[:, 1:5].detach().cpu().numpy()
     #pred_boxes = bbox_transform_inv(torch.from_numpy(rois), torch.from_numpy(bbox_pred)).numpy()
     if(db_type == 'image'):
-        bbox_elem         = 4
+        bbox_elem         = cfg.IMAGE.NUM_BBOX_ELEM
         # x1 >= 0
         pred_boxes[:, 0::bbox_elem] = torch.clamp_min(pred_boxes[:, 0::bbox_elem],0)
         # y1 >= 0
@@ -91,7 +91,7 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
         # y2 < imheight 3::4 means start at 3 then jump every 4
         pred_boxes[:, 3::bbox_elem] = torch.clamp_max(pred_boxes[:, 3::bbox_elem],frame_height/scale - 1)
     elif(db_type == 'lidar'):
-        bbox_elem         = 7
+        bbox_elem         = cfg.LIDAR.NUM_BBOX_ELEM
     else:
         return None
         

@@ -11,9 +11,10 @@ from __future__ import print_function
 import numpy as np
 import numpy.random as npr
 from model.config import cfg
-from model.bbox_transform import bbox_transform, lidar_bbox_transform, lidar_3d_bbox_transform
+from model.bbox_transform import bbox_transform, lidar_3d_bbox_transform
 from utils.bbox import bbox_overlaps
 import utils.bbox as bbox_utils
+import math
 
 import torch
 
@@ -39,13 +40,13 @@ def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_bo
         all_scores = torch.cat((all_scores, zeros), 0)
 
     num_images = 1
-    rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images
-    fg_rois_per_image = int(round(cfg.TRAIN.FG_FRACTION * rois_per_image))
+    rois_per_frame = cfg.TRAIN.BATCH_SIZE / num_images
+    fg_rois_per_frame = int(round(cfg.TRAIN.FG_FRACTION * rois_per_frame))
     num_bbox_target_elem = true_gt_boxes.shape[1] - 1
     # Sample rois with classification labels and bounding box regression
     # targets
     labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
-        all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image, rois_per_image,
+        all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_frame, rois_per_frame,
         _num_classes, num_bbox_target_elem)
 
 
@@ -136,8 +137,8 @@ def _compute_lidar_targets(ex_rois, ex_anchors, gt_rois, labels):
     # Inputs are tensor
 
     assert ex_anchors.shape[0] == gt_rois.shape[0] == ex_rois.shape[0]
-    assert ex_anchors.shape[1] == 7
-    assert gt_rois.shape[1] == 7
+    assert ex_anchors.shape[1] == cfg.LIDAR.NUM_BBOX_ELEM
+    assert gt_rois.shape[1] == cfg.LIDAR.NUM_BBOX_ELEM
     targets = lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois)
     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
         # Optionally normalize targets by a precomputed mean and stdev
@@ -162,8 +163,8 @@ def _compute_targets(ex_rois, gt_rois, labels):
     return torch.cat([labels.unsqueeze(1), targets], 1)
 
 
-def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_image,
-                 rois_per_image, num_classes, num_bbox_target_elem):
+def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, fg_rois_per_frame,
+                 rois_per_frame, num_classes, num_bbox_target_elem):
     """Generate a random sample of RoIs comprising foreground and background
   examples. This will provide the 'best-case scenario' for the proposal layer to act as a target 
   Arguments:
@@ -172,7 +173,7 @@ def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, 
   gt_boxes -> all gt_boxes (Nx5) where dim1 = [x1,y1,x2,y2,k]
   true_gt_boxes -> all gt boxes in 3d form (Nx8) where dim1 = [xc,yc,zc,l,w,h,ry,k]
   gt_boxes_dc   -> bounding boxes containing dont care areas (Nx4)
-  fg_rois_per_image -> Maximum allowed foreground ROI's to submit to the 2nd stage
+  fg_rois_per_frame -> Maximum allowed foreground ROI's to submit to the 2nd stage
   """
     # overlaps: (rois x gt_boxes)
     #print('gt boxes')
@@ -196,42 +197,37 @@ def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, 
     labels = gt_boxes[gt_assignment, [4]] #Contains which gt box each overlap is assigned to and the class it belongs to as well
     # Select foreground RoIs as those with >= FG_THRESH overlap
     fg_inds = (max_overlaps >= cfg.TRAIN.FG_THRESH).nonzero().view(-1)
-    # Guard against the case when an image has fewer than fg_rois_per_image
+    # Guard against the case when an image has fewer than fg_rois_per_frame
     # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
     bg_inds = ((max_overlaps < cfg.TRAIN.BG_THRESH_HI) + (
         max_overlaps >= cfg.TRAIN.BG_THRESH_LO) == 2).nonzero().view(-1) #.nonzero() returns all elements that are non zero in array
     # Small modification to the original version where we ensure a fixed number of regions are sampled
     if fg_inds.numel() > 0 and bg_inds.numel() > 0: #numel() returns number of elements in tensor
-        fg_rois_per_image = min(fg_rois_per_image, fg_inds.numel())
-        #TODO: This is slow as fuck
-        fg_inds = fg_inds[torch.from_numpy( #Randomize order, trim out extras if need be
-            npr.choice(
-                np.arange(0, fg_inds.numel()),
-                size=int(fg_rois_per_image),
-                replace=False)).long().to(gt_boxes.device)]
-        bg_rois_per_image = rois_per_image - fg_rois_per_image
-        to_replace = bg_inds.numel() < bg_rois_per_image #Multiple entries of the same bg inds if too small
-        bg_inds = bg_inds[torch.from_numpy(
-            npr.choice(
-                np.arange(0, bg_inds.numel()),
-                size=int(bg_rois_per_image),
-                replace=to_replace)).long().to(gt_boxes.device)]
+        fg_rois_per_frame = min(fg_rois_per_frame, fg_inds.numel())
+        fg_inds = fg_inds[torch_choice(fg_inds.numel(),
+                                       int(fg_rois_per_frame),
+                                       gt_boxes.device,
+                                       to_replace=False)]
+        bg_rois_per_frame = rois_per_frame - fg_rois_per_frame
+        to_replace = bg_inds.numel() < bg_rois_per_frame  #Multiple entries of the same bg inds if too small
+        bg_inds = bg_inds[torch_choice(bg_inds.numel(),
+                                       int(bg_rois_per_frame),
+                                       gt_boxes.device,
+                                       to_replace=to_replace)]
     elif fg_inds.numel() > 0: #Only foreground ROI's were generated
-        to_replace = fg_inds.numel() < rois_per_image
-        fg_inds = fg_inds[torch.from_numpy(
-            npr.choice(
-                np.arange(0, fg_inds.numel()),
-                size=int(rois_per_image),
-                replace=to_replace)).long().to(gt_boxes.device)]
-        fg_rois_per_image = rois_per_image
+        to_replace = fg_inds.numel() < rois_per_frame
+        fg_inds = fg_inds[torch_choice(fg_inds.numel(),
+                                       int(rois_per_frame),
+                                       gt_boxes.device,
+                                       to_replace=to_replace)]
+        fg_rois_per_frame = rois_per_frame
     elif bg_inds.numel() > 0: #Only background ROI's were generated
-        to_replace = bg_inds.numel() < rois_per_image
-        bg_inds = bg_inds[torch.from_numpy(
-            npr.choice(
-                np.arange(0, bg_inds.numel()),
-                size=int(rois_per_image),
-                replace=to_replace)).long().to(gt_boxes.device)]
-        fg_rois_per_image = 0
+        to_replace = bg_inds.numel() < rois_per_frame
+        bg_inds = bg_inds[torch_choice(bg_inds.numel(),
+                                       int(rois_per_frame),
+                                       gt_boxes.device,
+                                       to_replace=to_replace)]
+        fg_rois_per_frame = 0
     else:
         print('importing pdb')
         import pdb
@@ -242,7 +238,7 @@ def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, 
     # Select sampled values from various arrays:
     labels = labels[keep_inds].contiguous()
     # Clamp labels for the background RoIs to 0
-    labels[int(fg_rois_per_image):] = 0
+    labels[int(fg_rois_per_frame):] = 0
     rois       = dc_filtered_rois[keep_inds].contiguous()
     roi_scores = dc_filtered_scores[keep_inds].contiguous()
     anchors_3d = dc_filtered_anchors_3d[keep_inds].contiguous()
@@ -263,3 +259,25 @@ def _sample_rois(all_rois, all_scores, all_anchors_3d, gt_boxes, true_gt_boxes, 
         _get_bbox_regression_labels(bbox_target_data, num_classes, num_bbox_target_elem)
 
     return labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights
+
+
+def torch_choice(max_idx,num_elem,dev,to_replace=False):
+    if(to_replace):
+        return torch_choice_replace(max_idx,num_elem,dev)
+    else:
+        return torch_choice_no_replace(max_idx,num_elem,dev)
+
+def torch_choice_replace(max_idx,num_elem,dev):
+    rand_idx = torch.randint(max_idx,(num_elem,),device=dev)
+    return rand_idx
+
+def torch_choice_no_replace(max_idx,num_elem,dev):
+    if(num_elem > max_idx):
+        factor = math.ceil(num_elem/max_idx)
+        idx = torch.arange(max_idx).repeat(factor)
+        perm = torch.randperm(idx.shape[0], device=dev)
+        perm = idx[perm]
+        perm = perm[:num_elem]
+    else:
+        perm = torch.randperm(max_idx, device=dev)[:num_elem]
+    return perm

@@ -139,7 +139,7 @@ class imdb(object):
         for i in range(num_images):
             boxes = self.roidb[i]['boxes'].copy()
             boxes_dc = self.roidb[i]['boxes_dc'].copy()
-            img_index = self.roidb[i]['imgname']
+            img_index = self.roidb[i]['img_idx']
             filepath  = self.roidb[i]['filename']
             ignore    = self.roidb[i]['ignore'].copy()
             cat = self.roidb[i]['cat'].copy()
@@ -154,7 +154,7 @@ class imdb(object):
             assert (boxes[:, 2] >= boxes[:, 0]).all()
             assert (boxes_dc[:, 2] >= boxes_dc[:, 0]).all()
             entry = {
-                'imgname': img_index,
+                'img_idx': img_index,
                 'filename': filepath,
                 'cat': cat,
                 'ignore': ignore,

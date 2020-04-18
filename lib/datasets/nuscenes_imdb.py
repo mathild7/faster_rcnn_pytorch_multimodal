@@ -230,9 +230,6 @@ class nuscenes_imdb(imdb):
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)    
 
-
-    def get_class(self,idx):
-       return self._classes[idx]
     #UNUSED
     def rpn_roidb(self):
         if self._mode_sub_folder != 'testing':

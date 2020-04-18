@@ -12,7 +12,7 @@ class GridAnchor3dGenerator(object):
     def name_scope(self):
         return 'GridAnchor3dGenerator'
 
-    def _generate(self, height, width, feature_stride, anchor_scales, anchor_rotations):
+    def _generate(self, height, width, feature_stride, anchor_scales, anchor_rotations, frame_scale):
         """
         Generates 3D anchors in a grid in the provided 3d area and places
         them on the ground_plane.
@@ -33,7 +33,9 @@ class GridAnchor3dGenerator(object):
         y_max = (height*feature_stride) - 1
         z_max = math.ceil((cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0])/cfg.LIDAR.VOXEL_HEIGHT) - 1
         area_3d = [[0,x_max],[0,y_max],[0,z_max]]
-        anchor_3d_sizes = cfg.LIDAR.ANCHORS/([cfg.LIDAR.VOXEL_LEN,cfg.LIDAR.VOXEL_LEN,1])
+        #TODO: How to scale 3d anchor sizes?
+        voxel_len = cfg.LIDAR.VOXEL_LEN/frame_scale
+        anchor_3d_sizes = cfg.LIDAR.ANCHORS/([voxel_len,voxel_len,1])
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF
         anchor_stride = [feature_stride,feature_stride]
         return tile_anchors_3d(area_3d,
@@ -84,18 +86,18 @@ def tile_anchors_3d(area_extents,
     # e.g. for two sizes and two rotations
     # [[x0, z0, 0, 0], [x0, z0, 0, 1], [x0, z0, 1, 0], [x0, z0, 1, 1],
     #  [x1, z0, 0, 0], [x1, z0, 0, 1], [x1, z0, 1, 0], [x1, z0, 1, 1], ...]
-    before_sub = np.stack(np.meshgrid(x_centers,
-                                      y_centers,
-                                      size_indices,
-                                      rotation_indices),
-                          axis=4).reshape(-1, 4)
+    #Meshgrid output as xy (N2, N1, N3, N4)
+    #(H,W,C)
+    meshgrid = np.meshgrid(x_centers,y_centers,size_indices,rotation_indices)
+    before_sub = np.stack(meshgrid,axis=4)
+    before_sub = before_sub.reshape(-1, 4)
 
     # Place anchors on the ground plane
     #a, b, c, d = ground_plane
     all_x = before_sub[:, 0]
     all_y = before_sub[:, 1]
     #TODO: Fix for more than one GT box
-    all_z = np.zeros_like(all_x) + anchor_3d_sizes[0][2]/2.0
+    all_z = np.zeros_like(all_x) + anchor_3d_sizes[0][2]
     #all_z = -(a * all_x + c * all_y + d) / b
 
     # Create empty matrix to return

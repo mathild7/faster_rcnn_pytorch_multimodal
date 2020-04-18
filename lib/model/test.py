@@ -29,62 +29,18 @@ import torch
 from utils.filter_predictions import filter_and_draw_prep
 import utils.bbox as bbox_utils
 
-#DEPRECATED
-#def _get_image_blob(im):
-#    """Converts an image into a network input.
-#  Arguments:
-#    im (ndarray): a color image in BGR order
-#  Returns:
-#    blob (ndarray): a data blob holding an image pyramid
-#    im_scale_factors (list): list of image scales (relative to im) used
-#      in the image pyramid
-#  """
-#    im_orig = im.astype(np.float32, copy=True)
-#
-#    im_shape = im_orig.shape
-#    im_size_min = np.min(im_shape[0:2])
-#    im_size_max = np.max(im_shape[0:2])
-#
-#    processed_ims = []
-#    im_scale_factors = []
-#
-#    for target_size in cfg.TEST.SCALES:
-#        im_scale = float(target_size) / float(im_size_min)
-#        # Prevent the biggest axis from being more than MAX_SIZE
-#        if np.round(im_scale * im_size_max) > cfg.TEST.MAX_SIZE:
-#            im_scale = float(cfg.TEST.MAX_SIZE) / float(im_size_max)
-#        im = cv2.resize(
-#            im_orig,
-#            None,
-#            None,
-#            fx=im_scale,
-#            fy=im_scale,
-#            interpolation=cv2.INTER_LINEAR)
-#        im_scale_factors.append(im_scale)
-#        im = im.astype(np.float32)
-#        im -= cfg.PIXEL_MEANS
-#        im = im/cfg.PIXEL_STDDEVS
-#        im = im[:,:,cfg.PIXEL_ARRANGE]
-#        processed_ims.append(im)
-#    # Create a blob to hold the input images
-#    blob = im_list_to_blob(processed_ims)
-#
-#    return blob, np.array(im_scale_factors)
-
-
 def _get_blobs(frame):
     """Convert a frame and RoIs within that image into network inputs."""
     blobs = {}
     if(cfg.NET_TYPE == 'image'):
-        target_size = cfg.TEST.SCALES[0]
-        infos, blobs['data'], _ = minibatch._get_image_blob(frame,target_size,augment_en=False,mode='test')
+        scale = cfg.TEST.SCALES[0]
+        infos, blobs['data'], _ = minibatch._get_image_blob(frame,scale,augment_en=False,mode='test')
         blobs['info'] = infos[0]
     elif(cfg.NET_TYPE == 'lidar'):
+        scale = cfg.TEST.SCALES[0]
         area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
-        #Dummy value
-        target_size = 1
-        blobs['info'], blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,target_size,augment_en=False,mode='test')
-
+        infos, blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,scale,augment_en=False,mode='test')
+        blobs['info'] = infos[0]
     return blobs
 
 
@@ -114,9 +70,11 @@ def frame_detect(net, blobs, num_classes, thresh):
     #DEPRECATED
     #blobs['info'] = np.array(
     #    [blob.shape[1], blob.shape[2], scales[0]], dtype=np.float32)
-    net.set_num_mc_run(cfg.NUM_MC_RUNS)
+    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+        net.set_num_mc_run(cfg.NUM_MC_RUNS)
     _, probs, bbox_pred, rois, uncertainties = net.test_frame(blobs['data'],blobs['info'])
-    net.set_num_mc_run(1)
+    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
+        net.set_num_mc_run(1)
     #boxes = rois[:, 1:5]
     boxes = bbox_pred
     #TODO: Useless??
@@ -209,7 +167,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     if(num_uncertainty_en != 0):
         all_uncertainty = [[[[] for _ in range(num_uncertainty_en)] for _ in range(num_images)] for _ in range(db.num_classes)]
     #TODO: Output dir might need to be a bit more specific to run parallel experiments
-    output_dir = get_output_dir(db, out_dir)
+    output_dir = get_output_dir(db, mode='test')
     # timers
     _t = {'frame_detect': Timer(), 'misc': Timer()}
 

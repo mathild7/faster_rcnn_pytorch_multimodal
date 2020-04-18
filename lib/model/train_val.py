@@ -304,13 +304,10 @@ class SolverWrapper(object):
     def train_model(self, max_iters):
         # Build data layers for both training and validation set
         update_weights = False
-        val_augment_en = self._val_augment_en
-        augment_en     = self._augment_en
-        val_batch_size = self.batch_size
         #self.data_layer = RoIDataLayer(self.roidb, self.db.num_classes, 'train')
         #self.data_layer_val = RoIDataLayer(self.val_roidb, self.db.num_classes, 'val', random=True)    
-        self.data_gen     = data_layer_generator('train',self.roidb,augment_en,self.db.num_classes)
-        self.data_gen_val = data_layer_generator('val',self.val_roidb,val_augment_en,self.db.num_classes)
+        self.data_gen     = data_layer_generator('train',self.roidb,self._augment_en,self.db.num_classes)
+        self.data_gen_val = data_layer_generator('val',self.val_roidb,self._val_augment_en,self.db.num_classes)
         # Construct the computation graph
         lr, train_op = self.construct_graph()
 
@@ -360,7 +357,7 @@ class SolverWrapper(object):
         #timers['data_gen']   = utils.timer.Timer()
         #timers['losses']     = utils.timer.Timer()
         #timers['backprop']   = utils.timer.Timer()
-        timers['summary']     = utils.timer.Timer()
+        #timers['summary']     = utils.timer.Timer()
         self.net.timers = timers
         loss_cumsum = 0
         killer = GracefulKiller()
@@ -402,15 +399,15 @@ class SolverWrapper(object):
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
             if iter % self.val_sum_size == 0:
                 update_summaries = False
-                for i in range(val_batch_size):
+                for i in range(self.val_batch_size):
                     #blobs_val = self.data_layer_val.forward(val_augment_en)
                     blobs_val  = self.data_gen_val.next()
-                    if(i == val_batch_size - 1):
+                    if(i == self.val_batch_size - 1):
                         update_summaries = True
                     if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
                         self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
                     summary_val, rois_val, roi_labels_val, \
-                        cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, val_batch_size, update_summaries)
+                        cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, self.val_batch_size, update_summaries)
                     if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
                         self.net.set_num_mc_run(1)
                     #im info 0 -> H 1 -> W 2 -> scale
@@ -421,7 +418,7 @@ class SolverWrapper(object):
                                                                                                     blobs_val['info'],
                                                                                                     self.db.num_classes,self.val_thresh,self.db.type)
                         bbox_pred_val = np.array(bbox_pred_val)
-                    #Final stage is stage 1
+                    #Final stage is stage 1, prep for drawing
                     else:
                         rois_val = rois_val.data.cpu().numpy()
                         roi_labels_val = roi_labels_val.data.cpu().numpy()
@@ -433,13 +430,7 @@ class SolverWrapper(object):
                         bbox_pred_val = np.concatenate((bbox_pred_val,cls_prob_val),axis=1)[np.newaxis,:,:]
                         bbox_pred_val = np.repeat(bbox_pred_val,2,axis=0)
                         sorted_uncertainties_val = [{},{}]
-                        #bbox_pred_val = bbox_
-                    #else:
-                    #    rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,
-                    #                                                                             bbox_pred_val,
-                    #                                                                             uncertainties_val,
-                    #                                                                             blobs_val['info'],
-                    #                                                                             self.db.num_classes,self.val_thresh,'image')
+
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
@@ -449,7 +440,6 @@ class SolverWrapper(object):
                 for _sum in summary_val:
                     self.valwriter.add_summary(_sum, float(iter))
             if iter % self.sum_size == 0:
-                timers['summary'].tic()
                 print('performing summary at iteration: {:d}'.format(iter))
                 # Compute the graph with summary
                 total_loss, summary = self.net.train_step_with_summary(blobs, self.optimizer, self.sum_size, update_weights)
@@ -459,19 +449,8 @@ class SolverWrapper(object):
                     #print(_sum)
                     self.writer.add_summary(_sum, float(iter))
                 last_summary_time = now
-                timers['summary'].toc()
             else:
                 # Compute the graph without summary
-                #https://stackoverflow.com/questions/46561390/4-step-alternating-rpn-faster-r-cnn-training-tensorflow-object-detection-mo/46981671#46981671
-                #https://arthurdouillard.com/post/faster-rcnn/
-                #Alternate sharing: 
-                    #Similar to some matrix decomposition methods, the authors train RPN, then Fast-RCN, and so on. Each network is trained a bit alternatively.
-                #Approximate joint training: 
-                    #This strategy consider the two networks as a single unified one. The back-propagation uses both the Fast-RCNN loss and the RPN loss. However the regression of bounding-box coordinates in RPN is considered as pre-computed, and thus its derivative is ignored.
-                #Non-approximate joint training:
-                    #This solution was not used as more difficult to implement. The RoI pooling is made differentiable w.r.t the box coordinates using a RoI warping layer.
-                #4-Step Alternating training: 
-                    #The strategy chosen takes 4 steps: In the first of one the RPN is trained. In the second, Fast-RCNN is trained using pre-computed RPN proposals. For the third step, the trained Fast-RCNN is used to initialize a new RPN where only RPN’s layers are fine-tuned. Finally in the fourth step RPN’s layers are frozen and only Fast-RCNN is fine-tuned.
                 total_loss = self.net.train_step(blobs, self.optimizer, update_weights)
                 loss_cumsum += total_loss
             t.toc()
@@ -508,12 +487,6 @@ class SolverWrapper(object):
         time.sleep(1)
         self.data_gen.clear()
         self.data_gen_val.clear()
-        #while(not self.data_gen.is_queue_empty()):
-        #    print('emptying queue value')
-        #    dummy_var = self.data_gen.next()
-        #while(not self.data_gen_val.is_queue_empty()):
-        #    print('emptying queue value')
-        #    dummy_var = self.data_gen_val.next()
         self.data_gen.join()
         self.data_gen_val.join()
         if(killer.kill_now):
