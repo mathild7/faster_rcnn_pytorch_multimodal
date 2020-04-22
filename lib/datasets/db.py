@@ -146,7 +146,7 @@ class db(object):
         return None
 
     def delete_eval_draw_folder(self,im_folder,mode):
-        datapath = os.path.join(get_output_dir(self),'{}_drawn'.format(mode))
+        datapath = os.path.join(get_output_dir(self,mode),'{}_drawn'.format(im_folder))
         #datapath = os.path.join(cfg.DATA_DIR, self._name ,im_folder,'{}_drawn'.format(mode))
         if(os.path.isdir(datapath)):
             print('deleting files in dir {}'.format(datapath))

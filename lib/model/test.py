@@ -168,13 +168,17 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         all_uncertainty = [[[[] for _ in range(num_uncertainty_en)] for _ in range(num_images)] for _ in range(db.num_classes)]
     #TODO: Output dir might need to be a bit more specific to run parallel experiments
     output_dir = get_output_dir(db, mode='test')
+    if(os.path.isdir(output_dir)):
+        print('deleting old test dir')
+        shutil.rmtree(output_dir)
+    os.makedirs(output_dir)
     # timers
     _t = {'frame_detect': Timer(), 'misc': Timer()}
 
 
     #TODO: Move to the db
     test_mode = 'test'
-    db.delete_eval_draw_folder(None,test_mode)
+    db.delete_eval_draw_folder(test_mode,test_mode)
     #datapath = os.path.join(cfg.DATA_DIR, 'waymo',mode,'{}_drawn'.format(mode))
     #print('deleting files in dir {}'.format(datapath))
     #shutil.rmtree(datapath)

@@ -94,8 +94,8 @@ def parse_args(manual_mode):
         help='lidar or camera',
         type=str)
     parser.add_argument(
-        '--test_iter',
-        dest='test_iter',
+        '--iter',
+        dest='iter',
         help='what specific folder to save in',
         default=None,
         type=int)
@@ -105,7 +105,12 @@ def parse_args(manual_mode):
         help='how many frames to test',
         default=0,
         type=int)
-
+    parser.add_argument(
+        '--scale',
+        dest='scale',
+        help='scale factor for frame input ',
+        default=None,
+        type=float)
 
     if len(sys.argv) == 1 and manual_mode is False:
         parser.print_help()
@@ -123,9 +128,10 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'lidar'
-        args.weights_file = 'weights/{}_{}_half_scale_188k.pth'.format(args.net,args.net_type)
-        args.test_iter = 1
-        args.num_frames = 600
+        args.weights_file = 'weights/{}_{}_50p_80k_2.pth'.format(args.net,args.net_type)
+        args.iter = 10
+        args.num_frames = 500
+        args.scale = 0.5
         #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -134,17 +140,19 @@ if __name__ == '__main__':
     #TODO: Merge into cfg_from_list()
     if(args.net_type is not None):
         cfg.NET_TYPE = args.net_type
-    if(args.test_iter is not None):
-        cfg.TEST_ITER = args.test_iter
+    if(args.iter is not None):
+        cfg.TEST.ITER = args.iter
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
         cfg_from_list(args.set_cfgs)
     if(args.out_dir is None):
         if(cfg.NET_TYPE == 'lidar'):
-            args.out_dir = 'lidar_test_{}'.format(cfg.TEST_ITER)
+            args.out_dir = 'lidar_test_{}'.format(cfg.TEST.ITER)
         elif(cfg.NET_TYPE == 'image'):
-            args.out_dir = 'image_test_{}'.format(cfg.TEST_ITER)
+            args.out_dir = 'image_test_{}'.format(cfg.TEST.ITER)
+    if(args.scale is not None):
+        cfg.TEST.SCALES = (args.scale,)
 
     print('Using config:')
     pprint.pprint(cfg)
@@ -212,4 +220,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.70,draw_det=False,eval_det=True)

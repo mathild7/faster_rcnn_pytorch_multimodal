@@ -391,8 +391,10 @@ class waymo_lidb(db):
         self._cnt += 1
 
         
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(mode))
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+        if(draw_folder is None):
+            draw_folder = mode
+        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(draw_folder))
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
@@ -540,6 +542,7 @@ class waymo_lidb(db):
         boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         cat        = []
+        difficulty = np.zeros((num_objs, ),dtype=np.int32)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
@@ -562,7 +565,7 @@ class waymo_lidb(db):
         ix = 0
         ix_dc = 0
         for i, bbox in enumerate(pc_labels['box']):
-            difficulty = pc_labels['difficulty'][i]
+            diff       = pc_labels['difficulty'][i]
             anno_cat   = pc_labels['class'][i]
             if(class_enum(anno_cat) == class_enum.SIGN):
                 anno_cat = class_enum.UNKNOWN.value
@@ -601,6 +604,7 @@ class waymo_lidb(db):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = bbox
+                difficulty[ix] = diff
                 #TODO: Not sure what to filter these to yet.
                 #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
@@ -637,6 +641,7 @@ class waymo_lidb(db):
             'ignore':      ignore[0:ix],
             'det':         ignore[0:ix].copy(),
             'cat':         cat,
+            'difficulty':  difficulty,
             'hit':         ignore[0:ix].copy(),
             'boxes':       boxes[0:ix],
             'boxes_dc':    boxes_dc[0:ix_dc],

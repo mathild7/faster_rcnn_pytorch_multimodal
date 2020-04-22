@@ -315,21 +315,22 @@ def waymo_eval(detpath,
                 avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
                 #avg_var = np.average(scene_var[img_mask[scene_idx]])
                 print('Scene: {} \n    num frames {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
-    tp_frame = tp_frame[tp_frame != 0]
-    fp_frame = fp_frame[fp_frame != 0]
-    npos_frame = npos_frame[npos_frame != 0]
-    tp_idx = tp_frame.nonzero()
-    fp_idx = fp_frame.nonzero()
-    npos_idx = npos_frame.nonzero()
-    print('tp')
-    print(tp_frame)
-    print(tp_idx)
-    print('fp')
-    print(fp_frame)
-    print(fp_idx)
-    print('npos')
-    print(npos_frame)
-    print(npos_idx)
+    if(cfg.DEBUG.TEST_FRAME_PRINT):
+        tp_frame = tp_frame[tp_frame != 0]
+        fp_frame = fp_frame[fp_frame != 0]
+        npos_frame = npos_frame[npos_frame != 0]
+        tp_idx = tp_frame.nonzero()
+        fp_idx = fp_frame.nonzero()
+        npos_idx = npos_frame.nonzero()
+        print('tp')
+        print(tp_frame)
+        print(tp_idx)
+        print('fp')
+        print(fp_frame)
+        print(fp_idx)
+        print('npos')
+        print(npos_frame)
+        print(npos_idx)
     map = mrec = mprec = 0
     prec = 0
     rec  = 0
@@ -385,6 +386,7 @@ def eval_load_recs(frameset, frame_path, labels_filename, db, mode, classname):
                 tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
                 tmp_rec['scene_idx'] = tmp_rec['scene_idx']
                 tmp_rec['scene_desc'] = tmp_rec['scene_desc']
+                #tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
             tmp_rec['filename'] = filename
             tmp_rec['frame_idx']   = int(int(frame_idx)/cfg.MAX_IMG_PER_SCENE)
             tmp_rec['idx'] = frame_idx

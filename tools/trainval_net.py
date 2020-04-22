@@ -100,8 +100,8 @@ def parse_args(manual_mode=False):
         default=1,
         type=int)
     parser.add_argument(
-        '--train_iter',
-        dest='train_iter',
+        '--iter',
+        dest='iter',
         help='what specific folder to save in',
         default=None,
         type=int)
@@ -111,6 +111,12 @@ def parse_args(manual_mode=False):
         help='0: None, 1: preload resnet, 2: preload faster rcnn',
         default=None,
         type=int)
+    parser.add_argument(
+        '--scale',
+        dest='scale',
+        help='scale factor for frame',
+        default=None,
+        type=float)
     if len(sys.argv) == 1 and manual_mode is False:
         parser.print_help()
         sys.exit(1)
@@ -200,7 +206,7 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        #args.train_iter = 3
+        #args.train_iter = 6
         #args.net_type = 'lidar'
         #args.preload = 2
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
@@ -219,8 +225,8 @@ if __name__ == '__main__':
             cfg.ENABLE_FULL_NET = True
         elif(args.en_full_net == 0):
             cfg.ENABLE_FULL_NET = False
-    if(args.train_iter is not None):
-        cfg.TRAIN.ITER = args.train_iter
+    if(args.iter is not None):
+        cfg.TRAIN.ITER = args.iter
     if(args.preload is not None):
         cfg.PRELOAD     = False
         cfg.PRELOAD_RPN = False
@@ -234,6 +240,8 @@ if __name__ == '__main__':
             args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
         elif(cfg.NET_TYPE == 'image'):
             args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+    if(args.scale is not None):
+        cfg.TRAIN.SCALES = (args.scale,)
 
     print('Called with args:')
     print(args)

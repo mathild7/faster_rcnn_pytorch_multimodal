@@ -13,15 +13,22 @@ import torch
 import math
 
 def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
-
-    ex_ctr_x    = ex_rois[:,0] + (ex_rois[:,2] - ex_rois[:,0] + 1)/2.0
-    ex_ctr_y    = ex_rois[:,1] + (ex_rois[:,3] - ex_rois[:,1] + 1)/2.0
-    ex_ctr_z    = ex_anchors[:,2]
-    ex_lengths  = ex_anchors[:,3]
-    ex_widths   = ex_anchors[:,4]
+    
+    roi_lengths  = (ex_rois[:,2] - ex_rois[:,0] + 1)
+    roi_widths   = (ex_rois[:,3] - ex_rois[:,1] + 1)
+    ex_lengths  = roi_lengths  #ex_anchors[:,3]
+    ex_widths   = roi_widths  #ex_anchors[:,4]
     ex_heights  = ex_anchors[:,5]
-    ex_headings = ex_anchors[:,6]
 
+    ex_ctr_x    = ex_rois[:,0] + roi_lengths/2.0
+    ex_ctr_y    = ex_rois[:,1] + roi_widths/2.0
+    ex_ctr_z    = ex_anchors[:,2]
+    #TODO: TEST!!
+    inv_mask    = torch.where(roi_lengths >= roi_widths, torch.tensor([0]).to(device=roi_lengths.device), torch.tensor([1]).to(device=roi_lengths.device))
+    inv_mask    = inv_mask.float()
+    ex_headings = inv_mask*math.pi/2.0
+    #ex_headings = ex_anchors[:,6]
+    #TODO: change targets to be divided by BEV area
     targets_dx = (gt_rois[:,0] - ex_ctr_x) / ex_lengths
     targets_dl = torch.log(gt_rois[:,3] / ex_lengths)
 
@@ -32,7 +39,7 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     targets_dh = torch.log(gt_rois[:,5] / ex_heights)
     #TODO: Apply [Pi/2,-Pi/2) clipping
     #targets_ry = torch.sin(ex_headings) #- gt_rois[:, 6])
-    targets_ry  = gt_rois[:, 6] - ex_headings
+    targets_ry  = gt_rois[:, 6]  #- ex_headings
     targets = torch.stack((targets_dx, targets_dy, targets_dz, targets_dl, targets_dw, targets_dh, targets_ry), 1)
     return targets
 
@@ -102,14 +109,22 @@ def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):
     if len(boxes) == 0:
         return deltas.detach() * 0
 
-    lengths = boxes[:, 3]
-    widths  = boxes[:, 4]
+
+    roi_lengths  = (rois[:,2] - rois[:,0] + 1)
+    roi_widths   = (rois[:,3] - rois[:,1] + 1)
+
+    #TODO: TEST!!
+    inv_mask    = torch.where(roi_lengths >= roi_widths, torch.tensor([0]).to(device=roi_lengths.device), torch.tensor([1]).to(device=roi_lengths.device))
+    inv_mask    = inv_mask.float()
+    lengths = roi_lengths  #boxes[:, 3]
+    widths  = roi_widths  #boxes[:, 4]
     heights = boxes[:, 5]
-    heading = boxes[:, 6]
+    #heading = boxes[:, 6]
+    heading = inv_mask*math.pi/2.0
     #Re-centering top left hand corner
 
-    ctr_x    = rois[:,0] + (rois[:,2] - rois[:,0] + 1)/2.0
-    ctr_y    = rois[:,1] + (rois[:,3] - rois[:,1] + 1)/2.0
+    ctr_x    = rois[:,0] + roi_lengths/2.0
+    ctr_y    = rois[:,1] + roi_widths/2.0
     #ctr_x = boxes[:, 0]
     #ctr_y = boxes[:, 1]
     ctr_z = boxes[:, 2]
@@ -129,7 +144,7 @@ def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):
     pred_l = torch.exp(dl) * lengths.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
-    pred_ry = dr + heading.unsqueeze(1)
+    pred_ry = dr  #+ heading.unsqueeze(1)
     #Lock headings to be [pi/2, -pi/2)
     pi2 = float(math.pi/2.0)
     pred_ry = torch.where(pred_ry > pi2, pred_ry - math.pi, pred_ry)

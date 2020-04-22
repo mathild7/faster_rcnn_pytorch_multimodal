@@ -21,6 +21,7 @@ __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
+__C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.EN                 = False
 #ONE OF
 __C.PRELOAD                  = False
@@ -80,13 +81,13 @@ __C.TRAIN.SNAPSHOT_KEPT = 30
 __C.TRAIN.SUMMARY_INTERVAL = 15
 
 # Scale to use during training (can list multiple scales)
-__C.TRAIN.SCALES = (1.0,)
+__C.TRAIN.SCALES = (0.5,)
 
 # Images/Lidar frames to use per minibatch
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
-__C.TRAIN.BATCH_SIZE = 128
+__C.TRAIN.BATCH_SIZE = 256
 
 # Fraction of minibatch that is labeled foreground (i.e. class > 0)
 __C.TRAIN.FG_FRACTION = 0.25
@@ -184,7 +185,7 @@ __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1.0)
 
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -194,7 +195,7 @@ __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 __C.TEST = edict()
 
 # Scale to use during testing (can NOT list multiple scales)
-__C.TEST.SCALES  = (0.5,)
+__C.TEST.SCALES  = (0.8,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
@@ -220,7 +221,7 @@ __C.TEST.RPN_NMS_THRESH = 0.7
 __C.TEST.RPN_PRE_NMS_TOP_N = 6000
 
 # Number of top scoring boxes to keep after applying NMS to RPN proposals
-__C.TEST.RPN_POST_NMS_TOP_N = 300
+__C.TEST.RPN_POST_NMS_TOP_N = 500
 
 # Proposal height and width both need to be greater than RPN_MIN_SIZE (at orig image scale)
 # __C.TEST.RPN_MIN_SIZE = 16
@@ -415,7 +416,7 @@ def get_output_dir(db, mode='train', weights_filename=None):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}{}_{}_{}'.format(net_type,mode,train_filter,__C.TRAIN.ITER)
+    weights_filename = '{}{}_{}_{}'.format(net_type,mode,train_filter,__C[mode.upper()].ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

@@ -362,7 +362,7 @@ class SolverWrapper(object):
         loss_cumsum = 0
         killer = GracefulKiller()
         if(iter < 10):
-            self.db.delete_eval_draw_folder('val','trainval')
+            self.db.delete_eval_draw_folder('trainval','train')
         #    scale_lr(self.optimizer,0.1)
         self.data_gen.start()
         self.data_gen_val.start()
@@ -434,7 +434,7 @@ class SolverWrapper(object):
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'trainval')
+                    self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'train','trainval')
 
                 #Need to add AP calculation here
                 for _sum in summary_val:
