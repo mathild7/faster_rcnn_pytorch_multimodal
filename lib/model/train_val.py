@@ -370,8 +370,9 @@ class SolverWrapper(object):
         time.sleep(3)
         while iter < max_iters + 1 and not killer.kill_now:
 
-            #if(iter >= 20000 and cfg.ENABLE_ALEATORIC_BBOX_VAR is False):
-            #    cfg.ENABLE_ALEATORIC_BBOX_VAR = True
+            #Start uncertainty capture late into training cycle
+            #if(iter >= 20000 and cfg.UC.EN_BBOX_ALEATORIC is False):
+            #    cfg.UC.EN_BBOX_ALEATORIC = True
             #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % self.batch_size == 0 and iter != 0:
@@ -404,12 +405,12 @@ class SolverWrapper(object):
                     blobs_val  = self.data_gen_val.next()
                     if(i == self.val_batch_size - 1):
                         update_summaries = True
-                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
-                        self.net.set_num_mc_run(cfg.NUM_MC_RUNS)
+                    if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
+                        self.net.set_e_num_sample(cfg.UC.E_NUM_SAMPLE)
                     summary_val, rois_val, roi_labels_val, \
                         cls_prob_val, bbox_pred_val, uncertainties_val = self.net.run_eval(blobs_val, self.val_batch_size, update_summaries)
-                    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
-                        self.net.set_num_mc_run(1)
+                    if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
+                        self.net.set_e_num_sample(1)
                     #im info 0 -> H 1 -> W 2 -> scale
                     if(cfg.ENABLE_FULL_NET):
                         rois_val, bbox_pred_val, sorted_uncertainties_val = filter_and_draw_prep(rois_val, cls_prob_val,

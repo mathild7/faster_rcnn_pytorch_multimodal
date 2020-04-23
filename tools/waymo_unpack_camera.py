@@ -22,7 +22,11 @@ class cam_enum(Enum):
     SIDE_RIGHT  = 5
 
 save_imgs = True
-mypath = '/home/mat/thesis/data2/waymo/train'
+mypath = '/home/mat/thesis/data2/waymo/val'
+savepath = os.path.join(mypath,'images_new')
+if not os.path.isdir(savepath):
+    print('making path: {}'.format(savepath))
+    os.makedirs(savepath)
 tfrec_path = os.path.join(mypath,'compressed_tfrecords')
 top_crop = 550
 bbox_top_min = 30
@@ -63,7 +67,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                             im_data = im_data[:][top_crop:][:]
                             im_data = Image.fromarray(im_data)
                             img_filename = '{0:07d}.png'.format(frame_idx)
-                            out_file = os.path.join(mypath, 'images_new',img_filename)
+                            out_file = os.path.join(savepath ,img_filename)
                             draw = ImageDraw.Draw(im_data)
                             im_data.save(out_file,'PNG')
 

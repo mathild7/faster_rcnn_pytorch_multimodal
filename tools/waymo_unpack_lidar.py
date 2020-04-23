@@ -25,7 +25,7 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data2/waymo/train'
+    mypath = '/home/mat/thesis/data2/waymo/val'
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
     #top_crop = 550
@@ -124,8 +124,12 @@ def frame_loop(proc_data):
     json_labels['calibration'] = []
     json_labels['calibration'].append(json_calib)
     for label in frame.laser_labels:
-        if(label.num_lidar_points_in_box < 5):
+        difficulty_override = 0
+        if(label.num_lidar_points_in_box < 1):
             continue
+        elif(label.num_lidar_points_in_box < 5):
+            difficulty_override = 2
+
         #point 1 is near(x) left(y) bottom(z)
         #length: dim x
         x_c = float(label.box.center_x)
@@ -177,7 +181,12 @@ def frame_loop(proc_data):
         })
         json_labels['id'].append(label.id)
         json_labels['class'].append(label.type)
-        json_labels['difficulty'].append(label.detection_difficulty_level)
+        if(difficulty_override != 0):
+            json_labels['difficulty'].append(2)
+        elif(label.detection_difficulty_level == 0):
+            json_labels['difficulty'].append(1)
+        else:
+            json_labels['difficulty'].append(label.detection_difficulty_level)
         #print(json_labels)
         k_l = k_l + 1
     #print(k)

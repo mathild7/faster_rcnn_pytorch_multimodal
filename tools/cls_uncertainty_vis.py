@@ -48,7 +48,7 @@ for var in var_arr:
         #Step 1: Sample logits
         dist = torch.distributions.Normal(0,np.sqrt(var))
         logit_sampled = dist.sample((NUM_SAMPLES,)) + value
-        logit_sampled = logit_sampled.unsqueeze(1)
+        logit_sampled = logit_sampled.unsqueeze(1) - 1.5
         #Get a similar sized array for other logit
         dummy_val_sampled = torch.tensor([wrong_val],dtype=torch.float32).repeat(NUM_SAMPLES,1)
         dummy_sel        = torch.tensor([0])
@@ -77,7 +77,7 @@ for var in var_arr:
         #elu_avg_diff = torch.mean(elu_diff,dim=0).unsqueeze(0)
         #elu_loss    = F.nll_loss(torch.log(elu_avg_diff),dummy_sel)
 
-        regularizer = np.log(var)*0.1
+        regularizer = var*0.1
         norm_vector.append(torch.mean(ce_loss))
         dist_vector.append(dist_loss)
         elu_dist_vector.append(dist_loss+regularizer)

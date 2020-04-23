@@ -122,16 +122,16 @@ def parse_args(manual_mode):
 
 
 if __name__ == '__main__':
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'lidar'
-        args.weights_file = 'weights/{}_{}_50p_80k_2.pth'.format(args.net,args.net_type)
+        args.weights_file = '{}_{}_100p_180k.pth'.format(args.net,args.net_type)
         args.iter = 10
-        args.num_frames = 500
-        args.scale = 0.5
+        args.num_frames = 0
+        args.scale = 1.0
         #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     net.eval()
 
     print(('Loading initial weights from {:s}').format(args.weights_file))
-    file_dir = os.path.join(cfg.DATA_DIR,args.db_name,args.weights_file)
+    file_dir = os.path.join(cfg.DATA_DIR,args.db_name,'weights',args.weights_file)
     params = torch.load(file_dir, map_location=lambda storage, loc: storage)
     net.load_state_dict(params)
     print('Loaded.')

@@ -54,8 +54,8 @@ class RoIDataLayer(object):
         if self._cur + cfg.TRAIN.FRAMES_PER_BATCH >= len(self._roidb):
             print('shuffling indices')
             self._shuffle_roidb_inds()
-        if(cfg.FREEZE_DB):
-            self._cur = cfg.FREEZE_DB_INDS
+        if(cfg.DEBUG.FREEZE_DB):
+            self._cur = cfg.DEBUG.FREEZE_DB_INDS
         db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.FRAMES_PER_BATCH]
         self._cur += cfg.TRAIN.FRAMES_PER_BATCH
         #print('getting db inds {}'.format(db_inds))

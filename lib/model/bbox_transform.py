@@ -97,6 +97,71 @@ def bbox_transform_inv(boxes, deltas, scales=None):
 
     return pred_boxes
 
+def uncertainty_transform_inv(boxes, deltas, uncertainty, scales=None):
+    if(scales is not None):
+        boxes = boxes/scales
+    
+    lengths  = (boxes[:,2] - boxes[:,0] + 1)
+    widths   = (boxes[:,3] - boxes[:,1] + 1)
+    uc_x    = uncertainty[:, 0::7]
+    uc_y    = uncertainty[:, 1::7]
+    uc_l    = uncertainty[:, 3::7]
+    uc_w    = uncertainty[:, 4::7]
+
+    uc_x    = uc_x*lengths
+    uc_y    = uc_y*widths
+    uc_l    = torch.exp(uc_l)-1
+    uc_w    = torch.exp(uc_w)-1
+
+    uc_inv_arr = [_.unsqueeze(2) for _ in [uc_x,
+                                           uc_y,
+                                           uc_l,
+                                           uc_w]]
+    uncertainty_inv = torch.cat(uc_inv_arr, 2).view(len(boxes), -1)
+    return torch.pow(uncertainty_inv,2)
+
+
+
+def lidar_3d_uncertainty_transform_inv(rois, boxes, deltas, uncertainty, scales=None):
+    if(scales is not None):
+        boxes[:, 0:2] = boxes[:, 0:2]/scales
+        boxes[:, 3:5] = boxes[:, 3:5]/scales
+        rois = rois/scales
+   
+    roi_lengths  = (rois[:,2] - rois[:,0] + 1)
+    roi_widths   = (rois[:,3] - rois[:,1] + 1)
+    lengths = roi_lengths  #boxes[:, 3]
+    widths  = roi_widths  #boxes[:, 4]
+    heights = boxes[:, 5]
+
+    uc_x    = uncertainty[:, 0::7]
+    uc_y    = uncertainty[:, 1::7]
+    uc_z    = uncertainty[:, 2::7]
+    uc_l    = uncertainty[:, 3::7]
+    uc_w    = uncertainty[:, 4::7]
+    uc_h    = uncertainty[:, 5::7]
+    uc_rot  = uncertainty[:, 6::7]
+
+    uc_x    = uc_x*lengths.unsqueeze(1)
+    uc_y    = uc_y*widths.unsqueeze(1)
+    uc_z    = uc_z*heights.unsqueeze(1)
+    uc_l    = torch.exp(uc_l)-1
+    uc_w    = torch.exp(uc_w)-1
+    uc_h    = torch.exp(uc_h)-1
+    uc_rot  = uc_rot
+
+    uc_inv_arr = [_.unsqueeze(2) for _ in [uc_x,
+                                           uc_y,
+                                           uc_z,
+                                           uc_l,
+                                           uc_w,
+                                           uc_h,
+                                           uc_rot]]
+    uncertainty_inv = torch.cat(uc_inv_arr, 2).view(len(boxes), -1)
+
+    return torch.pow(uncertainty_inv,2)
+
+
 
 
 def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):

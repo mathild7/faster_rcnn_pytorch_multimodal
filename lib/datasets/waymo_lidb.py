@@ -56,8 +56,7 @@ class waymo_lidb(db):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
         else:
             self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
-        self._num_bbox_samples = cfg.NUM_BBOX_SAMPLE
-        self._uncertainty_sort_type = cfg.UNCERTAINTY_SORT_TYPE
+        self._uncertainty_sort_type = cfg.UC.SORT_TYPE
         self._draw_width = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         self._draw_height = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         self._num_slices = cfg.LIDAR.NUM_SLICES
@@ -430,13 +429,13 @@ class waymo_lidb(db):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
-                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=False)
-                    avg_det_string = 'pc average: '
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    avg_det_string = 'avg: '
                     num_det = len(det_idx)
                     if(num_det < limiter):
                         limiter = num_det
                     else:
-                        limiter = 15
+                        limiter = 10
                     for i,idx in enumerate(det_idx):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
@@ -453,6 +452,7 @@ class waymo_lidb(db):
                             draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
+                                key = key.replace('cls','c').replace('bbox','b')
                                 if(i == 0):
                                     avg_det_string += '{}: {:5.4f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:5.4f} '.format(key,np.mean(val[idx]))
@@ -460,7 +460,7 @@ class waymo_lidb(db):
                                 if(i == 0):
                                     avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
-                        det_string += 'confidence: {:5.4f} '.format(det[-1])
+                        det_string += 'con: {:5.4f} '.format(det[-1])
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
@@ -473,39 +473,44 @@ class waymo_lidb(db):
         normalized_uncertainties = {}
         for key,uc in uncertainties.items():
             if('bbox' in key):
-                bbox_width  = dets[:,2] - dets[:,0]
-                bbox_height = dets[:,3] - dets[:,1]
-                bbox_size = np.sqrt(bbox_width*bbox_height)
-                uc[:,0] = uc[:,0]/bbox_size
-                uc[:,2] = uc[:,2]/bbox_size
-                uc[:,1] = uc[:,1]/bbox_size
-                uc[:,3] = uc[:,3]/bbox_size
+                uc = uc*cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS
+                #bbox_width  = dets[:,2] - dets[:,0]
+                #bbox_height = dets[:,3] - dets[:,1]
+                #bbox_size = np.sqrt(bbox_width*bbox_height)
+                #uc[:,0] = uc[:,0]/bbox_size
+                #uc[:,2] = uc[:,2]/bbox_size
+                #uc[:,1] = uc[:,1]/bbox_size
+                #uc[:,3] = uc[:,3]/bbox_size
                 normalized_uncertainties[key] = np.mean(uc,axis=1)
             elif('mutual_info' in key):
-                normalized_uncertainties[key] = uc.squeeze(1)*10*(-np.log(dets[:,4]))
+                normalized_uncertainties[key] = uc.squeeze(1)
             else:
                 normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties
                 
     def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
-        sampled_det = np.zeros((5,self._num_bbox_samples))
+        sampled_det = np.zeros((5,cfg.UC.NUM_BBOX_SAMPLE))
         det_width = max(int((entropy)*10),-1)+2
-        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(self._num_bbox_samples,4))
+        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(cfg.UC.NUM_BBOX_SAMPLE,7))
         sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-        sampled_det[4][:] = np.repeat(softmax,self._num_bbox_samples)
+        sampled_det[4][:] = np.repeat(softmax,cfg.UC.NUM_BBOX_SAMPLE)
         return sampled_det
 
     def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
-        if(cfg.ENABLE_ALEATORIC_BBOX_VAR and self._uncertainty_sort_type == 'a_bbox_var'):
+        if(cfg.UC.EN_BBOX_ALEATORIC and self._uncertainty_sort_type == 'a_bbox_var'):
             sortable = uncertainties['a_bbox_var']
-        elif(cfg.ENABLE_EPISTEMIC_BBOX_VAR and self._uncertainty_sort_type == 'e_bbox_var'):
+        elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
             sortable = uncertainties['e_bbox_var']
-        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_entropy'):
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_entropy'):
             sortable = uncertainties['a_cls_entropy']
-        elif(cfg.ENABLE_ALEATORIC_CLS_VAR and self._uncertainty_sort_type == 'a_cls_var'):
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_mutual_info'):
+            sortable = uncertainties['a_cls_mutual_info']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
             sortable = uncertainties['a_cls_var']
-        elif(cfg.ENABLE_EPISTEMIC_CLS_VAR and self._uncertainty_sort_type == 'e_cls_mutual_info'):
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_cls_mutual_info'):
             sortable = uncertainties['e_cls_mutual_info']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_cls_entropy'):
+            sortable = uncertainties['e_cls_entropy']
         else:
             sortable = np.arange(0,dets.shape[0])
         if(descending is True):

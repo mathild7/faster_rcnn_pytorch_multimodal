@@ -17,12 +17,31 @@ cfg = __C
 
 #Need to turn this on in order to debug
 __C.DEBUG                    = edict()
+
+__C.DEBUG.EN                 = False
+
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.TEST_FRAME_PRINT   = False
-__C.DEBUG.EN                 = False
+__C.DEBUG.FREEZE_DB          = False
+__C.DEBUG.FREEZE_DB_INDS     = 1
+
+#Bayesian Config
+__C.UC = edict()
+__C.UC.EN_RPN_BBOX_ALEATORIC      = False
+__C.UC.EN_RPN_CLS_ALEATORIC       = False
+__C.UC.EN_RPN_BBOX_EPISTEMIC      = False
+__C.UC.EN_RPN_CLS_EPISTEMIC       = False
+__C.UC.EN_BBOX_ALEATORIC          = False
+__C.UC.EN_CLS_ALEATORIC           = False
+__C.UC.EN_BBOX_EPISTEMIC          = False
+__C.UC.EN_CLS_EPISTEMIC           = False
+__C.UC.A_NUM_CE_SAMPLE            = 40
+__C.UC.A_NUM_BBOX_SAMPLE          = 40
+__C.UC.E_NUM_SAMPLE               = 40
+__C.UC.SORT_TYPE                  = 'e_bbox_var'
 #ONE OF
 __C.PRELOAD                  = False
 __C.PRELOAD_RPN              = True
@@ -126,9 +145,6 @@ __C.TRAIN.BBOX_INSIDE_WEIGHTS = (1.0, 1.0, 1.0, 1.0)
 # Normalize the targets using "precomputed" (or made up) means and stdevs
 # (BBOX_NORMALIZE_TARGETS must also be True)
 __C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED  = True
-__C.TRAIN.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
-
-__C.TRAIN.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 
 # Train using these proposals
 __C.TRAIN.PROPOSAL_METHOD = 'gt'
@@ -339,27 +355,13 @@ __C.ANCHOR_RATIOS = [0.5,1,2]
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512
 
-__C.FREEZE_DB      = False
-__C.FREEZE_DB_INDS = 1
 
-#Bayesian Config
-__C.ENABLE_RPN_BBOX_VAR      = False
-__C.ENABLE_RPN_CLS_VAR       = False
-__C.ENABLE_ALEATORIC_BBOX_VAR          = False
-__C.ENABLE_ALEATORIC_CLS_VAR           = False
-__C.ENABLE_EPISTEMIC_BBOX_VAR          = False
-__C.ENABLE_EPISTEMIC_CLS_VAR           = False
 __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 210
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
-__C.NUM_BBOX_SAMPLE          = 50
-__C.NUM_CE_SAMPLE            = 300
-__C.NUM_ALEATORIC_SAMPLE     = 40
-__C.NUM_MC_RUNS              = 40
-__C.UNCERTAINTY_SORT_TYPE    = 'a_bbox_var'
 #Lidar Config
 __C.LIDAR = edict()
 __C.LIDAR.X_RANGE            = [0,70]
@@ -397,14 +399,22 @@ def get_output_dir(db, mode='train', weights_filename=None):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
     net_type = '{}_'.format(__C.NET_TYPE)
-    if __C.ENABLE_ALEATORIC_BBOX_VAR:
-      net_type = net_type + 'bbox_var_'
-    if __C.ENABLE_ALEATORIC_CLS_VAR:
-      net_type = net_type + 'cls_var_'
-    if __C.ENABLE_RPN_BBOX_VAR:
-      net_type = net_type + 'rpn_bbox_var_'
-    if __C.ENABLE_RPN_CLS_VAR:
-      net_type = net_type + 'rpn_cls_var_'
+    if __C.UC.EN_BBOX_ALEATORIC:
+      net_type = net_type + 'a_bbox_var_'
+    if __C.UC.EN_CLS_ALEATORIC:
+      net_type = net_type + 'a_cls_var_'
+    if __C.UC.EN_BBOX_EPISTEMIC:
+      net_type = net_type + 'e_bbox_var_'
+    if __C.UC.EN_CLS_EPISTEMIC:
+      net_type = net_type + 'e_cls_var_'
+    if __C.UC.EN_RPN_BBOX_ALEATORIC:
+      net_type = net_type + 'a_rpn_bbox_var_'
+    if __C.UC.EN_RPN_CLS_ALEATORIC:
+      net_type = net_type + 'a_rpn_cls_var_'
+    if __C.UC.EN_RPN_BBOX_EPISTEMIC:
+      net_type = net_type + 'e_rpn_bbox_var_'
+    if __C.UC.EN_RPN_CLS_EPISTEMIC:
+      net_type = net_type + 'e_rpn_cls_var_'
     #catch all, if nothing is enabled
     if(net_type == ''):
       net_type = 'vanilla_'
@@ -432,19 +442,27 @@ def get_output_tb_dir(db, weights_filename):
   """
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
   if weights_filename is None:
-    mode = '{}_'.format(__C.NET_TYPE)
+    net_type = '{}_'.format(__C.NET_TYPE)
     
-    if __C.ENABLE_ALEATORIC_BBOX_VAR:
-      mode = mode + 'bbox_var_'
-    if __C.ENABLE_ALEATORIC_CLS_VAR:
-      mode = mode + 'cls_var_'
-    if __C.ENABLE_RPN_BBOX_VAR:
-      mode = mode + 'rpn_bbox_var_'
-    if __C.ENABLE_RPN_CLS_VAR:
-      mode = mode + 'rpn_cls_var_'
+    if __C.UC.EN_BBOX_ALEATORIC:
+      net_type = net_type + 'a_bbox_var_'
+    if __C.UC.EN_CLS_ALEATORIC:
+      net_type = net_type + 'a_cls_var_'
+    if __C.UC.EN_BBOX_EPISTEMIC:
+      net_type = net_type + 'e_bbox_var_'
+    if __C.UC.EN_CLS_EPISTEMIC:
+      net_type = net_type + 'e_cls_var_'
+    if __C.UC.EN_RPN_BBOX_ALEATORIC:
+      net_type = net_type + 'a_rpn_bbox_var_'
+    if __C.UC.EN_RPN_CLS_ALEATORIC:
+      net_type = net_type + 'a_rpn_cls_var_'
+    if __C.UC.EN_RPN_BBOX_EPISTEMIC:
+      net_type = net_type + 'e_rpn_bbox_var_'
+    if __C.UC.EN_RPN_CLS_EPISTEMIC:
+      net_type = net_type + 'e_rpn_cls_var_'
     #catch all, if nothing is enabled
-    if(mode == ''):
-      mode = 'vanilla_'
+    if(net_type == ''):
+      net_type = 'vanilla_'
     
     if(len(__C.TRAIN.TOD_FILTER_LIST) == 3):
       train_filter = 'all'
@@ -454,7 +472,7 @@ def get_output_tb_dir(db, weights_filename):
       train_filter = 'night'
     elif(__C.TRAIN.TOD_FILTER_LIST[0] == 'Dawn/Dusk'):
       train_filter = 'dawn_dusk'
-    weights_filename = '{}train_{}_{}'.format(mode,train_filter,__C.TRAIN.ITER)
+    weights_filename = '{}train_{}_{}'.format(net_type,train_filter,__C.TRAIN.ITER)
   outdir = osp.join(outdir, weights_filename)
   if not os.path.exists(outdir):
     os.makedirs(outdir)

@@ -100,6 +100,24 @@ def parse_args(manual_mode=False):
         default=1,
         type=int)
     parser.add_argument(
+        '--en_epistemic',
+        dest='en_epistemic',
+        help='enable epistemic uncertainty estimation',
+        default=0,
+        type=int)
+    parser.add_argument(
+        '--en_aleatoric',
+        dest='en_aleatoric',
+        help='enable aleatoric uncertainty estimation',
+        default=0,
+        type=int)
+    parser.add_argument(
+        '--uc_sort_type',
+        dest='uc_sort_type',
+        help='Specify the uncertainty type to sort by for drawing evaluation frames',
+        default=None,
+        type=str)
+    parser.add_argument(
         '--iter',
         dest='iter',
         help='what specific folder to save in',
@@ -199,16 +217,20 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        #args.train_iter = 6
-        #args.net_type = 'lidar'
-        #args.preload = 2
+        args.net_type = 'lidar'
+        args.preload = 1
+        args.iter    = 1
+        args.scale   = 0.5
+        args.en_epistemic = 1
+        #args.en_aleatoric = 1
+        args.uc_sort_type = 'e_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
         #args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
@@ -242,6 +264,15 @@ if __name__ == '__main__':
             args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
     if(args.scale is not None):
         cfg.TRAIN.SCALES = (args.scale,)
+
+    if(args.en_epistemic == 1):
+        cfg.UC.EN_BBOX_EPISTEMIC = True
+        cfg.UC.EN_CLS_EPISTEMIC  = True
+    if(args.en_aleatoric == 1):
+        cfg.UC.EN_BBOX_ALEATORIC = True
+        cfg.UC.EN_CLS_ALEATORIC  = True
+    if(args.uc_sort_type is not None):
+        cfg.UC.SORT_TYPE = args.uc_sort_type
 
     print('Called with args:')
     print(args)

@@ -70,11 +70,11 @@ def frame_detect(net, blobs, num_classes, thresh):
     #DEPRECATED
     #blobs['info'] = np.array(
     #    [blob.shape[1], blob.shape[2], scales[0]], dtype=np.float32)
-    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
-        net.set_num_mc_run(cfg.NUM_MC_RUNS)
+    if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
+        net.set_e_num_sample(cfg.UC.E_NUM_SAMPLE)
     _, probs, bbox_pred, rois, uncertainties = net.test_frame(blobs['data'],blobs['info'])
-    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR or cfg.ENABLE_EPISTEMIC_CLS_VAR):
-        net.set_num_mc_run(1)
+    if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
+        net.set_e_num_sample(1)
     #boxes = rois[:, 1:5]
     boxes = bbox_pred
     #TODO: Useless??
@@ -93,7 +93,7 @@ def frame_detect(net, blobs, num_classes, thresh):
                                                           cfg.NET_TYPE)
     #TODO: Fix all this bullshit
     #REPLACED BY - filter_pred()
-    #if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+    #if(cfg.UC.EN_BBOX_ALEATORIC):
     #    bbox_var = np.exp(bbox_var)
     #    num_sample = cfg.TEST.NUM_BBOX_VAR_SAMPLE
     #    #TODO: Fix magic /10.0
@@ -148,16 +148,16 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     #  (x1, y1, x2, y2, score)
     num_uncertainty_en = 0
     num_uncertainty_pos = 0
-    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+    if(cfg.UC.EN_BBOX_ALEATORIC):
         num_uncertainty_en += 1
         num_uncertainty_pos += 4
-    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+    if(cfg.UC.EN_BBOX_EPISTEMIC):
         num_uncertainty_en += 1
         num_uncertainty_pos += 4
-    if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+    if(cfg.UC.EN_CLS_ALEATORIC):
         num_uncertainty_en += 1
         num_uncertainty_pos += 1
-    if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+    if(cfg.UC.EN_CLS_EPISTEMIC):
         num_uncertainty_en += 1
         num_uncertainty_pos += 1
 

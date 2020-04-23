@@ -192,18 +192,18 @@ def waymo_eval(detpath,
         print('invalid evaluation type {}'.format(eval_type))
         return
     #TODO: Add variance read here
-    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+    if(cfg.UC.EN_BBOX_ALEATORIC):
         a_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
         u_start += cfg.IMAGE.NUM_BBOX_ELEM
-    if(cfg.ENABLE_EPISTEMIC_BBOX_VAR):
+    if(cfg.UC.EN_BBOX_EPISTEMIC):
         e_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
         u_start += cfg.IMAGE.NUM_BBOX_ELEM
-    if(cfg.ENABLE_ALEATORIC_CLS_VAR):
+    if(cfg.UC.EN_CLS_ALEATORIC):
         a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
         a_cls_var = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
-    if(cfg.ENABLE_EPISTEMIC_CLS_VAR):
+    if(cfg.UC.EN_CLS_EPISTEMIC):
         e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
     #Repeated for X detections along every frame presented
@@ -261,7 +261,7 @@ def waymo_eval(detpath,
             #R = class_recs[frame_ids[d]]
             bb = BB[det_idx, :].astype(float)
             #Variance extraction, collect on a per scene basis
-            if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+            if(cfg.UC.EN_BBOX_ALEATORIC):
                 bb_var = a_bbox_var[det_idx, :].astype(float)
                 avg_scene_var[R['scene_idx']][R['frame_idx']] += np.average(bb_var)
             #print('setting mask to true for: {}-{}-{}'.format(R['scene_idx'],R['img_idx'],det_idx))
@@ -307,7 +307,7 @@ def waymo_eval(detpath,
                 fp_frame[int(R['idx'])] += 1
     else:
         print('waymo eval, no GT boxes detected')
-    if(cfg.ENABLE_ALEATORIC_BBOX_VAR):
+    if(cfg.UC.EN_BBOX_ALEATORIC):
         for scene_idx, scene_var in enumerate(avg_scene_var):
             if(scene_desc[scene_idx] != ""):
                 scene_det_cnt = img_det_cnt[scene_idx]
