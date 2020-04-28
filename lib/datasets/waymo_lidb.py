@@ -404,7 +404,7 @@ class waymo_lidb(db):
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
         #TODO: Magic numbers
-        limiter = 15
+        limiter = 10
         y_start = self._draw_height - 10*(limiter+2)
         #TODO: Swap axes of dets
         if(len(roi_dets) > 0):
@@ -429,13 +429,12 @@ class waymo_lidb(db):
             if(j > 0):
                 if(len(class_dets) > 0):
                     cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
+                    #cls_uncertainties = uncertainties[j]
                     det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
                     avg_det_string = 'avg: '
                     num_det = len(det_idx)
                     if(num_det < limiter):
                         limiter = num_det
-                    else:
-                        limiter = 10
                     for i,idx in enumerate(det_idx):
                         uc_gradient = int((limiter-i)/limiter*255.0)
                         det = class_dets[idx]
@@ -501,16 +500,16 @@ class waymo_lidb(db):
             sortable = uncertainties['a_bbox_var']
         elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
             sortable = uncertainties['e_bbox_var']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_entropy'):
-            sortable = uncertainties['a_cls_entropy']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_mutual_info'):
-            sortable = uncertainties['a_cls_mutual_info']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_entropy'):
+            sortable = uncertainties['a_entropy']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_mutual_info'):
+            sortable = uncertainties['a_mutual_info']
         elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
             sortable = uncertainties['a_cls_var']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_cls_mutual_info'):
-            sortable = uncertainties['e_cls_mutual_info']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_cls_entropy'):
-            sortable = uncertainties['e_cls_entropy']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_mutual_info'):
+            sortable = uncertainties['e_mutual_info']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_entropy'):
+            sortable = uncertainties['e_entropy']
         else:
             sortable = np.arange(0,dets.shape[0])
         if(descending is True):

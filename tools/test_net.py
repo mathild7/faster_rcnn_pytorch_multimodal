@@ -94,6 +94,24 @@ def parse_args(manual_mode):
         help='lidar or camera',
         type=str)
     parser.add_argument(
+        '--en_epistemic',
+        dest='en_epistemic',
+        help='enable epistemic uncertainty estimation',
+        default=0,
+        type=int)
+    parser.add_argument(
+        '--en_aleatoric',
+        dest='en_aleatoric',
+        help='enable aleatoric uncertainty estimation',
+        default=0,
+        type=int)
+    parser.add_argument(
+        '--uc_sort_type',
+        dest='uc_sort_type',
+        help='Specify the uncertainty type to sort by for drawing evaluation frames',
+        default=None,
+        type=str)
+    parser.add_argument(
         '--iter',
         dest='iter',
         help='what specific folder to save in',
@@ -122,16 +140,19 @@ def parse_args(manual_mode):
 
 
 if __name__ == '__main__':
-    manual_mode = False
+    manual_mode = True
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'lidar'
-        args.weights_file = '{}_{}_100p_180k.pth'.format(args.net,args.net_type)
+        args.weights_file = '{}_{}_epistemic_50p_204k.pth'.format(args.net,args.net_type)
         args.iter = 10
         args.num_frames = 0
-        args.scale = 1.0
+        args.scale = 0.5
+        args.en_epistemic = 1
+        #args.en_aleatoric = 1
+        args.uc_sort_type = 'e_bbox_var'
         #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -153,6 +174,15 @@ if __name__ == '__main__':
             args.out_dir = 'image_test_{}'.format(cfg.TEST.ITER)
     if(args.scale is not None):
         cfg.TEST.SCALES = (args.scale,)
+
+    if(args.en_epistemic == 1):
+        cfg.UC.EN_BBOX_EPISTEMIC = True
+        cfg.UC.EN_CLS_EPISTEMIC  = True
+    if(args.en_aleatoric == 1):
+        cfg.UC.EN_BBOX_ALEATORIC = True
+        cfg.UC.EN_CLS_ALEATORIC  = True
+    if(args.uc_sort_type is not None):
+        cfg.UC.SORT_TYPE = args.uc_sort_type
 
     print('Using config:')
     pprint.pprint(cfg)
@@ -220,4 +250,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.70,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)

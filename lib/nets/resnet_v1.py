@@ -209,7 +209,7 @@ class resnetv1(Network):
                 self.resnet.layer3.train()
             if cfg.RESNET.FIXED_BLOCKS <= 1:
                 self.resnet.layer2.train()
-            if cfg.RESNET.FIXED_BLOCKS == 0:
+            if cfg.RESNET.FIXED_BLOCKS <= 0:
                 self.resnet.layer1.train()
 
             # Set batchnorm always in eval mode during training

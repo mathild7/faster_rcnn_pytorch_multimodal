@@ -184,6 +184,7 @@ def waymo_eval(detpath,
     #All detections for specific class
     if(eval_type == '3d' or eval_type == 'bev' or eval_type == 'bev_aa'):
         BB = np.array([[float(z) for z in x[3:10]] for x in splitlines])
+        #+3 due to 3 pieces of info before bounding box coords
         u_start = cfg.LIDAR.NUM_BBOX_ELEM + 3
     elif(eval_type == '2d'):
         BB = np.array([[float(z) for z in x[3:7]] for x in splitlines])
@@ -192,20 +193,38 @@ def waymo_eval(detpath,
         print('invalid evaluation type {}'.format(eval_type))
         return
     #TODO: Add variance read here
-    if(cfg.UC.EN_BBOX_ALEATORIC):
-        a_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += cfg.IMAGE.NUM_BBOX_ELEM
-    if(cfg.UC.EN_BBOX_EPISTEMIC):
-        e_bbox_var = np.array([[float(z) for z in x[u_start:u_start+3]] for x in splitlines])
-        u_start += cfg.IMAGE.NUM_BBOX_ELEM
+    bbox_elem      = cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
+    uncertainties  = {}
+    uc_avg         = {}
+    det_cnt        = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+    scene_desc     = ["" for x in range(cfg.NUM_SCENES)]
     if(cfg.UC.EN_CLS_ALEATORIC):
-        a_cls_entropy = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        uc_avg['a_entropy']  = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        uc_avg['a_mutual_info'] = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        uc_avg['a_cls_var'] = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        uncertainties['a_cls_var'] = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
+        uncertainties['a_entropy'] = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
+        uncertainties['a_mutual_info'] = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
         a_cls_var = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
     if(cfg.UC.EN_CLS_EPISTEMIC):
-        e_cls_mutual_info = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        uc_avg['e_entropy'] = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        uc_avg['e_mutual_info'] = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
+        uncertainties['e_entropy'] = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
         u_start += 1
+        uncertainties['e_mutual_info'] = np.array([[float(z) for z in x[u_start:u_start+1]] for x in splitlines])
+        u_start += 1
+    if(cfg.UC.EN_BBOX_ALEATORIC):
+        uc_avg['a_bbox_var'] = np.zeros((cfg.NUM_SCENES,bbox_elem))
+        uncertainties['a_bbox_var'] = np.array([[float(z) for z in x[u_start:u_start+bbox_elem]] for x in splitlines])
+        u_start += bbox_elem
+    if(cfg.UC.EN_BBOX_EPISTEMIC):
+        uc_avg['e_bbox_var'] = np.zeros((cfg.NUM_SCENES,bbox_elem))
+        uncertainties['e_bbox_var'] = np.array([[float(z) for z in x[u_start:u_start+bbox_elem]] for x in splitlines])
+        u_start += cfg.IMAGE.NUM_BBOX_ELEM
     #Repeated for X detections along every frame presented
     idx = len(frame_idx)
     #DEPRECATED ---- 3 types, easy medium hard
@@ -233,10 +252,6 @@ def waymo_eval(detpath,
         frame_tokens_sorted = [frame_tokens[x] for x in sorted_ind]
         #print(frame_ids)
 
-        avg_scene_var  = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
-        img_det_cnt    = np.zeros((cfg.NUM_SCENES,cfg.MAX_IMG_PER_SCENE))
-        scene_desc     = ["" for x in range(cfg.NUM_SCENES)]
-
         # go down dets and mark true positives and false positives
         #Zip together sorted_ind with frame tokens sorted. 
         #sorted_ind -> Needed to know which detection we are selecting next
@@ -261,11 +276,10 @@ def waymo_eval(detpath,
             #R = class_recs[frame_ids[d]]
             bb = BB[det_idx, :].astype(float)
             #Variance extraction, collect on a per scene basis
-            if(cfg.UC.EN_BBOX_ALEATORIC):
-                bb_var = a_bbox_var[det_idx, :].astype(float)
-                avg_scene_var[R['scene_idx']][R['frame_idx']] += np.average(bb_var)
-            #print('setting mask to true for: {}-{}-{}'.format(R['scene_idx'],R['img_idx'],det_idx))
-            img_det_cnt[R['scene_idx']][R['frame_idx']] += 1
+            for key,var in uncertainties.items():
+                uc_avg[key][R['scene_idx']] += var[det_idx, :]
+
+            det_cnt[R['scene_idx']][R['frame_idx']] += 1
             scene_desc[R['scene_idx']] = R['scene_desc']
             ovmax = -np.inf
             cat = []
@@ -307,14 +321,36 @@ def waymo_eval(detpath,
                 fp_frame[int(R['idx'])] += 1
     else:
         print('waymo eval, no GT boxes detected')
-    if(cfg.UC.EN_BBOX_ALEATORIC):
-        for scene_idx, scene_var in enumerate(avg_scene_var):
-            if(scene_desc[scene_idx] != ""):
-                scene_det_cnt = img_det_cnt[scene_idx]
-                img_mask = np.array(scene_det_cnt,dtype=bool)
-                avg_var = np.sum(scene_var)/np.sum(scene_det_cnt)
-                #avg_var = np.average(scene_var[img_mask[scene_idx]])
-                print('Scene: {} \n    num frames {} \n     Description {} \n     Average Variance {:.2f}\n    total dets {}'.format(scene_idx,np.sum(img_mask),scene_desc[scene_idx],avg_var,np.sum(scene_det_cnt)))
+
+
+        for i in cfg.NUM_SCENES:
+            scene_dets = np.sum(det_cnt[i])
+            print_str = ''
+            print_start = 'Scene: {} \n num_dets: {}'.format(i,scene_dets)
+            if(scene_dets == 0):
+                continue
+            if(cfg.UC.EN_CLS_ALEATORIC):
+                print_str += ' a_entropy,a_mutual_info,a_cls_var: '
+                print_str += uc_avg['a_entropy'][i]/scene_dets
+                print_str += ','
+                print_str += uc_avg['a_mutual_info'][i]/scene_dets
+                print_str += ','
+                print_str += uc_avg['a_cls_var'][i]/scene_dets
+            if(cfg.UC.EN_CLS_EPISTEMIC):
+                print_str += ' e_entropy,e_mutual_info: '
+                print_str += uc_avg['e_entropy'][i]/scene_dets
+                print_str += ','
+                print_str += uc_avg['e_mutual_info'][i]/scene_dets
+            if(cfg.UC.EN_BBOX_ALEATORIC):
+                print_str += ' a_bbox: '
+                print_str += uc_avg['a_bbox_var'][i]/scene_dets
+            if(cfg.UC.EN_BBOX_EPISTEMIC):
+                print_str += ' e_bbox: '
+                print_str += uc_avg['e_bbox_var'][i]/scene_dets
+            if(print_str != ''):
+                print(print_start)
+                print(print_str)
+    
     if(cfg.DEBUG.TEST_FRAME_PRINT):
         tp_frame = tp_frame[tp_frame != 0]
         fp_frame = fp_frame[fp_frame != 0]

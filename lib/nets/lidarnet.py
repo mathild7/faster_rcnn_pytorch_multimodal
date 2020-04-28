@@ -43,10 +43,12 @@ class lidarnet(Network):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
             self._drop_rate        = 0.2
+            self._fc_drop_rate     = 0.4
         else:
             self._det_net_channels = self._fc7_channels
             self._dropout_en       = False
             self._drop_rate        = 0.0
+            self._fc_drop_rate     = 0.0
         self._roi_pooling_channels = 1024
         self.num_lidar_channels = cfg.LIDAR.NUM_CHANNEL
 
@@ -66,28 +68,34 @@ class lidarnet(Network):
             self.t_fc3           = nn.Linear(self._fc7_channels*4,self._fc7_channels*2)
 
         #Epistemic dropout layers
-        #if(cfg.UC.EN_BBOX_EPISTEMIC):
-        #    self.bbox_fc1        = nn.Linear(self._fc7_channels, self._fc7_channels)
-        #    self.bbox_fc2        = nn.Linear(self._fc7_channels, self._det_net_channels*2)
+        if(cfg.UC.EN_BBOX_EPISTEMIC):
+            self.bbox_fc1        = nn.Linear(self._fc7_channels, self._det_net_channels*2)
+            self.bbox_bn1        = nn.BatchNorm1d(self._det_net_channels*2)
+            self.bbox_drop1      = nn.Dropout(self._fc_drop_rate)
+            self.bbox_fc2        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
+            self.bbox_bn2        = nn.BatchNorm1d(self._det_net_channels)
+            self.bbox_drop2      = nn.Dropout(self._fc_drop_rate)
         #    self.bbox_fc3        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
         if(cfg.UC.EN_CLS_EPISTEMIC):
             self.cls_fc1        = nn.Linear(self._fc7_channels, self._det_net_channels*2)
             self.cls_bn1        = nn.BatchNorm1d(self._det_net_channels*2)
+            self.cls_drop1      = nn.Dropout(self._fc_drop_rate)
             self.cls_fc2        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
             self.cls_bn2        = nn.BatchNorm1d(self._det_net_channels)
+            self.cls_drop2      = nn.Dropout(self._fc_drop_rate)
         #    self.cls_fc3        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
 
         #Traditional outputs
         self.cls_score_net       = nn.Linear(self._det_net_channels, self._num_classes)
-        self.bbox_pred_net       = nn.Linear(self._fc7_channels, self._num_classes * cfg.IMAGE.NUM_BBOX_ELEM)
-        self.bbox_z_pred_net     = nn.Linear(self._fc7_channels, self._num_classes * 2)
-        self.heading_pred_net    = nn.Linear(self._fc7_channels, self._num_classes)
+        self.bbox_pred_net       = nn.Linear(self._det_net_channels, self._num_classes * cfg.IMAGE.NUM_BBOX_ELEM)
+        self.bbox_z_pred_net     = nn.Linear(self._det_net_channels, self._num_classes * 2)
+        self.heading_pred_net    = nn.Linear(self._det_net_channels, self._num_classes)
 
         #Aleatoric leafs
         if(cfg.UC.EN_CLS_ALEATORIC):
-            self.cls_al_var_net   = nn.Linear(self._fc7_channels,self._num_classes)
+            self.cls_al_var_net   = nn.Linear(self._det_net_channels,self._num_classes)
         if(cfg.UC.EN_BBOX_ALEATORIC):
-            self.bbox_al_var_net  = nn.Linear(self._fc7_channels, self._num_classes * cfg.LIDAR.NUM_BBOX_ELEM)
+            self.bbox_al_var_net  = nn.Linear(self._det_net_channels, self._num_classes * cfg.LIDAR.NUM_BBOX_ELEM)
         self.init_weights()
 
 
@@ -164,9 +172,11 @@ class lidarnet(Network):
         normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
         normal_init(self.bbox_z_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.heading_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        #if(cfg.UC.EN_BBOX_EPISTEMIC):
-        #    normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        #    normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if(cfg.UC.EN_BBOX_EPISTEMIC):
+            normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            const_init(self.bbox_bn1, 1.0, 0.0)
+            const_init(self.bbox_bn2, 1.0, 0.0)
         #    normal_init(self.bbox_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_CLS_EPISTEMIC):
             normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -175,7 +185,7 @@ class lidarnet(Network):
             const_init(self.cls_bn2, 1.0, 0.0)
         #    normal_init(self.cls_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_BBOX_ALEATORIC):
-            normal_init(self.bbox_al_var_net, 0, 0.05, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_al_var_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_CLS_ALEATORIC):
             normal_init(self.cls_al_var_net, 0, 0.04, cfg.TRAIN.TRUNCATED)
 
@@ -200,10 +210,12 @@ class lidarnet(Network):
         self.resnet.conv1 = nn.Conv2d(self.num_lidar_channels, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         # Fix blocks
         for p in self.resnet.bn1.parameters():
-            p.requires_grad = False
+            if(cfg.RESNET.FIXED_BLOCKS >= 1):
+                p.requires_grad = False
         for p in self.resnet.conv1.parameters():
-            p.requires_grad = False
-        assert (0 <= cfg.RESNET.FIXED_BLOCKS < 4)
+            if(cfg.RESNET.FIXED_BLOCKS >= 1):
+                p.requires_grad = False
+        assert (-1 <= cfg.RESNET.FIXED_BLOCKS < 4)
         if cfg.RESNET.FIXED_BLOCKS >= 3 and cfg.PRELOAD:
             for p in self.resnet.layer3.parameters():
                 p.requires_grad = False
@@ -219,8 +231,9 @@ class lidarnet(Network):
             if classname.find('BatchNorm') != -1:
                 for p in m.parameters():
                     p.requires_grad = False
-
-        self.resnet.apply(set_bn_fix)
+        #Disable, as this has not been trained yet
+        if(cfg.RESNET.FIXED_BLOCKS >= 0):
+            self.resnet.apply(set_bn_fix)
         if(cfg.LIDAR.USE_FPN):
             self.fpn_block = BuildBlock()
             self._layers['fpn'] = self.fpn_block
@@ -244,17 +257,30 @@ class lidarnet(Network):
                 self.resnet.layer3.train()
             if cfg.RESNET.FIXED_BLOCKS <= 1:
                 self.resnet.layer2.train()
-            if cfg.RESNET.FIXED_BLOCKS == 0:
+            if cfg.RESNET.FIXED_BLOCKS <= 0:
                 self.resnet.layer1.train()
+                #self.resnet.conv1.train()
+            if cfg.RESNET.FIXED_BLOCKS == -1:
+                self.resnet.train()
 
             # Set batchnorm always in eval mode during training
             def set_bn_eval(m):
                 classname = m.__class__.__name__
                 if classname.find('BatchNorm') != -1:
                     m.eval()
-
-            self.resnet.apply(set_bn_eval)
+            #Disable as resnet has not been trained yet
+            if(cfg.RESNET.FIXED_BLOCKS >= 0):
+                self.resnet.apply(set_bn_eval)
             
+    def eval(self):
+        nn.Module.eval(self)
+        if(cfg.ENABLE_FULL_NET is True and cfg.UC.EN_BBOX_EPISTEMIC):
+            self.bbox_drop1.train()
+            self.bbox_drop2.train()
+        if(cfg.ENABLE_FULL_NET is True and cfg.UC.EN_CLS_EPISTEMIC):
+            self.cls_drop1.train()
+            self.cls_drop2.train()
+
     def key_transform(self, key):
         #if('resnet.' in key):
         #    new_key = key.replace('resnet.', '')

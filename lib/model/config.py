@@ -18,7 +18,7 @@ cfg = __C
 #Need to turn this on in order to debug
 __C.DEBUG                    = edict()
 
-__C.DEBUG.EN                 = False
+__C.DEBUG.EN                 = True
 
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
@@ -38,8 +38,8 @@ __C.UC.EN_BBOX_ALEATORIC          = False
 __C.UC.EN_CLS_ALEATORIC           = False
 __C.UC.EN_BBOX_EPISTEMIC          = False
 __C.UC.EN_CLS_EPISTEMIC           = False
-__C.UC.A_NUM_CE_SAMPLE            = 40
-__C.UC.A_NUM_BBOX_SAMPLE          = 40
+__C.UC.A_NUM_CE_SAMPLE            = 60
+__C.UC.A_NUM_BBOX_SAMPLE          = 100
 __C.UC.E_NUM_SAMPLE               = 40
 __C.UC.SORT_TYPE                  = 'e_bbox_var'
 #ONE OF
@@ -265,7 +265,7 @@ __C.RESNET = edict()
 __C.RESNET.MAX_POOL = False
 
 # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
-# Range: 0 (none) to 3 (all)
+# Range: -1 (none) to 3 (all)
 __C.RESNET.FIXED_BLOCKS = 0
 
 #
@@ -399,22 +399,24 @@ def get_output_dir(db, mode='train', weights_filename=None):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, db.name))
   if weights_filename is None:
     net_type = '{}_'.format(__C.NET_TYPE)
+    if __C.ENABLE_FULL_NET is False:
+      net_type = net_type + 'rpn_only_'
     if __C.UC.EN_BBOX_ALEATORIC:
-      net_type = net_type + 'a_bbox_var_'
+      net_type = net_type + 'a_bbox_'
     if __C.UC.EN_CLS_ALEATORIC:
-      net_type = net_type + 'a_cls_var_'
+      net_type = net_type + 'a_cls_'
     if __C.UC.EN_BBOX_EPISTEMIC:
-      net_type = net_type + 'e_bbox_var_'
+      net_type = net_type + 'e_bbox_'
     if __C.UC.EN_CLS_EPISTEMIC:
-      net_type = net_type + 'e_cls_var_'
+      net_type = net_type + 'e_cls_'
     if __C.UC.EN_RPN_BBOX_ALEATORIC:
-      net_type = net_type + 'a_rpn_bbox_var_'
+      net_type = net_type + 'a_rpn_bbox_'
     if __C.UC.EN_RPN_CLS_ALEATORIC:
-      net_type = net_type + 'a_rpn_cls_var_'
+      net_type = net_type + 'a_rpn_cls_'
     if __C.UC.EN_RPN_BBOX_EPISTEMIC:
-      net_type = net_type + 'e_rpn_bbox_var_'
+      net_type = net_type + 'e_rpn_bbox_'
     if __C.UC.EN_RPN_CLS_EPISTEMIC:
-      net_type = net_type + 'e_rpn_cls_var_'
+      net_type = net_type + 'e_rpn_cls_'
     #catch all, if nothing is enabled
     if(net_type == ''):
       net_type = 'vanilla_'
@@ -443,23 +445,24 @@ def get_output_tb_dir(db, weights_filename):
   outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'tensorboard', __C.EXP_DIR, db.name))
   if weights_filename is None:
     net_type = '{}_'.format(__C.NET_TYPE)
-    
+    if __C.ENABLE_FULL_NET is False:
+      net_type = net_type + 'rpn_only_'
     if __C.UC.EN_BBOX_ALEATORIC:
-      net_type = net_type + 'a_bbox_var_'
+      net_type = net_type + 'a_bbox_'
     if __C.UC.EN_CLS_ALEATORIC:
-      net_type = net_type + 'a_cls_var_'
+      net_type = net_type + 'a_cls_'
     if __C.UC.EN_BBOX_EPISTEMIC:
-      net_type = net_type + 'e_bbox_var_'
+      net_type = net_type + 'e_bbox_'
     if __C.UC.EN_CLS_EPISTEMIC:
-      net_type = net_type + 'e_cls_var_'
+      net_type = net_type + 'e_cls_'
     if __C.UC.EN_RPN_BBOX_ALEATORIC:
-      net_type = net_type + 'a_rpn_bbox_var_'
+      net_type = net_type + 'a_rpn_bbox_'
     if __C.UC.EN_RPN_CLS_ALEATORIC:
-      net_type = net_type + 'a_rpn_cls_var_'
+      net_type = net_type + 'a_rpn_cls_'
     if __C.UC.EN_RPN_BBOX_EPISTEMIC:
-      net_type = net_type + 'e_rpn_bbox_var_'
+      net_type = net_type + 'e_rpn_bbox_'
     if __C.UC.EN_RPN_CLS_EPISTEMIC:
-      net_type = net_type + 'e_rpn_cls_var_'
+      net_type = net_type + 'e_rpn_cls_'
     #catch all, if nothing is enabled
     if(net_type == ''):
       net_type = 'vanilla_'

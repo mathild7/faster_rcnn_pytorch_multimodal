@@ -287,12 +287,12 @@ class waymo_imdb(db):
             sortable = uncertainties['a_bbox_var']
         elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
             sortable = uncertainties['e_bbox_var']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_entropy'):
-            sortable = uncertainties['a_cls_entropy']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_entropy'):
+            sortable = uncertainties['a_entropy']
         elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
             sortable = uncertainties['a_cls_var']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_cls_mutual_info'):
-            sortable = uncertainties['e_cls_mutual_info']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_mutual_info'):
+            sortable = uncertainties['e_mutual_info']
         else:
             sortable = np.arange(len(dets))
         if(descending is True):

@@ -99,27 +99,27 @@ class Bottleneck(nn.Module):
         identity = x
 
         out = self.conv1(x)
-        #out = self.bn1(out)
+        out = self.bn1(out)
         out = self.relu(out)
-        if(self._dropout_en):
-            out = self.drop(out)
+        #if(self._dropout_en):
+        #    out = self.drop(out)
 
         out = self.conv2(out)
-        #out = self.bn2(out)
+        out = self.bn2(out)
         out = self.relu(out)
-        if(self._dropout_en):
-            out = self.drop2d(out)
+        #if(self._dropout_en):
+        #    out = self.drop2d(out)
             
         out = self.conv3(out)
-        #out = self.bn3(out)
+        out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
 
         out += identity
         out = self.relu(out)
-        if(self._dropout_en):
-            out = self.drop(out)
+        #if(self._dropout_en):
+        #    out = self.drop(out)
 
         return out
 

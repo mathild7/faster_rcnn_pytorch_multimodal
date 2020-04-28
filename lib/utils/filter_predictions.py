@@ -111,17 +111,17 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
         #Don't need to stack variance here, it is only used in trainval to draw stuff
         all_box, inds, keep = nms_hstack_torch(cls_score,pred_boxes,thresh,j,bbox_elem,db_type)
         if(len(keep) != 0):
+            if(cfg.UC.EN_CLS_ALEATORIC):
+                uncertainties['a_entropy']     = nms_hstack_var_torch('cls',uncertainties['a_entropy'],inds,keep,j,bbox_elem)
+                uncertainties['a_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['a_mutual_info'],inds,keep,j,bbox_elem)
+                uncertainties['a_cls_var']         = nms_hstack_var_torch('cls_var',uncertainties['a_cls_var'],inds,keep,j,bbox_elem)
+            if(cfg.UC.EN_CLS_EPISTEMIC):
+                uncertainties['e_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['e_mutual_info'],inds,keep,j,bbox_elem)
+                uncertainties['e_entropy']     = nms_hstack_var_torch('cls',uncertainties['e_entropy'],inds,keep,j,bbox_elem)
             if(cfg.UC.EN_BBOX_ALEATORIC):
                 uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',uncertainties['a_bbox_var'],inds,keep,j,bbox_elem)
             if(cfg.UC.EN_BBOX_EPISTEMIC):
                 uncertainties['e_bbox_var'] = nms_hstack_var_torch('bbox',uncertainties['e_bbox_var'],inds,keep,j,bbox_elem)
-            if(cfg.UC.EN_CLS_ALEATORIC):
-                uncertainties['a_cls_entropy']     = nms_hstack_var_torch('cls',uncertainties['a_cls_entropy'],inds,keep,j,bbox_elem)
-                uncertainties['a_cls_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['a_cls_mutual_info'],inds,keep,j,bbox_elem)
-                uncertainties['a_cls_var']         = nms_hstack_var_torch('cls_var',uncertainties['a_cls_var'],inds,keep,j,bbox_elem)
-            if(cfg.UC.EN_CLS_EPISTEMIC):
-                uncertainties['e_cls_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['e_cls_mutual_info'],inds,keep,j,bbox_elem)
-                uncertainties['e_cls_entropy']     = nms_hstack_var_torch('cls',uncertainties['e_cls_entropy'],inds,keep,j,bbox_elem)
         all_uncertainty[j] = uncertainties
         all_boxes[j] = all_box
     #torch.set_printoptions(profile="full")

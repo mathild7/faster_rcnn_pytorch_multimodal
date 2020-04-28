@@ -146,26 +146,19 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     # all detections are collected into:
     #  all_boxes[cls][image] = N x 5 array of detections in
     #  (x1, y1, x2, y2, score)
-    num_uncertainty_en = 0
     num_uncertainty_pos = 0
     if(cfg.UC.EN_BBOX_ALEATORIC):
-        num_uncertainty_en += 1
-        num_uncertainty_pos += 4
+        num_uncertainty_pos += cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
     if(cfg.UC.EN_BBOX_EPISTEMIC):
-        num_uncertainty_en += 1
-        num_uncertainty_pos += 4
+        num_uncertainty_pos += cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
     if(cfg.UC.EN_CLS_ALEATORIC):
-        num_uncertainty_en += 1
-        num_uncertainty_pos += 1
+        num_uncertainty_pos += 3
     if(cfg.UC.EN_CLS_EPISTEMIC):
-        num_uncertainty_en += 1
-        num_uncertainty_pos += 1
+        num_uncertainty_pos += 2
 
 
     all_boxes       = [[[] for _ in range(num_images)]
                        for _ in range(db.num_classes)]
-    if(num_uncertainty_en != 0):
-        all_uncertainty = [[[[] for _ in range(num_uncertainty_en)] for _ in range(num_images)] for _ in range(db.num_classes)]
     #TODO: Output dir might need to be a bit more specific to run parallel experiments
     output_dir = get_output_dir(db, mode='test')
     if(os.path.isdir(output_dir)):
@@ -254,8 +247,8 @@ def stack_uncertainties(cls_bbox,cls_uncertainties, num_uc_pos):
     bbox_uncertainty_hstack = np.zeros((cls_bbox.shape[0],cls_bbox.shape[1]+num_uc_pos))
     bbox_uncertainty_hstack[:,0:cls_bbox.shape[1]] = cls_bbox
     hstack_ptr = cls_bbox.shape[1]
-    for k, key in enumerate(cls_uncertainties):
-        uncert = np.array(cls_uncertainties[key])
+    for key, val in cls_uncertainties.items():
+        uncert = val
         hstack_end = hstack_ptr+uncert.shape[1]
         bbox_uncertainty_hstack[:,hstack_ptr:hstack_end] = uncert[:,:]
         hstack_ptr = hstack_end
