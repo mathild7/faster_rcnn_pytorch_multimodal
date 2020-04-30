@@ -44,14 +44,10 @@ class waymo_lidb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=False):
         name = 'waymo'
         self.type = 'lidar'
-        db.__init__(self, name)
+        db.__init__(self, name, mode)
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []
-        self._train_index = []
-        self._val_index = []
-        self._test_index = []
-        self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
         else:
@@ -63,8 +59,6 @@ class waymo_lidb(db):
         self._bev_slice_locations = [1,2,3,4,5,7]
         self._filetype   = 'npy'
         self._imtype   = 'PNG'
-        self._mode = mode
-        print('lidb mode: {}'.format(mode))
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
@@ -155,49 +149,50 @@ class waymo_lidb(db):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def draw_and_save(self,mode,pc_token=None):
-        datapath = os.path.join(cfg.DATA_DIR, self._name)
-        out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
-        print('deleting files in dir {}'.format(out_file))
-        if(os.path.isdir(out_file)):
-            shutil.rmtree(out_file)
-        os.makedirs(out_file)
-        if(mode == 'val'):
-            roidb = self.val_roidb
-        elif(mode == 'train'):
-            roidb = self.roidb
-        #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
-        for i, roi in enumerate(roidb):
-            if(i % 1 == 0):
-                if(roi['boxes'].shape[0] != 0):
-                    source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,5))
-                    bev_img    = self.point_cloud_to_bev(source_bin)
-                    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-                    draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
-                    draw = ImageDraw.Draw(draw_file)
-                    self.draw_bev(source_bin,draw)
-                    for roi_box, cat in zip(roi['boxes'],roi['cat']):
-                        self.draw_bev_bbox(draw,roi_box,None)
-                    #print('Saving entire BEV drawn file at location {}'.format(outfile))
-                    draw_file.save(outfile,self._imtype)
-                    #for slice_idx, bev_slice in enumerate(bev_img):
-                    #    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_{}.{}'.format(slice_idx,self._imtype.lower()))
-                    #    draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
-                    #    draw = ImageDraw.Draw(draw_file)
-                    #    if(roi['flipped'] is True):
-                    #        #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
-                    #        text = "Flipped"
-                    #    else:
-                    #        text = "Normal"
-                    #    draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
-                    #    draw.text((0,0),text)
-                    #    for roi_box, cat in zip(roi['boxes'],roi['cat']):
-                    #        self.draw_bev_bbox(draw,roi_box,slice_idx)
-                    #        #draw.text((roi_box[0],roi_box[1]),cat)
-                    #    #for roi_box in roi['boxes_dc']:
-                    #    #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-                    #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
-                    #    draw_file.save(outfile,self._imtype)
+    #DEPRECATED
+    #def draw_and_save(self,mode,pc_token=None):
+    #    datapath = os.path.join(cfg.DATA_DIR, self._name)
+    #    out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
+    #    print('deleting files in dir {}'.format(out_file))
+    #    if(os.path.isdir(out_file)):
+    #        shutil.rmtree(out_file)
+    #    os.makedirs(out_file)
+    #    if(mode == 'val'):
+    #        roidb = self.val_roidb
+    #    elif(mode == 'train'):
+    #        roidb = self.roidb
+    #    #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
+    #    for i, roi in enumerate(roidb):
+    #        if(i % 1 == 0):
+    #            if(roi['boxes'].shape[0] != 0):
+    #                source_bin = np.fromfile(roi['pcfile'], dtype='float32').reshape((-1,5))
+    #                bev_img    = bbox_utils.point_cloud_to_bev(source_bin)
+    #                outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+    #                draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
+    #                draw = ImageDraw.Draw(draw_file)
+    #                self.draw_bev(source_bin,draw)
+    #                for roi_box, cat in zip(roi['boxes'],roi['cat']):
+    #                    self.draw_bev_bbox(draw,roi_box,None)
+    #                #print('Saving entire BEV drawn file at location {}'.format(outfile))
+    #                draw_file.save(outfile,self._imtype)
+    #                #for slice_idx, bev_slice in enumerate(bev_img):
+    #                #    outfile = roi['pcfile'].replace('/point_clouds','/drawn').replace('.{}'.format(self._filetype.lower()),'_{}.{}'.format(slice_idx,self._imtype.lower()))
+    #                #    draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (255,255,255))
+    #                #    draw = ImageDraw.Draw(draw_file)
+    #                #    if(roi['flipped'] is True):
+    #                #        #source_img = source_bin.transpose(Image.FLIP_LEFT_RIGHT)
+    #                #        text = "Flipped"
+    #                #    else:
+    #                #        text = "Normal"
+    #                #    draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
+    #                #    draw.text((0,0),text)
+    #                #    for roi_box, cat in zip(roi['boxes'],roi['cat']):
+    #                #        self.draw_bev_bbox(draw,roi_box,slice_idx)
+    #                #        #draw.text((roi_box[0],roi_box[1]),cat)
+    #                #    #for roi_box in roi['boxes_dc']:
+    #                #    #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
+    #                #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
+    #                #    draw_file.save(outfile,self._imtype)
 
     def draw_bev_bbox(self,draw,bbox,slice_idx=None,transform=True,colors=None):
         bboxes = bbox[np.newaxis,:]
@@ -256,19 +251,6 @@ class waymo_lidb(db):
             y = self._draw_height - y
         return (int(x), int(y))
 
-    def draw_voxel_grid(self,voxel_grid,draw):
-        voxel_grid = voxel_grid[0]
-        coord = []
-        color = []
-        z_max = cfg.LIDAR.Z_RANGE[1]
-        z_min = cfg.LIDAR.Z_RANGE[0]
-        for x, row in enumerate(voxel_grid):
-            for y, element in enumerate(row):
-                if(np.sum(element) != 0):
-                    c = int((element[7]-z_min)*255/(z_max - z_min))
-                    draw.point((x,y), fill=(int(c),0,0))
-        return draw
-
     def draw_bev(self,bev_img,draw):
         coord = []
         color = []
@@ -296,16 +278,16 @@ class waymo_lidb(db):
                 draw.point(coords, fill=int(c))
         return draw
 
-    def point_cloud_to_bev(self,pc):
-        pc_slices = []
-        for i in range(0,self._num_slices):
-            z_max, z_min = self._slice_height(i)
-            pc_min_thresh = pc[(pc[:,2] >= z_min)]
-            pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,2] < z_max)]
-            pc_slices.append(pc_min_and_max_thresh)
-        bev_img = np.array(pc_slices)
-        return bev_img
-
+    #DEPRECATED
+    #def point_cloud_to_bev(self,pc):
+    #    pc_slices = []
+    #    for i in range(0,self._num_slices):
+    #        z_max, z_min = self._slice_height(i)
+    #        pc_min_thresh = pc[(pc[:,2] >= z_min)]
+    #        pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,2] < z_max)]
+    #        pc_slices.append(pc_min_and_max_thresh)
+    #    bev_img = np.array(pc_slices)
+    #    return bev_img
 
     def _slice_height(self,i):
         if(i == 0):
@@ -318,77 +300,6 @@ class waymo_lidb(db):
             z_min = self._bev_slice_locations[i-1]
             z_max = self._bev_slice_locations[i]
         return z_max, z_min
-
-
-    def _draw_and_save_lidar_targets(self,frame,info,targets,rois,labels,mask,target_type):
-        datapath = os.path.join(cfg.DATA_DIR, 'waymo','debug')
-        out_file = os.path.join(datapath,'{}_target_{}.png'.format(target_type,self._cnt))
-        #Extract voxel grid size
-        width   = int(info[1] - info[0])
-        #Y is along height axis in image domain
-        height  = int(info[3] - info[2])
-        voxel_grid = frame[0]
-        voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
-        voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
-        max_height = np.max(voxel_grid_rgb[:,:,0])
-        min_height = np.min(voxel_grid_rgb[:,:,0])
-        voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
-        voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
-        voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
-        voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
-        img = Image.fromarray(voxel_grid_rgb,'RGB')
-        draw = ImageDraw.Draw(img)
-        if(target_type == 'anchor'):
-            mask   = mask.view(-1,4)
-            labels = labels.permute(0,2,3,1).reshape(-1)
-        #if(target_type == 'anchor'):
-        if(target_type == 'proposal'):
-            #Target is in a (N,K*7) format, transform to (N,7) where corresponding label dictates what class bbox belongs to 
-            sel_targets = torch.where(labels == 0, targets[:,0:7],targets[:,7:14])
-            #Get subset of mask for specific class selected
-            mask = torch.where(labels == 0, mask[:,0:7], mask[:,7:14])
-            sel_targets = sel_targets*mask
-            rois = rois[:,1:5]
-            #Extract XC,YC and L,W
-            targets = torch.cat((sel_targets[:,0:2],sel_targets[:,3:5]),dim=1)
-            stds = targets.data.new(cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS[0:4]).unsqueeze(0).expand_as(targets)
-            means = targets.data.new(cfg.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS[0:4]).unsqueeze(0).expand_as(targets)
-            targets = targets.mul(stds).add(means)
-        rois = rois.view(-1,4)
-        targets = targets.view(-1,4)
-        anchors = bbox_transform_inv(rois,targets)
-        label_mask = labels + 1
-        label_idx  = label_mask.nonzero().squeeze(1)
-        anchors_filtered = anchors[label_idx,:]
-        #else:
-        #    anchors = bbox_3d_transform_inv_all_boxes(anchors_3d,targets)
-            #anchors = 3d_to_bev(anchors)
-        for i, bbox in enumerate(anchors.view(-1,4)):
-            bbox_mask = mask[i]
-            bbox_label = int(labels[i])
-            roi        = rois[i]
-            np_bbox = None
-            #if(torch.mean(bbox_mask) > 0):
-            if(bbox_label == 1):
-                np_bbox = bbox.data.cpu().numpy()
-                draw.text((np_bbox[0],np_bbox[1]),"class: {}".format(bbox_label))
-                draw.rectangle(np_bbox,width=1,outline='green')
-                if(np_bbox[0] >= np_bbox[2]):
-                    print('x1 {} x2 {}'.format(np_bbox[0],np_bbox[2]))
-                if(np_bbox[1] >= np_bbox[3]):
-                    print('y1 {} y2 {}'.format(np_bbox[1],np_bbox[3]))
-            elif(bbox_label == 0):
-                np_bbox = roi.data.cpu().numpy()
-                draw.text((np_bbox[0],np_bbox[1]),"class: {}".format(bbox_label))
-                draw.rectangle(np_bbox,width=1,outline='red')
-                if(np_bbox[0] >= np_bbox[2]):
-                    print('x1 {} x2 {}'.format(np_bbox[0],np_bbox[2]))
-                if(np_bbox[1] >= np_bbox[3]):
-                    print('y1 {} y2 {}'.format(np_bbox[1],np_bbox[3]))
-        print('Saving BEV map file at location {}'.format(out_file))
-        img.save(out_file,'png')
-        self._cnt += 1
-
         
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
         if(draw_folder is None):
@@ -451,15 +362,15 @@ class waymo_lidb(db):
                             draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
-                                key = key.replace('cls','c').replace('bbox','b')
+                                key = key.replace('cls','c').replace('bbox','b').replace('mutual_info','m_i')
                                 if(i == 0):
-                                    avg_det_string += '{}: {:5.4f} '.format(key,np.mean(np.mean(val)))
-                                det_string += '{}: {:5.4f} '.format(key,np.mean(val[idx]))
+                                    avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
                             else:
                                 if(i == 0):
-                                    avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
-                                det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
-                        det_string += 'con: {:5.4f} '.format(det[-1])
+                                    avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
+                        det_string += 'con: {:5.3f} '.format(det[-1])
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
@@ -487,56 +398,6 @@ class waymo_lidb(db):
                 normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties
                 
-    def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
-        sampled_det = np.zeros((5,cfg.UC.NUM_BBOX_SAMPLE))
-        det_width = max(int((entropy)*10),-1)+2
-        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(cfg.UC.NUM_BBOX_SAMPLE,7))
-        sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-        sampled_det[4][:] = np.repeat(softmax,cfg.UC.NUM_BBOX_SAMPLE)
-        return sampled_det
-
-    def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
-        if(cfg.UC.EN_BBOX_ALEATORIC and self._uncertainty_sort_type == 'a_bbox_var'):
-            sortable = uncertainties['a_bbox_var']
-        elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
-            sortable = uncertainties['e_bbox_var']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_entropy'):
-            sortable = uncertainties['a_entropy']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_mutual_info'):
-            sortable = uncertainties['a_mutual_info']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
-            sortable = uncertainties['a_cls_var']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_mutual_info'):
-            sortable = uncertainties['e_mutual_info']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_entropy'):
-            sortable = uncertainties['e_entropy']
-        else:
-            sortable = np.arange(0,dets.shape[0])
-        if(descending is True):
-            return np.argsort(-sortable)
-        else:
-            return np.argsort(sortable)
-
-    #UNUSED
-    def rpn_roidb(self):
-        if self._mode_sub_folder != 'testing':
-            #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
-            gt_roidb = self.gt_roidb()
-            rpn_roidb = self._load_rpn_roidb(gt_roidb)
-            roidb = lidb.merge_roidbs(gt_roidb, rpn_roidb)
-        else:
-            roidb = self._load_rpn_roidb(None)
-
-        return roidb
-    #UNUSED
-    def _load_rpn_roidb(self, gt_roidb):
-        filename = self.config['rpn_file']
-        print('loading {}'.format(filename))
-        assert os.path.exists(filename), \
-            'rpn data not found at: {}'.format(filename)
-        with open(filename, 'rb') as f:
-            box_list = pickle.load(f)
-        return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
     def _load_waymo_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
@@ -545,6 +406,8 @@ class waymo_lidb(db):
 
         boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
+        ids        = []
+        num_pts    = np.zeros((num_objs,), dtype=np.int32)
         cat        = []
         difficulty = np.zeros((num_objs, ),dtype=np.int32)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
@@ -571,6 +434,8 @@ class waymo_lidb(db):
         for i, bbox in enumerate(pc_labels['box']):
             diff       = pc_labels['difficulty'][i]
             anno_cat   = pc_labels['class'][i]
+            track_id   = pc_labels['id'][i]
+            pts        = pc_labels['meta'][i]['pts']
             if(class_enum(anno_cat) == class_enum.SIGN):
                 anno_cat = class_enum.UNKNOWN.value
             elif(class_enum(anno_cat) == class_enum.CYCLIST):
@@ -607,8 +472,10 @@ class waymo_lidb(db):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
-                boxes[ix, :] = bbox
+                boxes[ix, :]   = bbox
                 difficulty[ix] = diff
+                num_pts[ix]    = pts
+                ids.append(track_id)
                 #TODO: Not sure what to filter these to yet.
                 #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
@@ -648,6 +515,8 @@ class waymo_lidb(db):
             'difficulty':  difficulty,
             'hit':         ignore[0:ix].copy(),
             'boxes':       boxes[0:ix],
+            'ids':         ids[0:ix],
+            'pts':         num_pts[0:ix],
             'boxes_dc':    boxes_dc[0:ix_dc],
             'gt_classes':  gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
@@ -742,11 +611,11 @@ class waymo_lidb(db):
 
     def _write_waymo_results_file(self, all_boxes, mode):
         if(mode == 'val'):
-            idx = self._val_index
+            frame_list = self._val_index
         elif(mode == 'train'):
-            idx = self._train_index
+            frame_list = self._train_index
         elif(mode == 'test'):
-            idx = self._test_index
+            frame_list = self._test_index
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
@@ -754,7 +623,7 @@ class waymo_lidb(db):
             filename = self._get_waymo_results_file_template(mode,cls)
             with open(filename, 'wt') as f:
                 #f.write('test')
-                for ind, frame in enumerate(idx):
+                for ind, frame in enumerate(frame_list):
                     dets = all_boxes[cls_ind][ind]
                     #TODO: Add this to dets file
                     #dets_bbox_var = dets[0:4]
@@ -773,9 +642,9 @@ class waymo_lidb(db):
                                 dets[k, 2], dets[k, 3],
                                 dets[k, 4], dets[k, 5], dets[k, 6]))
                         #Write uncertainties
-                        if(dets.shape[1] > 8):
+                        if(dets.shape[1] > cfg.LIDAR.NUM_BBOX_ELEM+1):
                             for l in range(8,dets.shape[1]):
-                                f.write(' {:.2f}'.format(dets[k,l]))
+                                f.write(' {:.3f}'.format(dets[k,l]))
                         f.write('\n')
 
 
@@ -789,8 +658,9 @@ class waymo_lidb(db):
         elif(mode == 'test'):
             pcset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
+        num_d_levels = 2
         #AP: Level 1, Level 2
-        aps = np.zeros((len(self._classes)-1,2))
+        aps = np.zeros((len(self._classes)-1,num_d_levels))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
@@ -812,10 +682,12 @@ class waymo_lidb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='bev')
+                eval_type='3d',
+                d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP
-            print(('AP for {} = {:.4f}'.format(cls,ap)))
+            for j in range(0,num_d_levels):
+                print(('Level {} AP for {} = {:.4f}'.format(j+1,cls,ap[j])))
             with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
                 pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
         print(('Mean AP = {:.4f} '.format(np.mean(aps[:]))))
@@ -838,15 +710,6 @@ class waymo_lidb(db):
                     continue
                 filename = self._get_waymo_results_file_template(mode,cls)
                 os.remove(filename)
-
-    def competition_mode(self, on):
-        if on:
-            self.config['use_salt'] = False
-            self.config['cleanup'] = False
-        else:
-            self.config['use_salt'] = True
-            self.config['cleanup'] = True
-
 
 if __name__ == '__main__':
     # from datasets.pascal_voc import pascal_voc

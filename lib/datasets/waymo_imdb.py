@@ -43,27 +43,17 @@ class class_enum(Enum):
 class waymo_imdb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'waymo'
-        db.__init__(self, name)
+        db.__init__(self, name, mode)
         self.type = 'image'
-        self._train_scenes = []
-        self._val_scenes = []
-        self._test_scenes = []
-        self._train_index = []
-        self._val_index = []
-        self._test_index = []
-        self._devkit_path = self._get_default_path()
         if(mode == 'test'):
             self._tod_filter_list = cfg.TEST.TOD_FILTER_LIST
         else:
             self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
         self._uncertainty_sort_type = cfg.UC.SORT_TYPE
-
         self._draw_width  = cfg.IM_SIZE[0]
         self._draw_height = cfg.IM_SIZE[1]
         self._imtype   = 'PNG'
         self._filetype = 'png'
-        self._mode = mode
-        print('imdb mode: {}'.format(mode))
         self._scene_sel = True
         #For now one large cache file is OK, but ideally just take subset of actually needed data and cache that. No need to load nusc every time.
 
@@ -154,40 +144,41 @@ class waymo_imdb(db):
             print('wrote gt roidb to {}'.format(cache_file))
         return gt_roidb
 
-    def draw_and_save(self,mode,image_token=None):
-        datapath = os.path.join(cfg.DATA_DIR, self._name)
-        out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
-        print('deleting files in dir {}'.format(out_file))
-        if(os.path.isdir(datapath)):
-            shutil.rmtree(datapath)
-        os.makedirs(out_file)
-        if(mode == 'val'):
-            roidb = self.val_roidb
-        elif(mode == 'train'):
-            roidb = self.roidb
-        #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
-        for i, roi in enumerate(roidb):
-            if(i % 250 == 0):
-                if(roi['flipped']):
-                    outfile = roi['filename'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
-                else:
-                    outfile = roi['filename'].replace('/images','/drawn')
-                if(roi['boxes'].shape[0] != 0):
-                    source_img = Image.open(roi['filename'])
-                    if(roi['flipped'] is True):
-                        source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
-                        text = "Flipped"
-                    else:
-                        text = "Normal"
-                    draw = ImageDraw.Draw(source_img)
-                    draw.text((0,0),text)
-                    for roi_box,cat in zip(roi['boxes'],roi['cat']):
-                        draw.text((roi_box[0],roi_box[1]),cat)
-                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
-                    for roi_box in roi['boxes_dc']:
-                        draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-                    print('Saving drawn file at location {}'.format(outfile))
-                    source_img.save(outfile,self._imtype)
+    #DEPRECATED
+    #def draw_and_save(self,mode,image_token=None):
+    #    datapath = os.path.join(cfg.DATA_DIR, self._name)
+    #    out_file = os.path.join(cfg.DATA_DIR, self._name ,mode,'drawn')
+    #    print('deleting files in dir {}'.format(out_file))
+    #    if(os.path.isdir(datapath)):
+    #        shutil.rmtree(datapath)
+    #    os.makedirs(out_file)
+    #    if(mode == 'val'):
+    #        roidb = self.val_roidb
+    #    elif(mode == 'train'):
+    #        roidb = self.roidb
+    #    #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
+    #    for i, roi in enumerate(roidb):
+    #        if(i % 250 == 0):
+    #            if(roi['flipped']):
+    #                outfile = roi['filename'].replace('/images','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
+    #            else:
+    #                outfile = roi['filename'].replace('/images','/drawn')
+    #            if(roi['boxes'].shape[0] != 0):
+    #                source_img = Image.open(roi['filename'])
+    #                if(roi['flipped'] is True):
+    #                    source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
+    #                    text = "Flipped"
+    #                else:
+    #                    text = "Normal"
+    #                draw = ImageDraw.Draw(source_img)
+    #                draw.text((0,0),text)
+    #                for roi_box,cat in zip(roi['boxes'],roi['cat']):
+    #                    draw.text((roi_box[0],roi_box[1]),cat)
+    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
+    #                for roi_box in roi['boxes_dc']:
+    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
+    #                print('Saving drawn file at location {}'.format(outfile))
+    #                source_img.save(outfile,self._imtype)
 
 
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
@@ -273,53 +264,6 @@ class waymo_imdb(db):
             else:
                 normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties
-                
-    def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
-        sampled_det = np.zeros((5,cfg.UC.NUM_BBOX_SAMPLE))
-        det_width = max(int((entropy)*10),-1)+2
-        bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(cfg.UC.NUM_BBOX_SAMPLE,4))
-        sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
-        sampled_det[4][:] = np.repeat(softmax,cfg.UC.NUM_BBOX_SAMPLE)
-        return sampled_det
-
-    def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
-        if(cfg.UC.EN_BBOX_ALEATORIC and self._uncertainty_sort_type == 'a_bbox_var'):
-            sortable = uncertainties['a_bbox_var']
-        elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
-            sortable = uncertainties['e_bbox_var']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_entropy'):
-            sortable = uncertainties['a_entropy']
-        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
-            sortable = uncertainties['a_cls_var']
-        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_mutual_info'):
-            sortable = uncertainties['e_mutual_info']
-        else:
-            sortable = np.arange(len(dets))
-        if(descending is True):
-            return np.argsort(-sortable)
-        else:
-            return np.argsort(sortable)
-
-    #UNUSED
-    def rpn_roidb(self):
-        if self._mode_sub_folder != 'testing':
-            #Generate the ground truth roi list (so boxes, overlaps) from the annotation list
-            gt_roidb = self.gt_roidb()
-            rpn_roidb = self._load_rpn_roidb(gt_roidb)
-            roidb = self.merge_roidbs(gt_roidb, rpn_roidb)
-        else:
-            roidb = self._load_rpn_roidb(None)
-
-        return roidb
-    #UNUSED
-    def _load_rpn_roidb(self, gt_roidb):
-        filename = self.config['rpn_file']
-        print('loading {}'.format(filename))
-        assert os.path.exists(filename), \
-            'rpn data not found at: {}'.format(filename)
-        with open(filename, 'rb') as f:
-            box_list = pickle.load(f)
-        return self.create_roidb_from_box_list(box_list, gt_roidb)
 
     #Only care about foreground classes
     def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
@@ -560,14 +504,16 @@ class waymo_imdb(db):
         elif(mode == 'test'):
             imageset = self._test_index
         cachedir = os.path.join(self._devkit_path, 'cache')
-        aps = np.zeros((len(self._classes)-1,3))
+        num_d_levels = 2
+        #AP: Level 1, Level 2
+        aps = np.zeros((len(self._classes)-1,num_d_levels))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
         for i, cls in enumerate(self._classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
-            if 'Car' in cls:
+            if 'car' in cls:
                 ovt = 0.7
             else:
                 ovt = 0.5
@@ -582,10 +528,12 @@ class waymo_imdb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='2d')
+                eval_type='2d',
+                d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP
-            print(('AP for {} = {:.4f}'.format(cls,ap)))
+            for j in range(0,num_d_levels):
+                print(('AP for {} = {:.4f}'.format(cls,ap[j])))
             with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
                 pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
         print(('Mean AP = {:.4f} '.format(np.mean(aps[:]))))
@@ -608,15 +556,6 @@ class waymo_imdb(db):
                     continue
                 filename = self._get_waymo_results_file_template(mode,cls)
                 os.remove(filename)
-
-    def competition_mode(self, on):
-        if on:
-            self.config['use_salt'] = False
-            self.config['cleanup'] = False
-        else:
-            self.config['use_salt'] = True
-            self.config['cleanup'] = True
-
 
 if __name__ == '__main__':
     # from datasets.pascal_voc import pascal_voc

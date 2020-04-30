@@ -146,13 +146,13 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'lidar'
-        args.weights_file = '{}_{}_epistemic_50p_204k.pth'.format(args.net,args.net_type)
-        args.iter = 10
-        args.num_frames = 0
-        args.scale = 0.5
-        args.en_epistemic = 1
+        args.weights_file = '{}_{}_100p_136k.pth'.format(args.net,args.net_type)
+        args.iter = 3
+        args.num_frames = 600
+        args.scale = 1.0
+        #args.en_epistemic = 1
         #args.en_aleatoric = 1
-        args.uc_sort_type = 'e_bbox_var'
+        #args.uc_sort_type = 'a_bbox_var'
         #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')

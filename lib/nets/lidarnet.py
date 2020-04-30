@@ -43,7 +43,7 @@ class lidarnet(Network):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
             self._drop_rate        = 0.2
-            self._fc_drop_rate     = 0.4
+            self._fc_drop_rate     = 0.5
         else:
             self._det_net_channels = self._fc7_channels
             self._dropout_en       = False
@@ -71,10 +71,10 @@ class lidarnet(Network):
         if(cfg.UC.EN_BBOX_EPISTEMIC):
             self.bbox_fc1        = nn.Linear(self._fc7_channels, self._det_net_channels*2)
             self.bbox_bn1        = nn.BatchNorm1d(self._det_net_channels*2)
-            self.bbox_drop1      = nn.Dropout(self._fc_drop_rate)
+            self.bbox_drop1      = nn.Dropout(0.1)
             self.bbox_fc2        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
             self.bbox_bn2        = nn.BatchNorm1d(self._det_net_channels)
-            self.bbox_drop2      = nn.Dropout(self._fc_drop_rate)
+            self.bbox_drop2      = nn.Dropout(0.2)
         #    self.bbox_fc3        = nn.Linear(self._det_net_channels*2, self._det_net_channels)
         if(cfg.UC.EN_CLS_EPISTEMIC):
             self.cls_fc1        = nn.Linear(self._fc7_channels, self._det_net_channels*2)
@@ -87,9 +87,9 @@ class lidarnet(Network):
 
         #Traditional outputs
         self.cls_score_net       = nn.Linear(self._det_net_channels, self._num_classes)
-        self.bbox_pred_net       = nn.Linear(self._det_net_channels, self._num_classes * cfg.IMAGE.NUM_BBOX_ELEM)
-        self.bbox_z_pred_net     = nn.Linear(self._det_net_channels, self._num_classes * 2)
-        self.heading_pred_net    = nn.Linear(self._det_net_channels, self._num_classes)
+        self.bbox_pred_net       = nn.Linear(self._det_net_channels, self._num_classes * cfg.LIDAR.NUM_BBOX_ELEM)
+        #self.bbox_z_pred_net     = nn.Linear(self._det_net_channels, self._num_classes * 2)
+        #self.heading_pred_net    = nn.Linear(self._det_net_channels, self._num_classes)
 
         #Aleatoric leafs
         if(cfg.UC.EN_CLS_ALEATORIC):
@@ -170,8 +170,8 @@ class lidarnet(Network):
         normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        normal_init(self.bbox_z_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.heading_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        #normal_init(self.bbox_z_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        #normal_init(self.heading_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_BBOX_EPISTEMIC):
             normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -185,9 +185,9 @@ class lidarnet(Network):
             const_init(self.cls_bn2, 1.0, 0.0)
         #    normal_init(self.cls_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_BBOX_ALEATORIC):
-            normal_init(self.bbox_al_var_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_al_var_net, 0, 0.001, True)
         if(cfg.UC.EN_CLS_ALEATORIC):
-            normal_init(self.cls_al_var_net, 0, 0.04, cfg.TRAIN.TRUNCATED)
+            normal_init(self.cls_al_var_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
 
     def _init_head_tail(self):
         # choose different blocks for different number of layers
@@ -208,32 +208,47 @@ class lidarnet(Network):
             raise NotImplementedError
 
         self.resnet.conv1 = nn.Conv2d(self.num_lidar_channels, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+
+        assert (-1 <= cfg.RESNET.FIXED_BLOCKS < 4)
+        def set_bn_fix(m):
+            classname = m.__class__.__name__
+            if classname.find('BatchNorm') != -1:
+                for p in m.parameters():
+                    p.requires_grad = False
+
+        def set_bn_var(m):
+            classname = m.__class__.__name__
+            if classname.find('BatchNorm') != -1:
+                for p in m.parameters():
+                    p.requires_grad = True
+
+        self.resnet.apply(set_bn_var)
+
         # Fix blocks
+        if cfg.RESNET.FIXED_BLOCKS >= 4:
+            self.resnet.layer4.apply(set_bn_fix)
+            for p in self.resnet.layer4.parameters():
+                p.requires_grad = False
+        if cfg.RESNET.FIXED_BLOCKS >= 3:
+            self.resnet.layer3.apply(set_bn_fix)
+            for p in self.resnet.layer3.parameters():
+                p.requires_grad = False
+        if cfg.RESNET.FIXED_BLOCKS >= 2:
+            self.resnet.layer2.apply(set_bn_fix)
+            for p in self.resnet.layer2.parameters():
+                p.requires_grad = False
+        if cfg.RESNET.FIXED_BLOCKS >= 1:
+            self.resnet.layer1.apply(set_bn_fix)
+            self.resnet.bn1.apply(set_bn_fix)
+            for p in self.resnet.layer1.parameters():
+                p.requires_grad = False
         for p in self.resnet.bn1.parameters():
             if(cfg.RESNET.FIXED_BLOCKS >= 1):
                 p.requires_grad = False
         for p in self.resnet.conv1.parameters():
             if(cfg.RESNET.FIXED_BLOCKS >= 1):
                 p.requires_grad = False
-        assert (-1 <= cfg.RESNET.FIXED_BLOCKS < 4)
-        if cfg.RESNET.FIXED_BLOCKS >= 3 and cfg.PRELOAD:
-            for p in self.resnet.layer3.parameters():
-                p.requires_grad = False
-        if cfg.RESNET.FIXED_BLOCKS >= 2 and cfg.PRELOAD:
-            for p in self.resnet.layer2.parameters():
-                p.requires_grad = False
-        if cfg.RESNET.FIXED_BLOCKS >= 1 and cfg.PRELOAD:
-            for p in self.resnet.layer1.parameters():
-                p.requires_grad = False
 
-        def set_bn_fix(m):
-            classname = m.__class__.__name__
-            if classname.find('BatchNorm') != -1:
-                for p in m.parameters():
-                    p.requires_grad = False
-        #Disable, as this has not been trained yet
-        if(cfg.RESNET.FIXED_BLOCKS >= 0):
-            self.resnet.apply(set_bn_fix)
         if(cfg.LIDAR.USE_FPN):
             self.fpn_block = BuildBlock()
             self._layers['fpn'] = self.fpn_block
@@ -246,32 +261,45 @@ class lidarnet(Network):
 
 
     def train(self, mode=True):
+        # Set batchnorm always in eval mode during training
+        def set_bn_eval(m):
+            classname = m.__class__.__name__
+            if classname.find('BatchNorm') != -1:
+                m.eval()
+
+        def set_bn_train(m):
+            classname = m.__class__.__name__
+            if classname.find('BatchNorm') != -1:
+                m.train()
         # Override train so that the training mode is set as we want
         nn.Module.train(self, mode)
         if mode:
+            #Disable as resnet has been pretrained
+            if(cfg.RESNET.FIXED_BLOCKS != -1):
+                self.resnet.apply(set_bn_eval)
+
             # Set fixed blocks to be in eval mode (not really doing anything)
             self.resnet.eval()
             if cfg.RESNET.FIXED_BLOCKS <= 3:
                 self.resnet.layer4.train()
+                self.resnet.layer4.apply(set_bn_train)
             if cfg.RESNET.FIXED_BLOCKS <= 2:
                 self.resnet.layer3.train()
+                self.resnet.layer3.apply(set_bn_train)
             if cfg.RESNET.FIXED_BLOCKS <= 1:
                 self.resnet.layer2.train()
+                self.resnet.layer2.apply(set_bn_train)
             if cfg.RESNET.FIXED_BLOCKS <= 0:
                 self.resnet.layer1.train()
+                self.resnet.conv1.train()
+                self.resnet.bn1.apply(set_bn_train)
+                self.resnet.layer1.apply(set_bn_train)
                 #self.resnet.conv1.train()
             if cfg.RESNET.FIXED_BLOCKS == -1:
                 self.resnet.train()
-
-            # Set batchnorm always in eval mode during training
-            def set_bn_eval(m):
-                classname = m.__class__.__name__
-                if classname.find('BatchNorm') != -1:
-                    m.eval()
-            #Disable as resnet has not been trained yet
-            if(cfg.RESNET.FIXED_BLOCKS >= 0):
-                self.resnet.apply(set_bn_eval)
+                self.resnet.apply(set_bn_train)
             
+
     def eval(self):
         nn.Module.eval(self)
         if(cfg.ENABLE_FULL_NET is True and cfg.UC.EN_BBOX_EPISTEMIC):
@@ -295,18 +323,47 @@ class lidarnet(Network):
             return None
 
 
-    def load_pretrained_rpn(self, state_dict):
+    def load_pretrained_full(self, state_dict):
         own_state = self.state_dict()
         for name, param in state_dict.items():
             if name not in own_state:
                 continue
-            if 'resnet' not in name and 'fpn' not in name and 'rpn' not in name:
+            if 'bbox' in name and 'rpn' not in name:
+                continue
+            if 'cls' in name and 'rpn' not in name:
                 continue
             if isinstance(param, torch.nn.Parameter):
                 # backwards compatibility for serialized parameters
                 param = param.data
             own_state[name].copy_(param)
 
+    def load_pretrained_cnn(self, state_dict):
+        own_state = self.state_dict()
+        for name, param in state_dict.items():
+            if name not in own_state:
+                continue
+            if 'resnet' not in name and 'fpn' not in name and 'rpn' not in name:
+                continue
+            if 'layer4' in name:
+                continue
+            if isinstance(param, torch.nn.Parameter):
+                # backwards compatibility for serialized parameters
+                param = param.data
+            own_state[name].copy_(param)
+
+    def load_pretrained_rpn(self, state_dict):
+        own_state = self.state_dict()
+        for name, param in state_dict.items():
+            if name not in own_state:
+                continue
+            if 'resnet' not in name:
+                continue
+            if 'layer4' in name:
+                continue
+            if isinstance(param, torch.nn.Parameter):
+                # backwards compatibility for serialized parameters
+                param = param.data
+            own_state[name].copy_(param)
 
     def load_imagenet_pretrained_cnn(self, state_dict):
         new_state_dict = OrderedDict()
@@ -328,7 +385,7 @@ class lidarnet(Network):
             new_state_dict[key] = new_param
         self._load_pretrained_cnn(new_state_dict)
 
-    def load_pretrained_cnn(self, state_dict):
+    def _load_pretrained_cnn(self, state_dict):
         sd = {}
         for k, v in state_dict.items():
             if 'resnet' in k:

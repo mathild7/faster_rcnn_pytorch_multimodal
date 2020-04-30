@@ -75,13 +75,14 @@ class Bottleneck(nn.Module):
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None, dropout_en=False, drop_rate=0.0):
+                 base_width=64, dilation=1, norm_layer=None, dropout_en=False, drop_rate=0.0, batchnorm_en=True):
         super(Bottleneck, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
+        self.batchnorm_en = batchnorm_en
         self.bn1 = norm_layer(width)
         self.conv2 = conv3x3(width, width, stride, groups, dilation)
         self.bn2 = norm_layer(width)
@@ -99,19 +100,22 @@ class Bottleneck(nn.Module):
         identity = x
 
         out = self.conv1(x)
-        out = self.bn1(out)
+        if(self.batchnorm_en):
+            out = self.bn1(out)
         out = self.relu(out)
         #if(self._dropout_en):
         #    out = self.drop(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        if(self.batchnorm_en):
+            out = self.bn2(out)
         out = self.relu(out)
         #if(self._dropout_en):
         #    out = self.drop2d(out)
             
         out = self.conv3(out)
-        out = self.bn3(out)
+        if(self.batchnorm_en):
+            out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -156,7 +160,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
-                                       dilate=replace_stride_with_dilation[2],dropout_en=dropout_en)
+                                       dilate=replace_stride_with_dilation[2],dropout_en=dropout_en,batchnorm_en=False)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -177,7 +181,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False, dropout_en=False):
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False, dropout_en=False, batchnorm_en=True):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -192,12 +196,12 @@ class ResNet(nn.Module):
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer,dropout_en=dropout_en,drop_rate=self._drop_rate))
+                            self.base_width, previous_dilation, norm_layer,dropout_en=dropout_en,drop_rate=self._drop_rate, batchnorm_en=batchnorm_en))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, groups=self.groups,
                                 base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer,dropout_en=dropout_en,drop_rate=self._drop_rate))
+                                norm_layer=norm_layer,dropout_en=dropout_en,drop_rate=self._drop_rate, batchnorm_en=batchnorm_en))
 
         return nn.Sequential(*layers)
 

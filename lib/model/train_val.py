@@ -247,10 +247,10 @@ class SolverWrapper(object):
             print('Loading initial model weights from {:s}'.format(
                 self.pretrained_model))
             self.net.load_pretrained_cnn(torch.load(self.pretrained_model))
-        elif(cfg.PRELOAD_RPN):
-            print('Loading initial first stage weights {:s}'.format(
+        elif(cfg.PRELOAD_FULL):
+            print('Loading initial full model weights {:s}'.format(
                 self.pretrained_model))
-            self.net.load_pretrained_rpn(torch.load(self.pretrained_model))
+            self.net.load_pretrained_full(torch.load(self.pretrained_model))
         else:
             print('initializing model from scratch')
         #self.net.load_trimmed_pretrained_cnn(torch.load(self.pretrained_model))
@@ -371,8 +371,9 @@ class SolverWrapper(object):
         while iter < max_iters + 1 and not killer.kill_now:
 
             #Start uncertainty capture late into training cycle
-            #if(iter >= 20000 and cfg.UC.EN_BBOX_ALEATORIC is False):
+            #if(iter >= 5000 and cfg.UC.EN_BBOX_ALEATORIC is False):
             #    cfg.UC.EN_BBOX_ALEATORIC = True
+            #    cfg.UC.EN_CLS_ALEATORIC  = True
             #print('iteration # {}'.format(iter))
             # Learning rate
             if iter % self.batch_size == 0 and iter != 0:

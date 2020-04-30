@@ -27,6 +27,7 @@ __C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.FREEZE_DB          = False
 __C.DEBUG.FREEZE_DB_INDS     = 1
+__C.DEBUG.PRINT_SCENE_RESULT = False
 
 #Bayesian Config
 __C.UC = edict()
@@ -38,13 +39,13 @@ __C.UC.EN_BBOX_ALEATORIC          = False
 __C.UC.EN_CLS_ALEATORIC           = False
 __C.UC.EN_BBOX_EPISTEMIC          = False
 __C.UC.EN_CLS_EPISTEMIC           = False
-__C.UC.A_NUM_CE_SAMPLE            = 60
-__C.UC.A_NUM_BBOX_SAMPLE          = 100
-__C.UC.E_NUM_SAMPLE               = 40
-__C.UC.SORT_TYPE                  = 'e_bbox_var'
+__C.UC.A_NUM_CE_SAMPLE            = 80
+__C.UC.A_NUM_BBOX_SAMPLE          = 80
+__C.UC.E_NUM_SAMPLE               = 80
+__C.UC.SORT_TYPE                  = ''
 #ONE OF
 __C.PRELOAD                  = False
-__C.PRELOAD_RPN              = True
+__C.PRELOAD_FULL             = False
 
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
@@ -201,7 +202,7 @@ __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1.0)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 1.0, 0.2, 0.2, 1.0, 1.0)
 
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -266,7 +267,7 @@ __C.RESNET.MAX_POOL = False
 
 # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
 # Range: -1 (none) to 3 (all)
-__C.RESNET.FIXED_BLOCKS = 0
+__C.RESNET.FIXED_BLOCKS = -1
 
 #
 # MobileNet options

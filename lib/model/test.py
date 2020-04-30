@@ -166,7 +166,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         shutil.rmtree(output_dir)
     os.makedirs(output_dir)
     # timers
-    _t = {'frame_detect': Timer(), 'misc': Timer()}
+    _t = {'preload': Timer(), 'frame_detect': Timer(), 'misc': Timer()}
 
 
     #TODO: Move to the db
@@ -187,11 +187,13 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         elif(cfg.NET_TYPE == 'lidar'):
             filename = db.path_at(i,mode)
             frame = np.load(filename)
-        _t['frame_detect'].tic()
         #Put frame into array, single element only supported
         frame = [frame]
+        _t['preload'].tic()
         blobs = _get_blobs(frame)
+        _t['preload'].toc()
         #assert len(blobs) == 1, "Only single-image batch implemented"
+        _t['frame_detect'].tic()
         rois, bbox, uncertainties = frame_detect(net, blobs, db.num_classes,thresh)
         _t['frame_detect'].toc()
         _t['misc'].tic()
@@ -215,10 +217,6 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 all_boxes[j][i] = bbox_uncertainty_hstack
             else:
                 all_boxes[j][i] = np.empty(0)
-        _t['misc'].toc()
-
-        print('frame_detect: {:d}/{:d} {:.3f}s {:.3f}s'
-            .format(i + 1, num_images, _t['frame_detect'].average_time(), _t['misc'].average_time()))
         
         #box is x1,y1,x2,y2 where x1,y1 is top left, x2,y2 is bottom right
         if(draw_det):
@@ -233,6 +231,13 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 elif(cfg.NET_TYPE == 'image'):
                     boxes = gt_boxes['boxes']
                 db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode)
+
+        _t['misc'].toc()
+        print('frame_detect: {:d}/{:d} preproc: {:4.3f}s | frame_det: {:4.3f}s | Misc&Draw: {:4.3f}s'.format(i + 1,
+                                                                                                             num_images,
+                                                                                                             _t['preload'].average_time(),
+                                                                                                             _t['frame_detect'].average_time(),
+                                                                                                             _t['misc'].average_time()))
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

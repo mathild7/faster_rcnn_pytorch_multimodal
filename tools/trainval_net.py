@@ -126,7 +126,7 @@ def parse_args(manual_mode=False):
     parser.add_argument(
         '--preload',
         dest='preload',
-        help='0: None, 1: preload',
+        help='0: None, 1: preload 1st stage 2: preload full net',
         default=None,
         type=int)
     parser.add_argument(
@@ -217,7 +217,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -225,9 +225,9 @@ if __name__ == '__main__':
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
         args.net_type = 'lidar'
-        args.preload = 1
-        args.iter    = 1
-        args.scale   = 0.5
+        args.preload = 2
+        args.iter    = 3
+        args.scale   = 1.0
         args.en_full_net = True
         #args.en_epistemic = 1
         args.en_aleatoric = 1
@@ -252,16 +252,15 @@ if __name__ == '__main__':
         cfg.TRAIN.ITER = args.iter
     if(args.preload is not None):
         cfg.PRELOAD     = False
-        cfg.PRELOAD_RPN = False
+        cfg.PRELOAD_FULL = False
         if(args.preload == 1):
-            if(cfg.NET_TYPE == 'lidar'):
-                cfg.PRELOAD_RPN = True
-            elif(cfg.NET_TYPE == 'image'):
-                cfg.PRELOAD     = True
+            cfg.PRELOAD     = True
+        elif(args.preload == 2):
+            cfg.PRELOAD_FULL = True
 
     if(args.weights_file is None):
         if(cfg.NET_TYPE == 'lidar'):
-            args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_50p_80k.pth')
+            args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_50p_36k.pth')
         elif(cfg.NET_TYPE == 'image'):
             args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
     if(args.scale is not None):

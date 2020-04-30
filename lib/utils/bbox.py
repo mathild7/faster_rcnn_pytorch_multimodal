@@ -114,6 +114,7 @@ def bbox_pc_to_voxel_grid(bboxes,bev_extants,info):
     #vg_bboxes = np.zeros((bboxes.shape[0],4))
     #Make it scale invariant
     scale = info[6]
+    #Ensure that the transform is done assuming bboxes are in their full scale
     s_info = np.asarray(info[0:6]) * 1/scale
     bboxes[:,0] = (bboxes[:,0]-bev_extants[0])*((s_info[1]-s_info[0])/(bev_extants[3]-bev_extants[0]))
     bboxes[:,1] = (bboxes[:,1]-bev_extants[1])*((s_info[3]-s_info[2])/(bev_extants[4]-bev_extants[1]))
@@ -139,6 +140,7 @@ pc_bboxes -> (Nx7) [XC(mod),YC(mod),ZC,L(mod),W(mod),H,ry] (scaled and shifted t
 def bbox_voxel_grid_to_pc(bboxes,bev_extants,info,aabb=False):
     #vg_bboxes = np.zeros((bboxes.shape[0],4))
     scale = info[6]
+    #Ensure that transform is done assuming bboxes are in their full scale
     s_info = np.asarray(info[0:6]) * 1/scale
     if(aabb):
         #X1

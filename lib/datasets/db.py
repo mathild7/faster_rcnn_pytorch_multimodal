@@ -23,19 +23,24 @@ import shutil
 class db(object):
     """database base class"""
 
-    def __init__(self, name, classes=None):
+    def __init__(self, name, mode='train', classes=None):
         self._name = name
         self._num_classes = 0
         if not classes:
             self._classes = []
         else:
             self._classes = classes
-        self._image_index = []
         self._obj_proposer = 'gt'
         self._roidb = None
         self._val_roidb = None
         # Use this dict for storing dataset specific config options
         self.config = {}
+        self._train_index = []
+        self._val_index = []
+        self._test_index = []
+        self._mode = mode
+        print('db mode: {}'.format(mode))
+        self._devkit_path = self._get_default_path()
 
     @property
     def name(self):
@@ -205,7 +210,37 @@ class db(object):
         else:
             return None
 
-
+    def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
+        if(cfg.UC.EN_BBOX_ALEATORIC and self._uncertainty_sort_type == 'a_bbox_var'):
+            sortable = uncertainties['a_bbox_var']
+        elif(cfg.UC.EN_BBOX_EPISTEMIC and self._uncertainty_sort_type == 'e_bbox_var'):
+            sortable = uncertainties['e_bbox_var']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_entropy'):
+            sortable = uncertainties['a_entropy']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_mutual_info'):
+            sortable = uncertainties['a_mutual_info']
+        elif(cfg.UC.EN_CLS_ALEATORIC and self._uncertainty_sort_type == 'a_cls_var'):
+            sortable = uncertainties['a_cls_var']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_mutual_info'):
+            sortable = uncertainties['e_mutual_info']
+        elif(cfg.UC.EN_CLS_EPISTEMIC and self._uncertainty_sort_type == 'e_entropy'):
+            sortable = uncertainties['e_entropy']
+        else:
+            sortable = np.arange(0,dets.shape[0])
+        if(descending is True):
+            return np.argsort(-sortable)
+        else:
+            return np.argsort(sortable)
+    
+    #DEPRECATED
+    #def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
+    #    sampled_det = np.zeros((5,cfg.UC.NUM_BBOX_SAMPLE))
+    #    det_width = max(int((entropy)*10),-1)+2
+    #    bbox_samples = np.random.normal(bbox,np.sqrt(bbox_var),size=(cfg.UC.NUM_BBOX_SAMPLE,7))
+    #    sampled_det[0:4][:] = np.swapaxes(bbox_samples,1,0)
+    #    sampled_det[4][:] = np.repeat(softmax,cfg.UC.NUM_BBOX_SAMPLE)
+    #    return sampled_det
+    
     #DEPRECATED
     #def nms_hstack(self,scores,mean_boxes,thresh,c):
     #    inds         = np.where(scores[:, c] > thresh)[0]
@@ -239,5 +274,9 @@ class db(object):
         return a
 
     def competition_mode(self, on):
-        """Turn competition mode on or off."""
-        pass
+        if on:
+            self.config['use_salt'] = False
+            self.config['cleanup'] = False
+        else:
+            self.config['use_salt'] = True
+            self.config['cleanup'] = True
