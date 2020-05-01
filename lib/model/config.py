@@ -267,7 +267,7 @@ __C.RESNET.MAX_POOL = False
 
 # Number of fixed blocks during training, by default the first of all 4 blocks is fixed
 # Range: -1 (none) to 3 (all)
-__C.RESNET.FIXED_BLOCKS = 2
+__C.RESNET.FIXED_BLOCKS = -1
 
 #
 # MobileNet options

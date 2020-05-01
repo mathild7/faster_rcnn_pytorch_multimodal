@@ -140,7 +140,7 @@ def parse_args(manual_mode):
 
 
 if __name__ == '__main__':
-    manual_mode = True
+    manual_mode = cfg.DEBUG.EN
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'

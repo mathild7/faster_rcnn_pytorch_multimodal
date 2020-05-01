@@ -216,7 +216,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    manual_mode = True
+    manual_mode = cfg.DEBUG.EN
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -226,7 +226,7 @@ if __name__ == '__main__':
         args.net_type = 'image'
         args.preload = 1
         args.iter    = 0
-        args.scale   = 1.0
+        args.scale   = 0.5
         args.en_full_net = True
         args.en_epistemic = 1
         args.en_aleatoric = 1
@@ -335,7 +335,7 @@ if __name__ == '__main__':
         pretrained_model=args.weights_file,
         max_iters=args.max_iters,
         sum_size=256,
-        val_sum_size=1000,
+        val_sum_size=5000,
         batch_size=16,
         val_batch_size=32,
         val_thresh=0.4,

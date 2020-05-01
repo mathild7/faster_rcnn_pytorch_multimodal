@@ -72,9 +72,9 @@ class imagenet(Network):
             normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.cls_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.UC.EN_BBOX_ALEATORIC):
-            normal_init(self.bbox_al_var_net, 0, 0.05, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_al_var_net, 0, 0.001, True)
         if(cfg.UC.EN_CLS_ALEATORIC):
-            normal_init(self.cls_al_var_net, 0, 0.04,cfg.TRAIN.TRUNCATED)
+            normal_init(self.cls_al_var_net, 0, 0.01, True)
 
     def _init_head_tail(self):
         self.resnet = self._build_resnet()
