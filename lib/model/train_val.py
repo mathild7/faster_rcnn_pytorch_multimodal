@@ -354,7 +354,7 @@ class SolverWrapper(object):
         #timers['proposal']   = utils.timer.Timer()
         #timers['proposal_t'] = utils.timer.Timer()
         #timers['anchor_t']   = utils.timer.Timer()
-        #timers['data_gen']   = utils.timer.Timer()
+        timers['data_gen']   = utils.timer.Timer()
         #timers['losses']     = utils.timer.Timer()
         #timers['backprop']   = utils.timer.Timer()
         #timers['summary']     = utils.timer.Timer()
@@ -394,9 +394,9 @@ class SolverWrapper(object):
             t.tic()
             # Get training data, one batch at a time
             #blobs = self.data_layer.forward(augment_en)
-            #timers['data_gen'].tic()
+            timers['data_gen'].tic()
             blobs  = self.data_gen.next()
-            #timers['data_gen'].toc()
+            timers['data_gen'].toc()
             now = time.time()
             #if iter == 1  or now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
             if iter % self.val_sum_size == 0:

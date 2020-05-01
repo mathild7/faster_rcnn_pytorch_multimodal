@@ -33,7 +33,7 @@ class GridAnchor3dGenerator(object):
         y_max = (height*feature_stride) - 1
         z_max = math.ceil((cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0])/cfg.LIDAR.VOXEL_HEIGHT) - 1
         area_3d = [[0,x_max],[0,y_max],[0,z_max]]
-        #TODO: How to scale 3d anchor sizes?
+        #voxel len is inversely proportional to frame scale
         voxel_len = cfg.LIDAR.VOXEL_LEN/frame_scale
         anchor_3d_sizes = cfg.LIDAR.ANCHORS/([voxel_len,voxel_len,1])
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF

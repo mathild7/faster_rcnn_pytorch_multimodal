@@ -30,7 +30,7 @@ import argparse
 from matplotlib import cm
 
 from nets.vgg16 import vgg16
-from nets.resnet_v1 import resnetv1
+from nets.imagenet import imagenet
 
 import torch
 
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     if demonet == 'vgg16':
         net = vgg16()
     elif demonet == 'res101':
-        net = resnetv1(num_layers=101)
+        net = imagenet(num_layers=101)
     else:
         raise NotImplementedError
     net.create_architecture(21, tag='default', anchor_scales=[8, 16, 32])

@@ -103,15 +103,15 @@ class Bottleneck(nn.Module):
         if(self.batchnorm_en):
             out = self.bn1(out)
         out = self.relu(out)
-        #if(self._dropout_en):
-        #    out = self.drop(out)
+        if(self._dropout_en):
+            out = self.drop(out)
 
         out = self.conv2(out)
         if(self.batchnorm_en):
             out = self.bn2(out)
         out = self.relu(out)
-        #if(self._dropout_en):
-        #    out = self.drop2d(out)
+        if(self._dropout_en):
+            out = self.drop2d(out)
             
         out = self.conv3(out)
         if(self.batchnorm_en):
@@ -122,8 +122,8 @@ class Bottleneck(nn.Module):
 
         out += identity
         out = self.relu(out)
-        #if(self._dropout_en):
-        #    out = self.drop(out)
+        if(self._dropout_en):
+            out = self.drop(out)
 
         return out
 
@@ -132,7 +132,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None,dropout_en=False,drop_rate=0.0):
+                 norm_layer=None,dropout_en=False,drop_rate=0.0,batchnorm_en=True):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -160,7 +160,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
-                                       dilate=replace_stride_with_dilation[2],dropout_en=dropout_en,batchnorm_en=False)
+                                       dilate=replace_stride_with_dilation[2],batchnorm_en=batchnorm_en)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -224,9 +224,9 @@ class ResNet(nn.Module):
 
 #class ResNet(torchvision.models.resnet.ResNet):
 class ResNetWrapper(ResNet):
-    def __init__(self, block, layers, num_classes=1000, dropout_en=False, drop_rate=0.0):
+    def __init__(self, block, layers, num_classes=1000, dropout_en=False, drop_rate=0.0, batchnorm_en=True):
         self.inplanes = 64
-        super().__init__(block, layers, num_classes, dropout_en=dropout_en, drop_rate=drop_rate)
+        super().__init__(block, layers, num_classes, dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
         # change to match the caffe resnet
         for i in range(2, 4):
             getattr(self, 'layer%d' % i)[0].conv1.stride = (2, 2)
@@ -237,46 +237,46 @@ class ResNetWrapper(ResNet):
 
         del self.avgpool, self.fc
 
-def resnet18(pretrained=False,dropout_en=False, drop_rate=0.0):
+def resnet18(pretrained=False,dropout_en=False, drop_rate=0.0, batchnorm_en=True):
     """Constructs a ResNet-18 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
-    model = ResNetWrapper(BasicBlock, [2, 2, 2, 2],dropout_en=dropout_en, drop_rate=drop_rate)
+    model = ResNetWrapper(BasicBlock, [2, 2, 2, 2],dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
     return model
 
 
-def resnet34(pretrained=False,dropout_en=False, drop_rate=0.0):
+def resnet34(pretrained=False,dropout_en=False, drop_rate=0.0, batchnorm_en=True):
     """Constructs a ResNet-34 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
-    model = ResNetWrapper(BasicBlock, [3, 4, 6, 3],dropout_en=dropout_en, drop_rate=drop_rate)
+    model = ResNetWrapper(BasicBlock, [3, 4, 6, 3],dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
     return model
 
 
-def resnet50(pretrained=False,dropout_en=False, drop_rate=0.0):
+def resnet50(pretrained=False,dropout_en=False, drop_rate=0.0, batchnorm_en=True):
     """Constructs a ResNet-50 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
-    model = ResNetWrapper(Bottleneck, [3, 4, 6, 3],dropout_en=dropout_en, drop_rate=drop_rate)
+    model = ResNetWrapper(Bottleneck, [3, 4, 6, 3],dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
     return model
 
 
-def resnet101(pretrained=False,dropout_en=False, drop_rate=0.0):
+def resnet101(pretrained=False,dropout_en=False, drop_rate=0.0, batchnorm_en=True):
     """Constructs a ResNet-101 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
                                #Blocks per layer
-    model = ResNetWrapper(Bottleneck, [3, 4, 23, 3],dropout_en=dropout_en, drop_rate=drop_rate)
+    model = ResNetWrapper(Bottleneck, [3, 4, 23, 3],dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
     return model
@@ -287,7 +287,7 @@ def resnet152(pretrained=False,dropout_en=False, drop_rate=0.0):
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
   """
-    model = ResNetWrapper(Bottleneck, [3, 8, 36, 3],dropout_en=dropout_en, drop_rate=drop_rate)
+    model = ResNetWrapper(Bottleneck, [3, 8, 36, 3],dropout_en=dropout_en, drop_rate=drop_rate, batchnorm_en=batchnorm_en)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
     return model

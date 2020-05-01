@@ -19,8 +19,10 @@ def generate_anchors_pre(height,
     """ A wrapper function to generate anchors given different scales
     Also return the number of anchors in variable 'length'
   """
+    anchor_scales = np.array(anchor_scales)*frame_scale
+    anchor_ratios = np.array(anchor_ratios)
     anchors = generate_anchors(
-        ratios=np.array(anchor_ratios), scales=np.array(anchor_scales), frame_scale=frame_scale)
+        base_size=feat_stride,ratios=anchor_ratios, scales=anchor_scales)
     A = anchors.shape[0]
     shift_x = np.arange(0, width) * feat_stride
     shift_y = np.arange(0, height) * feat_stride

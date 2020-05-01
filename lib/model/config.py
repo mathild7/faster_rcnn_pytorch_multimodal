@@ -31,18 +31,18 @@ __C.DEBUG.PRINT_SCENE_RESULT = False
 
 #Bayesian Config
 __C.UC = edict()
-__C.UC.EN_RPN_BBOX_ALEATORIC      = False
-__C.UC.EN_RPN_CLS_ALEATORIC       = False
-__C.UC.EN_RPN_BBOX_EPISTEMIC      = False
-__C.UC.EN_RPN_CLS_EPISTEMIC       = False
-__C.UC.EN_BBOX_ALEATORIC          = False
-__C.UC.EN_CLS_ALEATORIC           = False
-__C.UC.EN_BBOX_EPISTEMIC          = False
-__C.UC.EN_CLS_EPISTEMIC           = False
-__C.UC.A_NUM_CE_SAMPLE            = 80
-__C.UC.A_NUM_BBOX_SAMPLE          = 80
-__C.UC.E_NUM_SAMPLE               = 80
-__C.UC.SORT_TYPE                  = ''
+__C.UC.EN_RPN_BBOX_ALEATORIC = False
+__C.UC.EN_RPN_CLS_ALEATORIC  = False
+__C.UC.EN_RPN_BBOX_EPISTEMIC = False
+__C.UC.EN_RPN_CLS_EPISTEMIC  = False
+__C.UC.EN_BBOX_ALEATORIC     = False
+__C.UC.EN_CLS_ALEATORIC      = False
+__C.UC.EN_BBOX_EPISTEMIC     = False
+__C.UC.EN_CLS_EPISTEMIC      = False
+__C.UC.A_NUM_CE_SAMPLE       = 80
+__C.UC.A_NUM_BBOX_SAMPLE     = 80
+__C.UC.E_NUM_SAMPLE          = 80
+__C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
 __C.PRELOAD_FULL             = False
@@ -375,6 +375,7 @@ __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
 __C.LIDAR.USE_FPN            = True
+
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
@@ -387,8 +388,9 @@ __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 __C.LIDAR.NUM_BBOX_ELEM = 7
 
 __C.IMAGE = edict()
-
+__C.IMAGE.USE_FPN = False
 __C.IMAGE.NUM_BBOX_ELEM = 4
+
 
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.

@@ -180,19 +180,16 @@ class waymo_imdb(db):
     #                print('Saving drawn file at location {}'.format(outfile))
     #                source_img.save(outfile,self._imtype)
 
-
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode):
-        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(mode))
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+        if(draw_folder is None):
+            draw_folder = mode
+        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(draw_folder))
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        #out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        #out_file = os.path.join(out_dir,out_file)
         if(iter != 0):
             out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-            #out_file = filename.replace('/images/','/{}_drawn/iter_{}_'.format(mode,iter))
         else:
             out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-            #out_file = filename.replace('_','').replace('/images/','/{}_drawn/img-'.format(mode))
         out_file = os.path.join(out_dir,out_file)
         source_img = Image.open(filename)
         draw = ImageDraw.Draw(source_img)
@@ -242,15 +239,15 @@ class waymo_imdb(db):
                 color = 255
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
         print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,self._imtype)    
+        source_img.save(out_file,self._imtype)
 
     def _normalize_uncertainties(self,dets,uncertainties):
         normalized_uncertainties = {}
         for key,uc in uncertainties.items():
             if('bbox' in key):
-                stds = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_STDS).unsqueeze(0).expand_as(uc)
-                means = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS).unsqueeze(0).expand_as(uc)
-                uc = uc.mul(stds).add(means)
+                #stds = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_STDS).unsqueeze(0).expand_as(uc)
+                #means = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS).unsqueeze(0).expand_as(uc)
+                #uc = uc.mul(stds).add(means)
                 #bbox_width  = dets[:,2] - dets[:,0]
                 #bbox_height = dets[:,3] - dets[:,1]
                 #bbox_size = np.sqrt(bbox_width*bbox_height)
@@ -260,7 +257,7 @@ class waymo_imdb(db):
                 #uc[:,3] = uc[:,3]/bbox_size
                 normalized_uncertainties[key] = np.mean(uc,axis=1)
             elif('mutual_info' in key):
-                normalized_uncertainties[key] = uc.squeeze(1)*10*(-np.log(dets[:,4]))
+                normalized_uncertainties[key] = uc.squeeze(1)  #*10*(-np.log(dets[:,4]))
             else:
                 normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties

@@ -383,7 +383,7 @@ class waymo_lidb(db):
         normalized_uncertainties = {}
         for key,uc in uncertainties.items():
             if('bbox' in key):
-                uc = uc*cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS
+                #uc = uc*cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS
                 #bbox_width  = dets[:,2] - dets[:,0]
                 #bbox_height = dets[:,3] - dets[:,1]
                 #bbox_size = np.sqrt(bbox_width*bbox_height)

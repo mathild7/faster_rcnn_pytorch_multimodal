@@ -24,7 +24,7 @@ import os
 import roi_data_layer.roidb as rdl_roidb
 from copy import deepcopy
 from nets.vgg16 import vgg16
-from nets.resnet_v1 import resnetv1
+from nets.imagenet import imagenet
 from nets.lidarnet import lidarnet
 from nets.mobilenet_v1 import mobilenetv1
 
@@ -217,17 +217,17 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    manual_mode = False
+    manual_mode = True
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        args.net_type = 'lidar'
-        args.preload = 2
-        args.iter    = 3
-        args.scale   = 1.0
+        args.net_type = 'image'
+        args.preload = 1
+        args.iter    = 0
+        args.scale   = 0.5
         args.en_full_net = True
         #args.en_epistemic = 1
         args.en_aleatoric = 1
@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
     if(args.weights_file is None):
         if(cfg.NET_TYPE == 'lidar'):
-            args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_50p_36k.pth')
+            args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_100p_136k.pth')
         elif(cfg.NET_TYPE == 'image'):
             args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
     if(args.scale is not None):
@@ -314,13 +314,13 @@ if __name__ == '__main__':
         if args.net == 'vgg16':
             net = vgg16()
         elif args.net == 'res34':
-            net = resnetv1(num_layers=34)
+            net = imagenet(num_layers=34)
         elif args.net == 'res50':
-            net = resnetv1(num_layers=50)
+            net = imagenet(num_layers=50)
         elif args.net == 'res101':
-            net = resnetv1(num_layers=101)
+            net = imagenet(num_layers=101)
         elif args.net == 'res152':
-            net = resnetv1(num_layers=152)
+            net = imagenet(num_layers=152)
         elif args.net == 'mobile':
             net = mobilenetv1()
         else:

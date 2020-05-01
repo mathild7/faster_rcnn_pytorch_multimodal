@@ -18,7 +18,7 @@ import pprint
 import os
 import sys
 from nets.vgg16 import vgg16
-from nets.resnet_v1 import resnetv1
+from nets.imagenet import imagenet
 from nets.mobilenet_v1 import mobilenetv1
 from datasets.kitti_imdb import kitti_imdb
 from datasets.nuscenes_imdb import nuscenes_imdb
@@ -211,13 +211,13 @@ if __name__ == '__main__':
         if args.net == 'vgg16':
             net = vgg16()
         elif args.net == 'res34':
-            net = resnetv1(num_layers=34)
+            net = imagenet(num_layers=34)
         elif args.net == 'res50':
-            net = resnetv1(num_layers=50)
+            net = imagenet(num_layers=50)
         elif args.net == 'res101':
-            net = resnetv1(num_layers=101)
+            net = imagenet(num_layers=101)
         elif args.net == 'res152':
-            net = resnetv1(num_layers=152)
+            net = imagenet(num_layers=152)
         elif args.net == 'mobile':
             net = mobilenetv1()
         else:
