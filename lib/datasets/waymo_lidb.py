@@ -12,7 +12,7 @@ import os
 import json
 from datasets.db import db
 # import datasets.ds_utils as ds_utils
-import xml.etree.ElementTree as ET
+#import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.sparse
 # import scipy.io as sio

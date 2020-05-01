@@ -43,13 +43,13 @@ class lidarnet(Network):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
             self._resnet_drop_rate = 0.5
-            self._fc_drop_rate     = 0.2
+            self._cls_drop_rate     = 0.2
             self._bbox_drop_rate   = 0.5
         else:
             self._det_net_channels = self._fc7_channels
             self._dropout_en       = False
             self._resnet_drop_rate = 0.0
-            self._fc_drop_rate     = 0.0
+            self._cls_drop_rate     = 0.0
             self._bbox_drop_rate   = 0.0
         self._roi_pooling_channels = 1024
         self.num_lidar_channels = cfg.LIDAR.NUM_CHANNEL

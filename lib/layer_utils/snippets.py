@@ -22,7 +22,7 @@ def generate_anchors_pre(height,
     anchor_scales = np.array(anchor_scales)*frame_scale
     anchor_ratios = np.array(anchor_ratios)
     anchors = generate_anchors(
-        base_size=feat_stride,ratios=anchor_ratios, scales=anchor_scales)
+        ratios=anchor_ratios, scales=anchor_scales)
     A = anchors.shape[0]
     shift_x = np.arange(0, width) * feat_stride
     shift_y = np.arange(0, height) * feat_stride

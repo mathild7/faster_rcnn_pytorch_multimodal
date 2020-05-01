@@ -22,7 +22,6 @@ import numpy as np
 import sys
 import os
 import roi_data_layer.roidb as rdl_roidb
-from copy import deepcopy
 from nets.vgg16 import vgg16
 from nets.imagenet import imagenet
 from nets.lidarnet import lidarnet
@@ -227,9 +226,9 @@ if __name__ == '__main__':
         args.net_type = 'image'
         args.preload = 1
         args.iter    = 0
-        args.scale   = 0.5
+        args.scale   = 1.0
         args.en_full_net = True
-        #args.en_epistemic = 1
+        args.en_epistemic = 1
         args.en_aleatoric = 1
         args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
@@ -336,7 +335,7 @@ if __name__ == '__main__':
         pretrained_model=args.weights_file,
         max_iters=args.max_iters,
         sum_size=256,
-        val_sum_size=5000,
+        val_sum_size=1000,
         batch_size=16,
         val_batch_size=32,
         val_thresh=0.4,

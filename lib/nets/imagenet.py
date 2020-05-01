@@ -122,12 +122,6 @@ class imagenet(Network):
         if mode:
             # Set fixed blocks to be in eval mode (not really doing anything)
             self.resnet.eval()
-            #Disable as resnet has been pretrained
-            if(cfg.RESNET.FIXED_BLOCKS != -1):
-                self.resnet.apply(set_bn_eval)
-            else:
-                self.resnet.train()
-                self.resnet.apply(set_bn_train)
 
             if cfg.RESNET.FIXED_BLOCKS <= 3:
                 self.resnet.layer4.train()
@@ -138,6 +132,13 @@ class imagenet(Network):
             if cfg.RESNET.FIXED_BLOCKS <= 0:
                 self.resnet.layer1.train()
                 self.resnet.conv1.train()
+
+            #This goes after the case/switch above due to imagenet either having all batchnorm train(0-4) or all freeze (-1)
+            if(cfg.RESNET.FIXED_BLOCKS != -1):
+                self.resnet.apply(set_bn_eval)
+            else:
+                self.resnet.train()
+                self.resnet.apply(set_bn_train)
 
     def eval(self):
         nn.Module.eval(self)
