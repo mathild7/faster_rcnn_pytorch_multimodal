@@ -99,6 +99,12 @@ def parse_args(manual_mode=False):
         default=1,
         type=int)
     parser.add_argument(
+        '--en_fpn',
+        dest='en_fpn',
+        help='enable FPN',
+        default=0,
+        type=int)
+    parser.add_argument(
         '--en_epistemic',
         dest='en_epistemic',
         help='enable epistemic uncertainty estimation',
@@ -256,7 +262,8 @@ if __name__ == '__main__':
             cfg.PRELOAD     = True
         elif(args.preload == 2):
             cfg.PRELOAD_FULL = True
-
+    if(args.en_fpn == 1):
+        cfg.USE_FPN = True
     if(args.weights_file is None):
         if(cfg.NET_TYPE == 'lidar'):
             args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_100p_136k.pth')

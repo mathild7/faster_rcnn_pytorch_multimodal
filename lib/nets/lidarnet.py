@@ -28,7 +28,7 @@ import nets.resnet as custom_resnet
 class lidarnet(Network):
     def __init__(self, num_layers=50):
         Network.__init__(self)
-        if(cfg.LIDAR.USE_FPN):
+        if(cfg.USE_FPN):
             self._feat_stride = 4
             self._fpn_en      = True
         else:
@@ -56,8 +56,8 @@ class lidarnet(Network):
 
     def init_weights(self):
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self._fpn.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self._fpn.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.fpn_block.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.fpn_block.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -119,9 +119,9 @@ class lidarnet(Network):
             if(cfg.RESNET.FIXED_BLOCKS >= 1):
                 p.requires_grad = False
 
-        if(cfg.LIDAR.USE_FPN):
-            self._fpn = fpn()
-            self._layers['fpn'] = self._fpn
+        if(cfg.USE_FPN):
+            self.fpn_block = fpn()
+            self._layers['fpn'] = self.fpn_block
             # Build resnet.
             self._layers['head'] = nn.Sequential(
                 self.resnet.conv1, self.resnet.bn1, self.resnet.relu,self.resnet.maxpool)

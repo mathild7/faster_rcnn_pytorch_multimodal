@@ -1,1 +1,1 @@
-ffmpeg -framerate 5 -pattern_type glob -i '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_test_all_7/test_drawn/*.png' -c:v libx264 -pix_fmt yuv420p '/home/mat/thesis/lidar.mp4'
+ffmpeg -framerate 10 -pattern_type glob -i '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_test_all_0/test_drawn/*.png' -c:v libx264 -pix_fmt yuv420p '/home/mat/thesis/lidar2.mp4'

@@ -46,7 +46,7 @@ __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
 __C.PRELOAD_FULL             = False
-
+__C.USE_FPN = False
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
 __C.SCALE_LOC = 6
@@ -202,7 +202,7 @@ __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.5)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1.0)
 
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -374,7 +374,6 @@ __C.LIDAR.NUM_SLICES         = 12
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
-__C.LIDAR.USE_FPN            = True
 
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
@@ -388,7 +387,6 @@ __C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 __C.LIDAR.NUM_BBOX_ELEM = 7
 
 __C.IMAGE = edict()
-__C.IMAGE.USE_FPN = True
 __C.IMAGE.NUM_BBOX_ELEM = 4
 
 

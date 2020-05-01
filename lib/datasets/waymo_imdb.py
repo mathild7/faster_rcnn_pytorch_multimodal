@@ -270,6 +270,9 @@ class waymo_imdb(db):
         boxes      = np.zeros((num_objs, 4), dtype=np.uint16)
         boxes_dc   = np.zeros((num_objs, 4), dtype=np.uint16)
         cat        = []
+        track_ids  = []
+        difficulties = np.zeros((num_objs), dtype=np.int32)
+        pts        = np.zeros((num_objs), dtype=np.int32)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
@@ -293,6 +296,7 @@ class waymo_imdb(db):
         for i, bbox in enumerate(img_labels['box']):
             difficulty = img_labels['difficulty'][i]
             anno_cat   = img_labels['class'][i]
+            track_id   = img_labels['id'][i]
             if(class_enum(anno_cat) == class_enum.SIGN):
                 anno_cat = class_enum.UNKNOWN.value
             elif(class_enum(anno_cat) == class_enum.CYCLIST):
@@ -335,6 +339,8 @@ class waymo_imdb(db):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
                         continue
                 cat.append(anno_cat)
+                difficulties[ix] = difficulty
+                track_ids.append(track_id)
                 gt_classes[ix] = cls
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
@@ -360,6 +366,9 @@ class waymo_imdb(db):
             'det':         ignore[0:ix].copy(),
             'cat':         cat,
             'hit':         ignore[0:ix].copy(),
+            'ids':         track_ids[0:ix],
+            'pts':         pts[0:ix],
+            'difficulty':  difficulties[0:ix],
             'boxes':       boxes[0:ix],
             'boxes_dc':    boxes_dc[0:ix_dc],
             'gt_classes':  gt_classes[0:ix],

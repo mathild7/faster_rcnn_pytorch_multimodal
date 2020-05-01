@@ -682,7 +682,7 @@ class waymo_lidb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='3d',
+                eval_type='bev',
                 d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP

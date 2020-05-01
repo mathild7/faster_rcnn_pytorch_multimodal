@@ -29,7 +29,7 @@ import nets.resnet as custom_resnet
 class imagenet(Network):
     def __init__(self, num_layers=50):
         Network.__init__(self)
-        if(cfg.IMAGE.USE_FPN):
+        if(cfg.USE_FPN):
             self._feat_stride = 4
             self._fpn_en      = True
         else:
@@ -100,7 +100,7 @@ class imagenet(Network):
 
         # Build resnet.
 
-        if(cfg.IMAGE.USE_FPN):
+        if(cfg.USE_FPN):
             self._fpn = fpn()
             self._layers['fpn'] = self._fpn
             self._layers['head'] = nn.Sequential(
