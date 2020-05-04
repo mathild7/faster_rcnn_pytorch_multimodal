@@ -25,8 +25,12 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data2/waymo/val'
+    mypath = '/home/mat/thesis/data2/waymo/train'
     tfrecord_path = mypath + '/compressed_tfrecords'
+    savepath = os.path.join(mypath,'point_clouds_new')
+    if not os.path.isdir(savepath):
+        print('making path: {}'.format(savepath))
+        os.makedirs(savepath)
     num_proc = 16
     #top_crop = 550
     bbox_top_min = 30
@@ -38,8 +42,8 @@ def main():
     with open(os.path.join(mypath,'labels','lidar_labels_new.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
-            if(i > 25):
-                break
+            #if(i > 25):
+            #    break
             if('tfrecord' in filename):
                 print('opening {}'.format(filename))
                 dataset = tf.data.TFRecordDataset(filename,compression_type='')
@@ -48,14 +52,14 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    #if(j%6 == 0):
-                    frame = open_dataset.Frame()
-                    frame.ParseFromString(bytearray(dataset_list[j].numpy()))
-                    proc_data = (i,j,frame,mypath)
-                    #print('frame: {}'.format(i*1000+j))
-                    labels = frame_loop(proc_data)
-                    #print(len(labels['box']))
-                    json_struct.append(labels)
+                    if(j%10 == 0):
+                        frame = open_dataset.Frame()
+                        frame.ParseFromString(bytearray(dataset_list[j].numpy()))
+                        proc_data = (i,j,frame,mypath)
+                        #print('frame: {}'.format(i*1000+j))
+                        labels = frame_loop(proc_data)
+                        #print(len(labels['box']))
+                        json_struct.append(labels)
         json.dump(json_struct,json_file)
 
 

@@ -42,7 +42,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%2 == 0):
+                if(j%10 == 0):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))

@@ -325,12 +325,12 @@ class waymo_imdb(db):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
-                if(anno_cat == 'vehicle.car' and self._mode == 'train'):
+                if(anno_cat == 'vehicle.car'):
                     #TODO: Magic Numbers
 
                     if(float(x2 - x1) <= 0):
                         continue
-                    if(y2 - y1 < 20 or ((y2 - y1) / float(x2 - x1)) > 3.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
+                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 3.0):
                         continue
                 if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
                     if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):

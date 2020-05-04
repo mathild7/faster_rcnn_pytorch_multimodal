@@ -56,8 +56,8 @@ class lidarnet(Network):
 
     def init_weights(self):
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.fpn_block.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.fpn_block.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self._fpn.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self._fpn.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -120,8 +120,8 @@ class lidarnet(Network):
                 p.requires_grad = False
 
         if(cfg.USE_FPN):
-            self.fpn_block = fpn()
-            self._layers['fpn'] = self.fpn_block
+            self._fpn = fpn()
+            self._layers['fpn'] = self._fpn
             # Build resnet.
             self._layers['head'] = nn.Sequential(
                 self.resnet.conv1, self.resnet.bn1, self.resnet.relu,self.resnet.maxpool)

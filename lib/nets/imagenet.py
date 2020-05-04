@@ -134,11 +134,11 @@ class imagenet(Network):
                 self.resnet.conv1.train()
 
             #This goes after the case/switch above due to imagenet either having all batchnorm train(0-4) or all freeze (-1)
-            if(cfg.RESNET.FIXED_BLOCKS != -1):
-                self.resnet.apply(set_bn_eval)
-            else:
+            if(cfg.RESNET.FIXED_BLOCKS == -1):
                 self.resnet.train()
                 self.resnet.apply(set_bn_train)
+            else:
+                self.resnet.apply(set_bn_eval)
 
     def eval(self):
         nn.Module.eval(self)

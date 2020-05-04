@@ -146,15 +146,15 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net = 'res101'
         args.db_name = 'waymo'
-        args.net_type = 'lidar'
-        args.weights_file = '{}_{}_50p_a_220k.pth'.format(args.net,args.net_type)
+        args.net_type = 'image'
+        args.weights_file = '{}_{}_100p_212k.pth'.format(args.net,args.net_type)
         args.iter = 0
-        args.num_frames = 600
-        args.scale = 0.5
-        args.en_fpn = 1
+        args.num_frames = 0
+        args.scale = 1.0
+        args.en_fpn = 0
         #args.en_epistemic = 1
-        args.en_aleatoric = 1
-        args.uc_sort_type = 'a_cls_var'
+        #args.en_aleatoric = 1
+        #args.uc_sort_type = 'a_cls_var'
         #args.out_dir = 'output/'
         #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -207,7 +207,7 @@ if __name__ == '__main__':
         elif(args.db_name == 'waymo'):
             db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
-        db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=False)
+        db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):
@@ -253,4 +253,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)
