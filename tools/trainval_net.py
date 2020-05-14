@@ -222,6 +222,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
+    cfg.DEBUG.EN = False
     manual_mode = cfg.DEBUG.EN
     args = parse_args(manual_mode)
     #TODO: Config new image size
@@ -229,18 +230,20 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        args.net_type = 'image'
-        args.preload = 1
-        args.iter    = 0
-        args.scale   = 0.5
-        args.en_full_net = True
-        args.en_epistemic = 1
-        args.en_aleatoric = 1
-        args.uc_sort_type = 'a_bbox_var'
+        args.net_type     = 'image'
+        args.preload      = 1
+        args.iter         = 3
+        args.scale        = 1.0
+        args.en_full_net  = True
+        args.en_fpn       = True
+        args.en_epistemic = 0
+        args.en_aleatoric = 0
+        #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
         #args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
         #IMAGE
+        #args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_image_rpn_12k.pth')
         #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000

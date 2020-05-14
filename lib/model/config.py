@@ -49,7 +49,7 @@ __C.PRELOAD_FULL             = False
 __C.USE_FPN = False
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
-__C.SCALE_LOC = 6
+__C.SCALE_LOC                = 6
 #WAYMO input size
 __C.IM_SIZE = [1920,730]
 #
@@ -59,7 +59,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.001
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -74,7 +74,7 @@ __C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
+__C.TRAIN.STEPSIZE = [60000, 210000]
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
@@ -118,7 +118,7 @@ __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
 __C.TRAIN.BG_THRESH_HI = 0.5
-__C.TRAIN.BG_THRESH_LO = 0.0
+__C.TRAIN.BG_THRESH_LO = 0.1
 
 # Use horizontally-flipped images during training?
 __C.TRAIN.USE_FLIPPED = True
@@ -131,7 +131,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 4000
+__C.TRAIN.SNAPSHOT_ITERS = 5000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -216,7 +216,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS = 0.3
+__C.TEST.NMS = 0.4
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).

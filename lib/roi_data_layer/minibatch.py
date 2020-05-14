@@ -368,12 +368,12 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
             #))),
             seq = iaa.Sequential(
                 [
-                    iaa.Sometimes(0.6,(iaa.Affine(
-                        scale={"x": (1, 1.5), "y": (1, 1.5)},  # scale images to 80-120% of their size, individually per axis
-                        translate_percent={"x": (-0.05, 0.05), "y": (-0.05, 0.05)},  # translate by -20 to +20 percent (per axis)
+                    iaa.Sometimes(0.5,(iaa.Affine(
+                        scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, individually per axis
+                        translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},  # translate by -20 to +20 percent (per axis)
                         order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
                         cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
-                        shear=(-0.1, 0.1),
+                        shear=(-0.05, 0.05),
                         mode='constant'  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
                     ))),
                     #iaa.Sometimes(0.5,iaa.Dropout((0.01, 0.1), per_channel=0.5)),
@@ -385,17 +385,17 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
                     #iaa.Sometimes(0.5,iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)),
                     #    iaa.PiecewiseAffine(scale=(0.01, 0.05))
                     #]),
-                    iaa.SomeOf((0, 2),[
-                        iaa.SomeOf((0,3),([
-                            iaa.GaussianBlur((0.1, 2.0)),  # blur images with a sigma between 0 and 3.0
-                            iaa.AverageBlur(k=(1, 3)),  # blur image using local means with kernel sizes between 2 and 7
-                            iaa.MedianBlur(k=(1, 3)),  # blur image using local medians with kernel sizes between 2 and 7
-                            iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5))
-                        ])),
+                    iaa.SomeOf((0, 1),[
+                        #iaa.SomeOf((0,3),([
+                        #    iaa.GaussianBlur((0.1, 2.0)),  # blur images with a sigma between 0 and 3.0
+                        #    iaa.AverageBlur(k=(1, 3)),  # blur image using local means with kernel sizes between 2 and 7
+                        #    iaa.MedianBlur(k=(1, 3)),  # blur image using local medians with kernel sizes between 2 and 7
+                        #    iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5))
+                        #])),
                         iaa.AdditiveGaussianNoise(
                             loc=0,
-                            scale=(0.0, 0.08*255),
-                            per_channel=0.5),
+                            scale=(0.0, 0.1*255),
+                            per_channel=True),
                         iaa.AddToHueAndSaturation((-10, 10)),  # change hue and saturation
                     ], random_order=True)
                 ], random_order=False

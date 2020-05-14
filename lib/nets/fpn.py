@@ -21,7 +21,7 @@ import torchvision
 import nets.resnet as custom_resnet
 
 class fpn(nn.Module):
-  def __init__(self, c1_inplanes=1024, c2_inplanes=512, c3_inplanes=256, planes=1024):
+  def __init__(self, c2_inplanes=256, c3_inplanes=512, c4_inplanes=1024, planes=1024):
     super().__init__()
     # Top-down layers, use nn.ConvTranspose2d to replace nn.Conv2d+F.upsample?
     #self.toplayer1 = nn.Conv2d(2048, planes, kernel_size=1, stride=1, padding=0)  # Reduce channels
@@ -30,11 +30,11 @@ class fpn(nn.Module):
     #self.toplayer4 = nn.Conv2d(256, planes, kernel_size=3, stride=1, padding=1)
 
     # Lateral layers
-    #self.latlayer1 = nn.Conv2d(1024, planes, kernel_size=1, stride=1, padding=0)
+#    self.latlayer1 = nn.Conv2d(c1_inplanes, planes, kernel_size=1, stride=1, padding=0)
     self.latlayer2 = nn.Conv2d(c2_inplanes, planes, kernel_size=1, stride=1, padding=0)
     #self.latlayer2 = nn.Conv2d( 512, planes, kernel_size=1, stride=1, padding=0)
     self.latlayer3 = nn.Conv2d(c3_inplanes, planes, kernel_size=1, stride=1, padding=0)
-
+    self.latlayer4 = nn.Conv2d(c4_inplanes, planes, kernel_size=1, stride=1, padding=0)
     self.subsample = nn.AvgPool2d(2, stride=2)
 
   def _upsample_add(self, x, y):
@@ -48,9 +48,9 @@ class fpn(nn.Module):
     #p6 = self.subsample(p5)
     #p4 = self._upsample_add(p5, self.latlayer1(c4))
     #p4 = self.toplayer2(c4)
-    p3 = self._upsample_add(c4, self.latlayer2(c3))
+    p3 = self._upsample_add(self.latlayer4(c4), self.latlayer3(c3))
     #p3 = self.toplayer3(p3)
-    p2 = self._upsample_add(p3, self.latlayer3(c2))
+    p2 = self._upsample_add(p3, self.latlayer2(c2))
     #p2 = self.toplayer4(p2)
 
     return p2
