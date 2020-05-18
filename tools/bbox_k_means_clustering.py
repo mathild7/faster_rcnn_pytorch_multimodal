@@ -3,6 +3,7 @@ import json
 import os
 import numpy as np
 from enum import Enum
+from lib.model.config import cfg
 class class_enum(Enum):
     UNKNOWN = 0
     VEHICLE = 1
@@ -54,8 +55,8 @@ if __name__ == '__main__':
     mode = 'train'
     labels_filename = os.path.join(path, mode,'labels/labels.json')
     ix = 0
-    w = 1920.0
-    h = 730.0
+    w = cfg.IM_SIZE[0]
+    h = cfg.IM_SIZE[1]
     with open(labels_filename,'r') as labels_file:
         data = labels_file.read()
         #print(data)

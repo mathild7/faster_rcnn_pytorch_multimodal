@@ -312,32 +312,33 @@ class waymo_imdb(db):
             y1 = int(float(bbox['y1']))
             x2 = int(float(bbox['x2']))
             y2 = int(float(bbox['y2']))
-            if(y1 < 0):
-                print('y1: {}'.format(y1))
-            if(x1 < 0):
-                print('x1: {}'.format(x1))
-            if(x2 >= self._draw_width):
-                x2 = self._draw_width - 1
-            if(y2 >= self._draw_height):
-                y2 = self._draw_height - 1
+            #if(y1 < 0):
+            #    print('y1: {}'.format(y1))
+            #if(x1 < 0):
+            #    print('x1: {}'.format(x1))
+            #Do bbox shifting in augmentation
+            #if(x2 >= self._draw_width):
+            #    x2 = self._draw_width - 1
+            #if(y2 >= self._draw_height):
+            #    y2 = self._draw_height - 1
             if(anno_cat != 'dontcare'):
                 #print(label_arr)
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
-                if(anno_cat == 'vehicle.car'):
-                    #TODO: Magic Numbers
+                #if(anno_cat == 'vehicle.car'):
+                #    #TODO: Magic Numbers
 
-                    if(float(x2 - x1) <= 0):
-                        continue
-                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 3.0):
-                        continue
-                if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
-                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
-                        continue
-                if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
-                    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
-                        continue
+                #    if(float(x2 - x1) <= 0):
+                #        continue
+                #    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 3.0):
+                #        continue
+                #if(anno_cat == 'vehicle.bicycle' and self._mode == 'train'):
+                #    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 6.0 or ((y2 - y1) / float(x2 - x1)) < 0.3):
+                #        continue
+                #if(anno_cat == 'human.pedestrian' and self._mode == 'train'):
+                #    if(y2 - y1 < 5 or ((y2 - y1) / float(x2 - x1)) > 7.0 or ((y2 - y1) / float(x2 - x1)) < 1):
+                #        continue
                 cat.append(anno_cat)
                 difficulties[ix] = difficulty
                 track_ids.append(track_id)

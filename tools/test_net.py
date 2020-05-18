@@ -147,7 +147,7 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'image'
-        args.weights_file = '{}_{}_fpn_100p_80k.pth'.format(args.net,args.net_type)
+        args.weights_file = '{}_{}_faster_rcnn_iter_105000.pth'.format(args.net_type,args.net)
         args.iter = 0
         args.num_frames = 600
         args.scale = 1.0

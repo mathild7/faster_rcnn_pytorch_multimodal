@@ -222,8 +222,9 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = False
-    manual_mode = cfg.DEBUG.EN
+    cfg.DEBUG.EN = True
+    #manual_mode = cfg.DEBUG.EN
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -232,7 +233,7 @@ if __name__ == '__main__':
         #args.out_dir = 'output/'
         args.net_type     = 'image'
         args.preload      = 1
-        args.iter         = 3
+        args.iter         = 0
         args.scale        = 1.0
         args.en_full_net  = True
         args.en_fpn       = True
@@ -346,7 +347,7 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=5000,
-        batch_size=16,
+        batch_size=64,
         val_batch_size=32,
         val_thresh=0.4,
         augment_en=True,

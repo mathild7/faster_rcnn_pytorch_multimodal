@@ -22,14 +22,15 @@ class cam_enum(Enum):
     SIDE_RIGHT  = 5
 
 save_imgs = True
-mypath = '/home/mat/thesis/data2/waymo/val'
+mypath = '/home/mat/thesis/data2/waymo/train'
 savepath = os.path.join(mypath,'images_new')
 if not os.path.isdir(savepath):
     print('making path: {}'.format(savepath))
     os.makedirs(savepath)
 tfrec_path = os.path.join(mypath,'compressed_tfrecords')
-top_crop = 550
-bbox_top_min = 30
+top_crop = 300
+bot_crop = 50
+bbox_edge_thresh = 10
 file_list = [os.path.join(tfrec_path,f) for f in os.listdir(tfrec_path) if os.path.isfile(os.path.join(tfrec_path,f))]
 file_list = sorted(file_list)
 #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
@@ -42,7 +43,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%10 == 0):
+                if(j%6 == 0):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))
@@ -63,11 +64,12 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                         frame_idx = i*1000+j
                         if(cam_enum(img.name)  == cam_enum.FRONT and save_imgs):
                         #print(img.DESCRIPTOR.fields)
-                            im_data = tf.image.decode_jpeg(img.image, channels=3).numpy()
-                            im_data = im_data[:][top_crop:][:]
-                            im_data = Image.fromarray(im_data)
+                            im_arr = tf.image.decode_jpeg(img.image, channels=3).numpy()
+                            im_arr = im_arr[:][top_crop:][:]
+                            im_arr = im_arr[:][:-bot_crop][:]
+                            im_data = Image.fromarray(im_arr)
                             img_filename = '{0:07d}.png'.format(frame_idx)
-                            out_file = os.path.join(savepath ,img_filename)
+                            out_file = os.path.join(savepath, img_filename)
                             draw = ImageDraw.Draw(im_data)
                             im_data.save(out_file,'PNG')
 
@@ -90,13 +92,19 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                                 y1 = float(label.box.center_y) - float(label.box.width)/2
                                 x2 = float(label.box.center_x) + float(label.box.length)/2
                                 y2 = float(label.box.center_y) + float(label.box.width)/2
-                                y1 = np.maximum(y1-top_crop,0)
-                                y2 = np.maximum(y2-top_crop,0)
+                                y1 = np.minimum(np.maximum(y1-top_crop,0),im_arr.shape[0]-1)
+                                y2 = np.minimum(np.maximum(y2-top_crop,0),im_arr.shape[0]-1)
                                 if(y1 < 0):
                                     print('y1: '.format(y1))
                                 if(y2 < 0):
                                     print('y2: '.format(y2))
-                                if(y2-y1 <= bbox_top_min and y1 == 0):
+                                if(y2-y1 <= bbox_edge_thresh and y1 <= 0):
+                                    continue
+                                if(y2-y1 <= 0):
+                                    continue
+                                if(x2-x1 <= 0):
+                                    continue
+                                if(y2 >= im_arr.shape[0]-1 and y2-y1 <= bbox_edge_thresh):
                                     continue
                                 json_labels['box'].append({
                                     'x1': '{:.2f}'.format(x1),

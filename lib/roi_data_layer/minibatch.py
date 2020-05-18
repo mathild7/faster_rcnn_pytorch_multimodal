@@ -370,7 +370,7 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
                 [
                     iaa.Sometimes(0.5,(iaa.Affine(
                         scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, individually per axis
-                        translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},  # translate by -20 to +20 percent (per axis)
+                        translate_percent={"x": (-0.1, 0.1), "y": (0.0, 0.2)},  # translate by -20 to +20 percent (per axis)
                         order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
                         cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
                         shear=(-0.05, 0.05),
@@ -419,35 +419,35 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
             for j, roi in enumerate(local_roidb[i]['boxes']):
                 #boxes[ix, :] = [x1, y1, x2, y2]
                 orig = roi
+                h = roi[3] - roi[1]
+                w = roi[2] - roi[0]
                 roi[0] = np.minimum(np.maximum(roi[0],0),orig_width-1)
                 roi[2] = np.minimum(np.maximum(roi[2],0),orig_width-1)
                 roi[1] = np.minimum(np.maximum(roi[1],0),orig_height-1)
                 roi[3] = np.minimum(np.maximum(roi[3],0),orig_height-1)
                 #TODO: magic number
-                if(roi[3] - roi[1] < 12 and (roi[3] >= img_arr.shape[0]-1 or roi[1] <= 0)):
+                if(roi[3] - roi[1] < 2):
                     #print('removing box y0 {} y1 {}'.format(roi[1],roi[3]))
                     local_roidb[i]['ignore'][j] = True
                 #TODO: magic number
-                if(roi[2] - roi[0] < 12 and (roi[2] >= img_arr.shape[1]-1 or roi[0] <= 0)):
+                if(roi[2] - roi[0] < 2):
                     #print('removing box  x0 {} x1 {}'.format(roi[0],roi[2]))
                     local_roidb[i]['ignore'][j] = True
 
-                w = roi[2] - roi[0]
-                h = roi[3] - roi[1]
-                if(h < 0.1):
+                wc = roi[2] - roi[0]
+                hc = roi[3] - roi[1]
+                if(h != 0 and hc/h < 0.1):
                     local_roidb[i]['ignore'][j] = True
-                elif(w < 0.1):
-                    local_roidb[i]['ignore'][j] = True
-                elif(h/w > 3.5 or w/h > 5.0):
+                elif(w != 0 and wc/w < 0.1):
                     local_roidb[i]['ignore'][j] = True
 
                 if(local_roidb[i]['ignore'][j] is False and roi[2] < roi[0]):
                     print('x2 is smaller than x1')
                 if(local_roidb[i]['ignore'][j] is False and roi[3] < roi[1]):
                     print('y2 is smaller than y1')
-                if(local_roidb[i]['ignore'][j] is False and roi[2] - roi[0] > orig[2] - orig[0]):
+                if(local_roidb[i]['ignore'][j] is False and wc > w):
                     print('new x is larger than old x diff')
-                if(local_roidb[i]['ignore'][j] is False and roi[3] - roi[1] > orig[3] - orig[1]):
+                if(local_roidb[i]['ignore'][j] is False and hc > h):
                     print('new y diff is larger than old y diff')
             im = img_arr
         #draw_and_save_minibatch(im,local_roidb[0])
