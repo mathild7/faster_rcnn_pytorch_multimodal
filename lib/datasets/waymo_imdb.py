@@ -230,7 +230,7 @@ class waymo_imdb(db):
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
-                else:
+                elif(cfg.DEBUG.EN_TEST_MSG):
                     print('draw and save: No detections for image {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):

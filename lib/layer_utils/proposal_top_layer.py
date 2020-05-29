@@ -15,7 +15,7 @@ import numpy.random as npr
 import torch
 
 
-def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, info, _feat_stride,
+def proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, info,
                        anchors, num_anchors):
     """A layer that just selects the top region proposals
      without using non-maximal suppression,

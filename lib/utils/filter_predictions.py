@@ -47,7 +47,8 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem,db_type):
     #inds         = np.where(scores[:, c] > thresh)[0]
     #No detections over threshold
     if(inds.shape[0] == 0):
-        print('no detections for image over threshold {}'.format(thresh))
+        if(cfg.DEBUG.EN_TEST_MSG):
+            print('no detections for image over threshold {}'.format(thresh))
         return np.empty(0),[],[]
     cls_scores   = scores[inds, c]
     cls_boxes    = mean_boxes[inds, c * bbox_elem:(c + 1) * bbox_elem]

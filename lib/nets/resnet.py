@@ -233,8 +233,9 @@ class ResNetWrapper(ResNet):
             getattr(self, 'layer%d' % i)[0].conv1.stride = (2, 2)
             getattr(self, 'layer%d' % i)[0].conv2.stride = (1, 1)
         # use stride 1 for the last conv4 layer (same as tf-faster-rcnn)
-        self.layer4[0].conv2.stride = (1, 1)
-        self.layer4[0].downsample[0].stride = (1, 1)
+        if(not cfg.USE_FPN):
+            self.layer4[0].conv2.stride = (1, 1)
+            self.layer4[0].downsample[0].stride = (1, 1)
 
         del self.avgpool, self.fc
 

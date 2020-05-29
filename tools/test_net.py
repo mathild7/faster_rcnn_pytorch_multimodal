@@ -147,9 +147,9 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         args.net_type = 'image'
-        args.weights_file = '{}_{}_faster_rcnn_iter_105000.pth'.format(args.net_type,args.net)
+        args.weights_file = '{}_{}_faster_rcnn_iter_165000.pth'.format(args.net_type,args.net)
         args.iter = 0
-        args.num_frames = 600
+        args.num_frames = 1500
         args.scale = 1.0
         args.en_fpn = 1
         #args.en_epistemic = 1
@@ -178,6 +178,10 @@ if __name__ == '__main__':
         cfg.TEST.SCALES = (args.scale,)
     if(args.en_fpn == 1):
         cfg.USE_FPN = True
+        cfg.POOLING_MODE = 'multiscale'
+        cfg.ENABLE_CUSTOM_TAIL = True
+    else:
+        cfg.POOLING_MODE = 'align'
     if(args.en_epistemic == 1):
         cfg.UC.EN_BBOX_EPISTEMIC = True
         cfg.UC.EN_CLS_EPISTEMIC  = True
@@ -253,4 +257,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.75,draw_det=False,eval_det=True)

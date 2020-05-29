@@ -222,7 +222,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = True
+    cfg.DEBUG.EN = False
     #manual_mode = cfg.DEBUG.EN
     manual_mode = False
     args = parse_args(manual_mode)
@@ -233,7 +233,7 @@ if __name__ == '__main__':
         #args.out_dir = 'output/'
         args.net_type     = 'image'
         args.preload      = 1
-        args.iter         = 0
+        args.iter         = 4
         args.scale        = 1.0
         args.en_full_net  = True
         args.en_fpn       = True
@@ -268,11 +268,18 @@ if __name__ == '__main__':
             cfg.PRELOAD_FULL = True
     if(args.en_fpn == 1):
         cfg.USE_FPN = True
+        cfg.TRAIN.BATCH_SIZE = 256
+        cfg.POOLING_MODE = 'multiscale'
+        cfg.ENABLE_CUSTOM_TAIL = True
+    else:
+        cfg.TRAIN.BATCH_SIZE = 256
+        cfg.POOLING_MODE = 'align'
     if(args.weights_file is None):
         if(cfg.NET_TYPE == 'lidar'):
             args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_100p_136k.pth')
         elif(cfg.NET_TYPE == 'image'):
-            args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
+            args.weights_file = os.path.join('/home/mat/thesis/data2/', 'stock_weights', '{}_coco_tf_fpn_1190k.pth'.format(args.net))
+            #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
     if(args.scale is not None):
         cfg.TRAIN.SCALES = (args.scale,)
 
@@ -347,7 +354,7 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=5000,
-        batch_size=64,
+        batch_size=16,
         val_batch_size=32,
         val_thresh=0.4,
         augment_en=True,

@@ -19,7 +19,7 @@ import torch
 
 #From generated anchor boxes, select subset that have a large overlap with GT_Boxes
 
-def anchor_target_layer_torch(gt_boxes, gt_boxes_dc, info, _feat_stride,
+def anchor_target_layer_torch(gt_boxes, gt_boxes_dc, info,
                               all_anchors, num_anchors, height, width, dev):
     """Same as the anchor target layer in original Fast/er RCNN """
     A = num_anchors

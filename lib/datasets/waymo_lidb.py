@@ -374,7 +374,7 @@ class waymo_lidb(db):
                         if(i < limiter):
                             draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
                     draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
-                else:
+                elif(cfg.DEBUG.EN_TEST_MSG):
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
         print('Saving BEV map file at location {}'.format(out_file))
         draw_file.save(out_file,self._imtype)

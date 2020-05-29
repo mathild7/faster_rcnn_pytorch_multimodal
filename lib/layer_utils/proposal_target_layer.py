@@ -19,7 +19,7 @@ import math
 import torch
 
 
-def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, _num_classes):
+def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_boxes, gt_boxes_dc, _num_classes, num_bbox_elem):
     """
   Assign object detection proposals to ground-truth targets. Produces proposal
   classification labels and bounding-box regression targets.
@@ -42,7 +42,7 @@ def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_bo
     num_images = 1
     rois_per_frame = cfg.TRAIN.BATCH_SIZE / num_images
     fg_rois_per_frame = int(round(cfg.TRAIN.FG_FRACTION * rois_per_frame))
-    num_bbox_target_elem = true_gt_boxes.shape[1] - 1
+    num_bbox_target_elem = num_bbox_elem
     # Sample rois with classification labels and bounding box regression
     # targets
     labels, rois, anchors_3d, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(

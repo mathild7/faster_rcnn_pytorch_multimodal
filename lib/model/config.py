@@ -28,6 +28,7 @@ __C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.FREEZE_DB          = False
 __C.DEBUG.FREEZE_DB_INDS     = 1
 __C.DEBUG.PRINT_SCENE_RESULT = False
+__C.DEBUG.EN_TEST_MSG        = False
 
 #Bayesian Config
 __C.UC = edict()
@@ -107,7 +108,7 @@ __C.TRAIN.SCALES = (1.0,)
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
-__C.TRAIN.BATCH_SIZE = 128
+__C.TRAIN.BATCH_SIZE = 256
 
 # Fraction of minibatch that is labeled foreground (i.e. class > 0)
 __C.TRAIN.FG_FRACTION = 0.25
@@ -343,13 +344,13 @@ __C.USE_GPU_NMS = True
 
 # Default pooling mode
 __C.POOLING_MODE = 'align'
-
+#__C.POOLING_MODE = 'multiscale'
 # Size of the pooled region after RoI pooling
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
-
+#__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
+__C.ANCHOR_SCALES  = [2,4,16]
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]
 

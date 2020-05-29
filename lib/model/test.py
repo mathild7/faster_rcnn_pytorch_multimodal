@@ -167,7 +167,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     os.makedirs(output_dir)
     # timers
     _t = {'preload': Timer(), 'frame_detect': Timer(), 'misc': Timer()}
-
+    print('testing on {} frames'.format(len(db._val_index)))
 
     #TODO: Move to the db
     test_mode = 'test'
@@ -233,11 +233,12 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode)
 
         _t['misc'].toc()
-        print('frame_detect: {:d}/{:d} preproc: {:4.3f}s | frame_det: {:4.3f}s | Misc&Draw: {:4.3f}s'.format(i + 1,
-                                                                                                             num_images,
-                                                                                                             _t['preload'].average_time(),
-                                                                                                             _t['frame_detect'].average_time(),
-                                                                                                             _t['misc'].average_time()))
+        if(cfg.DEBUG.EN_TEST_MSG):
+            print('frame_detect: {:d}/{:d} preproc: {:4.3f}s | frame_det: {:4.3f}s | Misc&Draw: {:4.3f}s'.format(i + 1,
+                                                                                                                num_images,
+                                                                                                                _t['preload'].average_time(),
+                                                                                                                _t['frame_detect'].average_time(),
+                                                                                                                _t['misc'].average_time()))
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

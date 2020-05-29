@@ -31,16 +31,21 @@ class imagenet(Network):
         Network.__init__(self)
         if(cfg.USE_FPN):
             #WAS 4 now is 8 due to downsample layer after FPN
-            self._feat_stride = 8
+            if(cfg.POOLING_MODE == 'multiscale'):
+                self._feat_stride = 4
+            else:
+                self._feat_stride = 8
             self._fpn_en      = True
-            self._batchnorm_en = False
+            self._batchnorm_en = True
+            self._net_conv_channels    = 256
+            self._roi_pooling_channels = cfg.POOLING_SIZE*cfg.POOLING_SIZE*self._net_conv_channels
         else:
             self._feat_stride = 16
             self._fpn_en      = False
             self._batchnorm_en = True
-        self._net_conv_channels    = 1024
+            self._net_conv_channels    = 1024
+            self._roi_pooling_channels = 1024
         self._fc7_channels         = 2048
-        self._roi_pooling_channels = 1024
         self.inplanes              = 64
         self._num_resnet_layers = num_layers
         if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
@@ -58,6 +63,14 @@ class imagenet(Network):
 
     def init_weights(self):
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if(cfg.USE_FPN):
+            normal_init(self._fpn.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.latlayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.latlayer5, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.aalayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.aalayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self._fpn.aalayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
@@ -97,16 +110,16 @@ class imagenet(Network):
                 p.requires_grad = False
         if(cfg.RESNET.FIXED_BLOCKS == -1):
             self.resnet.apply(set_bn_var)
-        elif(cfg.RESNET.FIXED_BLOCKS == 1 and cfg.USE_FPN):
-            self.resnet.apply(set_bn_fix)
-            self.resnet.layer4.apply(set_bn_var)
+        #elif(cfg.RESNET.FIXED_BLOCKS == 1 and cfg.USE_FPN):
+        #    self.resnet.apply(set_bn_fix)
+        #    self.resnet.layer4.apply(set_bn_var)
         else:
             self.resnet.apply(set_bn_fix)
 
         # Build resnet.
 
         if(cfg.USE_FPN):
-            self._fpn = fpn()
+            self._fpn = fpn(planes=self._net_conv_channels)
             self._layers['fpn'] = self._fpn
             self._layers['fpn_downsample'] = nn.MaxPool2d(2)
             self._layers['head'] = nn.Sequential(
@@ -114,6 +127,7 @@ class imagenet(Network):
             self._layers['layer1'] = self.resnet.layer1
             self._layers['layer2'] = self.resnet.layer2
             self._layers['layer3'] = self.resnet.layer3
+            self._layers['layer4'] = self.resnet.layer4
         else:
             self._layers['head'] = nn.Sequential(
                 self.resnet.conv1, self.resnet.bn1, self.resnet.relu,
@@ -143,9 +157,9 @@ class imagenet(Network):
             if(cfg.RESNET.FIXED_BLOCKS == -1):
                 self.resnet.train()
                 self.resnet.apply(set_bn_train)
-            elif(cfg.RESNET.FIXED_BLOCKS == 1 and cfg.USE_FPN):
-                self.resnet.apply(set_bn_eval)
-                self.resnet.layer4.apply(set_bn_train)
+            #elif(cfg.RESNET.FIXED_BLOCKS == 1 and cfg.USE_FPN):
+            #    self.resnet.apply(set_bn_eval)
+            #    self.resnet.layer4.apply(set_bn_train)
             else:
                 self.resnet.apply(set_bn_eval)
 
@@ -196,6 +210,7 @@ class imagenet(Network):
     def load_pretrained_full(self, state_dict):
         own_state = self.state_dict()
         for name, param in state_dict.items():
+            print(name)
             if name not in own_state:
                 continue
             if 'bbox' in name and 'rpn' not in name:
@@ -210,12 +225,13 @@ class imagenet(Network):
     def load_pretrained_cnn(self, state_dict):
         own_state = self.state_dict()
         for name, param in state_dict.items():
-            name = 'resnet.'+name
+            if('resnet' not in name):
+                name = 'resnet.'+name
             if name not in own_state:
                 continue
-            if(cfg.USE_FPN):
-                if 'layer4' in name and 'bn' not in name:
-                    continue
+            #if(cfg.USE_FPN):
+            #    if 'layer4' in name and 'bn' not in name:
+            #        continue
             if isinstance(param, torch.nn.Parameter):
                 # backwards compatibility for serialized parameters
                 param = param.data

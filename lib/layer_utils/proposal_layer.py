@@ -15,7 +15,7 @@ from torchvision.ops import nms
 import torch
 
 
-def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key, feat_stride,
+def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key,
                    anchors, anchors_3d, num_anchors):
     """A simplified version compared to fast/er RCNN
      For details please see the technical report

@@ -4,10 +4,12 @@ import math
 import numpy as np
 import itertools
 import json
+import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from enum import Enum
 tf.enable_eager_execution()
 
+import cv2
 from waymo_open_dataset.utils import range_image_utils
 from waymo_open_dataset.utils import transform_utils
 from waymo_open_dataset.utils import  frame_utils
@@ -64,14 +66,18 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
                         frame_idx = i*1000+j
                         if(cam_enum(img.name)  == cam_enum.FRONT and save_imgs):
                         #print(img.DESCRIPTOR.fields)
-                            im_arr = tf.image.decode_jpeg(img.image, channels=3).numpy()
+                            im_arr = cv2.imdecode(np.frombuffer(img.image, np.uint8), cv2.IMREAD_COLOR)
+                            im_arr = cv2.cvtColor(im_arr, cv2.COLOR_RGB2BGR)
+                            #im_arr = tf.image.decode_jpeg(img.image, channels=3)
+                            #im_arr = im_arr.numpy()
                             im_arr = im_arr[:][top_crop:][:]
                             im_arr = im_arr[:][:-bot_crop][:]
-                            im_data = Image.fromarray(im_arr)
+                            #im_data = Image.fromarray(im_arr)
                             img_filename = '{0:07d}.png'.format(frame_idx)
                             out_file = os.path.join(savepath, img_filename)
-                            draw = ImageDraw.Draw(im_data)
-                            im_data.save(out_file,'PNG')
+                            plt.imsave(out_file, im_arr, format='png')
+                            #draw = ImageDraw.Draw(im_data)
+                            #im_data.save(out_file,'PNG')
 
                         if(cam_enum(labels.name) == cam_enum.FRONT):
                             json_labels = {}
