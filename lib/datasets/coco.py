@@ -7,7 +7,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from datasets.imdb import imdb
+from datasets.db import db
 import datasets.ds_utils as ds_utils
 from model.config import cfg
 import os.path as osp
@@ -25,9 +25,9 @@ from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as COCOmask
 
 
-class coco(imdb):
+class coco(db):
     def __init__(self, image_set, year):
-        imdb.__init__(self, 'coco_' + year + '_' + image_set)
+        db.__init__(self, 'coco_' + year + '_' + image_set)
         # COCO specific config options
         self.config = {'use_salt': True, 'cleanup': True}
         # name, paths

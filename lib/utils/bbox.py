@@ -334,3 +334,46 @@ def bbaa_graphics_gems_torch(bboxes,width,height,clip=True):
     else:
         B = bev_bboxes
     return B
+
+
+def draw_bev_bbox(draw,bbox,bev_shape,transform=True,colors=None):
+    bboxes = bbox[np.newaxis,:]
+    if(colors is None):
+        colors = [255,255,255]
+    colors  = np.asarray(colors)[np.newaxis,:]
+    draw_bev_bboxes(draw,bboxes,bev_shape,transform,colors)
+
+def draw_bev_bboxes(draw,bboxes,bev_shape,transform=True,colors=None):
+    bboxes_4pt = bbox_3d_to_bev_4pt(bboxes)
+    #TODO: if clip, keep same angle
+    bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,bev_shape[0]-1)
+    bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,bev_shape[1]-1)
+    bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
+    z1 = bboxes[:,2]-bboxes[:,5]
+    z2 = bboxes[:,2]+bboxes[:,5]
+    z_max = bev_shape[2]
+    if(colors is None):
+        c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+        c = [c,c,c]
+    else:
+        c = colors
+
+    for i, bbox in enumerate(bboxes_4pt):
+        draw_polygon(draw,bbox,c[i])
+
+def draw_polygon(draw,pixel_coords,c):
+    for i in range(len(pixel_coords)):
+        if(i == 0):
+            xy1 = pixel_coords[i]
+            xy2 = pixel_coords[len(pixel_coords)-1]
+        else:
+            xy1 = pixel_coords[i]
+            xy2 = pixel_coords[i-1]
+        #if(xy1[0] >= self._draw_width or xy1[0] < 0):
+        #    print(xy1)
+        #if(xy2[0] >= self._draw_width or xy2[0] < 0):
+        #    print(xy2)
+        #print('drawing: {}-{}'.format(xy1,xy2))
+        #line = np.concatenate((xy1,xy2))
+        draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(c[0],c[1],c[2]),width=2)
+        draw.point(xy1,fill=(c[0],c[1],c[2]))

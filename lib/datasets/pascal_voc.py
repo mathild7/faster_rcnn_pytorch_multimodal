@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from datasets.imdb import imdb
+from datasets.db import db
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -22,12 +22,12 @@ from .voc_eval import voc_eval
 from model.config import cfg
 
 
-class pascal_voc(imdb):
+class pascal_voc(db):
     def __init__(self, image_set, year, use_diff=False):
         name = 'voc_' + year + '_' + image_set
         if use_diff:
             name += '_diff'
-        imdb.__init__(self, name)
+        db.__init__(self, name)
         self._year = year
         self._image_set = image_set
         self._devkit_path = self._get_default_path()

@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from datasets.imdb import imdb
+from datasets.db import db
 # import datasets.ds_utils as ds_utils
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -36,10 +36,10 @@ from nuscenes.eval.detection.utils import category_to_detection_name, quaternion
 import shutil
 
 
-class nuscenes_imdb(imdb):
+class nuscenes_imdb(db):
     def __init__(self, mode='test',limiter=0):
         name = 'nuscenes'
-        imdb.__init__(self, name)
+        db.__init__(self, name)
         self._train_scenes = []
         self._val_scenes = []
         self._test_scenes = []

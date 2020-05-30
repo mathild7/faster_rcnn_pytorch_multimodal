@@ -44,6 +44,15 @@ class fpn(nn.Module):
     #print('fpn upsample dims H: {} W: {}'.format(H,W))
     return F.interpolate(x, size=(H,W), mode='bilinear',align_corners=False) + y
 
+  def init(self):
+    normal_init(self.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.latlayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.latlayer5, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.aalayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.aalayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+    normal_init(self.aalayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
+
   def forward(self, c2, c3, c4, c5):
     # Top-down
     p5 = self.latlayer5(c5)

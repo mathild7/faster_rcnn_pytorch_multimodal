@@ -31,17 +31,19 @@ class lidarnet(Network):
         if(cfg.USE_FPN):
             if(cfg.POOLING_MODE == 'multiscale'):
                 self._feat_stride     = 4
-            else:
-                self._feat_stride     = 8
-            self._fpn_en      = True
-            self._net_conv_channels = 256
+            #DEPRECATED, only do multiscale pooling now
+            #else:
+            #    self._feat_stride     = 8
+            self._fpn_en               = True
+            self._batchnorm_en         = True
+            self._net_conv_channels    = 256
             self._roi_pooling_channels = cfg.POOLING_SIZE*cfg.POOLING_SIZE*self._net_conv_channels
         else:
-            self._feat_stride = 16
-            self._fpn_en      = False
-            self._net_conv_channels = 1024
+            self._feat_stride          = 16
+            self._fpn_en               = False
+            self._net_conv_channels    = 1024
             self._roi_pooling_channels = 1024
-        self._batchnorm_en      = False
+            self._batchnorm_en         = False
         self._fc7_channels      = 2048
         self.inplanes           = 64
         self._num_resnet_layers = num_layers
@@ -49,49 +51,45 @@ class lidarnet(Network):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
             self._resnet_drop_rate = 0.5
-            self._cls_drop_rate     = 0.2
+            self._cls_drop_rate    = 0.2
             self._bbox_drop_rate   = 0.5
         else:
             self._det_net_channels = self._fc7_channels
             self._dropout_en       = False
             self._resnet_drop_rate = 0.0
-            self._cls_drop_rate     = 0.0
+            self._cls_drop_rate    = 0.0
             self._bbox_drop_rate   = 0.0
         self.num_lidar_channels = cfg.LIDAR.NUM_CHANNEL
 
     def init_weights(self):
+        #RPN
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #FPN
         if(cfg.USE_FPN):
-            normal_init(self._fpn.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer5, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            self._fpn.init()
+        #For FPN implementation
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-
-        normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        #normal_init(self.bbox_z_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        #normal_init(self.heading_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        #Bbox Epistemic uncertainty FC layers for dropout
         if(cfg.UC.EN_BBOX_EPISTEMIC):
             normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
             const_init(self.bbox_bn1, 1.0, 0.0)
             const_init(self.bbox_bn2, 1.0, 0.0)
-        #    normal_init(self.bbox_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #Class Epistemic uncertainty FC layers for dropout
         if(cfg.UC.EN_CLS_EPISTEMIC):
             normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.cls_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
             const_init(self.cls_bn1, 1.0, 0.0)
             const_init(self.cls_bn2, 1.0, 0.0)
-        #    normal_init(self.cls_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #Detection heads
+        normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
+        #Aleatoric variance heads
         if(cfg.UC.EN_BBOX_ALEATORIC):
             normal_init(self.bbox_al_var_net, 0, 0.001, True)
         if(cfg.UC.EN_CLS_ALEATORIC):
@@ -124,10 +122,10 @@ class lidarnet(Network):
             for p in self.resnet.layer1.parameters():
                 p.requires_grad = False
         for p in self.resnet.bn1.parameters():
-            if(cfg.RESNET.FIXED_BLOCKS >= 1):
+            if(cfg.RESNET.FIXED_BLOCKS >= 0):
                 p.requires_grad = False
         for p in self.resnet.conv1.parameters():
-            if(cfg.RESNET.FIXED_BLOCKS >= 1):
+            if(cfg.RESNET.FIXED_BLOCKS >= 0):
                 p.requires_grad = False
 
         if(cfg.USE_FPN):
@@ -218,7 +216,7 @@ class lidarnet(Network):
         for name, param in state_dict.items():
             if name not in own_state:
                 continue
-            if 'resnet' not in name and 'fpn' not in name and 'rpn' not in name:
+            if 'resnet' not in name:
                 continue
             if 'layer4' in name:
                 continue
@@ -241,6 +239,7 @@ class lidarnet(Network):
                 param = param.data
             own_state[name].copy_(param)
 
+    #Thinking about making deprecated
     def load_imagenet_pretrained_cnn(self, state_dict):
         new_state_dict = OrderedDict()
         own_state = self.state_dict()

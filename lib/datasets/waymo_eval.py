@@ -82,7 +82,7 @@ def waymo_eval(detpath,
     frame_path = eval_utils.get_frame_path(db, mode, eval_type)
     labels_filename = eval_utils.get_labels_filename(db, eval_type)
 
-    class_recs = eval_utils.load_recs(frameset, frame_path, labels_filename, db, mode, classname)
+    class_recs = load_recs(frameset, frame_path, labels_filename, db, mode, classname)
     # read dets
     detfile = detpath.format(classname)
     print('Opening det file: ' + detfile)
@@ -176,17 +176,19 @@ def waymo_eval(detpath,
                 #ignore if not contained within easy, medium, hard
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
-                        if(R['difficulty'][jmax] < 2):
+                        if(R['difficulty'][jmax] <= 2):
+                            tp[det_idx,1] += 1
+                        if(R['difficulty'][jmax] <= 1):
                             tp[det_idx,0] += 1
-                        tp[det_idx,1] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
                         det_results.append(eval_utils.write_det(R,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
-                        if(R['difficulty'][jmax] < 2):
+                        if(R['difficulty'][jmax] <= 2):
+                            fp[det_idx,1] += 1
+                        if(R['difficulty'][jmax] <= 1):
                             fp[det_idx,0] += 1
-                        fp[det_idx,1] += 1
                         fp_frame[int(R['idx'])] += 1
                         det_results.append(eval_utils.write_det(R,bb,var))
             #If your IoU is less than required, its simply a false positive.
@@ -246,7 +248,70 @@ def count_npos(class_recs, npos, npos_frame):
         if(rec['ignore_frame'] is False):
             for j, ignore_elem in enumerate(rec['ignore']):
                 if(not ignore_elem):
-                    if(rec['difficulty'][j] < 2):
+                    if(rec['difficulty'][j] <= 2):
+                        npos[i,1] += 1
+                    if(rec['difficulty'][j] <= 1):
                         npos[i,0] += 1
-                    npos[i,1] += 1
                     npos_frame[int(rec['idx'])] += 1
+
+
+def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
+    class_recs = []
+    filename = os.path.join(db._devkit_path, mode, 'labels',labels_filename)
+    with open(filename,'r') as labels_file:
+        data = labels_file.read()
+        #print(data)
+        labels = json.loads(data)
+        for i, filename in enumerate(frameset):
+            frame_idx = re.sub('[^0-9]','',filename)
+            #Load annotations for frame, cut any elements not in classname
+            tmp_rec = load_rec(labels,frame_path,frame_idx,filename,db,mode)
+            if(tmp_rec is None):
+                tmp_rec = {}
+                if(cfg.DEBUG.EN_TEST_MSG):
+                    print('skipping frame {}, it does not exist in the ROIDB'.format(filename))
+                tmp_rec['ignore_frame'] = True
+            elif(tmp_rec['boxes'].size == 0):
+                if(cfg.DEBUG.EN_TEST_MSG):
+                    print('skipping frame {}, as it has no GT boxes'.format(filename))
+                tmp_rec['ignore_frame'] = True
+            else:
+                tmp_rec['ignore_frame'] = False
+                if(len(tmp_rec['gt_classes']) > 0):
+                    gt_class_idx = np.where(tmp_rec['gt_classes'] == db._class_to_ind[classname])[0]
+                else:
+                    gt_class_idx = np.empty((0,))
+                tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
+                tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+                tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
+                tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
+                tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
+                #tmp_rec['scene_idx'] = tmp_rec['scene_idx']
+                #tmp_rec['scene_desc'] = tmp_rec['scene_desc']
+                tmp_rec['ids']        = [tmp_rec['ids'][i] for i in gt_class_idx]
+                tmp_rec['pts']        = tmp_rec['pts'][gt_class_idx]
+                tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
+            tmp_rec['filename'] = filename
+            tmp_rec['frame_idx']   = int(int(frame_idx)/cfg.MAX_IMG_PER_SCENE)
+            tmp_rec['idx'] = frame_idx
+            #List of all frames with GT boxes for a specific class
+            class_recs.append(tmp_rec)
+            #Only print every hundredth annotation?
+            if i % 10 == 0 and cfg.DEBUG.EN_TEST_MSG:
+                #print(recs[idx_name])
+                print('Reading annotation for {:d}/{:d}'.format(
+                    i + 1, len(frameset)))
+    return class_recs
+
+def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
+    tmp_rec = None
+    for label in labels:
+        #print(img_labels['assoc_frame'])
+        if(label['assoc_frame'] == frame_idx):
+            frame = os.path.join(frame_path,frame_file)
+            #TODO: filter if not in preferred scene
+            #TODO: here is where I get my ROI for the frame. Can use this as well as the variance to get average entropy
+            #Do I really want multiple paths in which ROI's can be loaded? I should really fetch this from the existing ROIDB
+            tmp_rec = db._load_waymo_annotation(frame,label,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
+            break
+    return tmp_rec

@@ -89,7 +89,7 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     for bbox in blob['gt_boxes']:
         #bbox[0:2] = bbox[0:2]*scale
         #bbox[3:5] = bbox[3:5]*scale
-        lidb.draw_bev_bbox(draw,bbox,transform=False)
+        bbox_utils.draw_bev_bbox(draw,bbox,[voxel_grid.shape[0], voxel_grid.shape[1], cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False)
     #for bbox_dc in enumerate(blob['gt_boxes_dc']):
     #    lidb.draw_bev_bbox(draw,bbox_dc)
     print('Saving BEV map file at location {}'.format(out_file))
@@ -228,7 +228,13 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             source_bin = roidb[i]
             local_roidb = None
         else:
-            source_bin = np.load(roidb[i]['filename'])
+            filen = roidb[i]['filename']
+            if('.bin' in filen):
+                source_bin = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
+            elif('.npy' in filen):
+                source_bin = np.load(roidb[i]['filename'])
+            else:
+                print('Cannot handle this type of binary file')
             local_roidb = deepcopy(roidb)
         #np.random.shuffle(source_bin)
         if(augment_en):
@@ -288,32 +294,36 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         voxel_mh_mean    = np.mean(voxel_max_height)
         #voxel_min_height = np.amin(voxel_heights, axis=1)
         #print('min height of frame: {}'.format(voxel_min_height))
-        voxel_intensity = np.sum(voxels[:,:,3], axis=1)/num_points_per_voxel
-        voxel_elongation = np.sum(voxels[:,:,4], axis=1)/num_points_per_voxel
-        voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
-        voxel_d_mean     = np.mean(voxel_density)
         #Scatter height slices into bev_map
         maxheight_tuple = tuple(zip(*coords))
         bev_map[maxheight_tuple] = voxel_max_height
         #Scatter intensity into bev_map
-        intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
-        intensity_coords = np.hstack((xy_coords,intensity_loc))
-        intensity_tuple = tuple(zip(*intensity_coords))
-        tanh_intensity = np.tanh(voxel_intensity)
-        tanh_i_mean    = np.mean(tanh_intensity)
-        bev_map[intensity_tuple] = tanh_intensity
+        if(cfg.LIDAR.NUM_META_CHANNEL >= 1):
+            voxel_intensity = np.sum(voxels[:,:,3], axis=1)/num_points_per_voxel
+            intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
+            intensity_coords = np.hstack((xy_coords,intensity_loc))
+            intensity_tuple = tuple(zip(*intensity_coords))
+            tanh_intensity = np.tanh(voxel_intensity)
+            tanh_i_mean    = np.mean(tanh_intensity)
+            bev_map[intensity_tuple] = tanh_intensity
 
-        #Scatter elongation into bev_map
-        elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
-        elongation_coords = np.hstack((xy_coords,elongation_loc))
-        elongation_tuple = tuple(zip(*elongation_coords))
-        bev_map[elongation_tuple] = np.tanh(voxel_elongation)
+        if(cfg.LIDAR.NUM_META_CHANNEL >= 2):
+            #Scatter elongation into bev_map
+            voxel_elongation = np.sum(voxels[:,:,4], axis=1)/num_points_per_voxel
+            elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+            elongation_coords = np.hstack((xy_coords,elongation_loc))
+            elongation_tuple = tuple(zip(*elongation_coords))
+            bev_map[elongation_tuple] = np.tanh(voxel_elongation)
 
-        #Scatter density into bev_map
-        density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
-        density_coords    = np.hstack((xy_coords,density_loc))
-        density_tuple     = tuple(zip(*density_coords))
-        bev_map[density_tuple] = voxel_density
+        #TODO: Reset voxel density to first meta channel
+        if(cfg.LIDAR.NUM_META_CHANNEL >= 3):
+            voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
+            voxel_d_mean     = np.mean(voxel_density)
+            #Scatter density into bev_map
+            density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
+            density_coords    = np.hstack((xy_coords,density_loc))
+            density_tuple     = tuple(zip(*density_coords))
+            bev_map[density_tuple] = voxel_density
         #Transpose so Y(left-right)/X(front-back) is X(left-right)/Y(front-back)
         bev_map        = np.transpose(bev_map,axes=[1,0,2])
         #proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)

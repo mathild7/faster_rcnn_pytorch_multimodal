@@ -331,7 +331,7 @@ __C.RNG_SEED = 3
 __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 
 # Data directory
-__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data2'))
+__C.DATA_DIR = osp.abspath(osp.join('/home/mat','thesis', 'data'))
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'
@@ -372,7 +372,8 @@ __C.LIDAR.Z_RANGE            = [-3,3]
 __C.LIDAR.VOXEL_LEN          = 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12
-__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + 3
+__C.LIDAR.NUM_META_CHANNEL   = 3
+__C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
 
@@ -390,6 +391,8 @@ __C.LIDAR.NUM_BBOX_ELEM = 7
 __C.IMAGE = edict()
 __C.IMAGE.NUM_BBOX_ELEM = 4
 
+__C.KITTI = edict()
+__C.KITTI.MAX_FRAME = 2000
 
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.

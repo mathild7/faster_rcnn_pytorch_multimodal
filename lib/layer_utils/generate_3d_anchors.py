@@ -35,7 +35,7 @@ class GridAnchor3dGenerator(object):
         area_3d = [[0,x_max],[0,y_max],[0,z_max]]
         #voxel len is inversely proportional to frame scale
         voxel_len = cfg.LIDAR.VOXEL_LEN/frame_scale
-        anchor_3d_sizes = cfg.LIDAR.ANCHORS/([voxel_len,voxel_len,1])
+        anchor_3d_sizes = cfg.LIDAR.ANCHORS/([voxel_len,voxel_len,1])*anchor_scales[0]
         #ground_plane = cfg.LIDAR.GROUND_PLANE_COEFF
         anchor_stride = [feature_stride,feature_stride]
         return tile_anchors_3d(area_3d,

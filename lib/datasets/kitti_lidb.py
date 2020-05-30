@@ -24,8 +24,9 @@ from .kitti_eval import kitti_eval
 from model.config import cfg, get_output_dir
 import shutil
 from random import SystemRandom
+import utils.bbox as bbox_utils
 
-class kitti_imdb(db):
+class kitti_lidb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
         name = 'kitti'
         db.__init__(self, name, mode)
@@ -33,15 +34,17 @@ class kitti_imdb(db):
         self._data_path = self._devkit_path
         self._mode = mode
         self._uncertainty_sort_type = cfg.UC.SORT_TYPE
-        self._frame_sub_dir = 'image_2'
+        self._draw_width = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        self._draw_height = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
+        self._num_slices = cfg.LIDAR.NUM_SLICES
+        self._frame_sub_dir = 'velodyne'
         self._train_dir = os.path.join(self._data_path, 'training', self._frame_sub_dir)
         self._val_dir   = os.path.join(self._data_path, 'evaluation', self._frame_sub_dir)
         self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
-        self._imwidth = 1242
-        self._imheight = 375
-        self._imtype = 'png'
-        self._filetype = 'png'
-        self.type = 'image'
+        self._filetype   = 'bin'
+        self._imtype   = 'PNG'
+        self.type = 'lidar'
+        self._bev_slice_locations = [1,2,3,4,5,7]
         self._mode = mode
         #Backwards compatibility
         self._train_sub_folder = 'training'
@@ -60,13 +63,13 @@ class kitti_imdb(db):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_index = sorted([d.replace('.png', '') for d in os.listdir(self._train_dir) if d.endswith('.png')])
-        self._val_index = sorted([d.replace('.png', '') for d in os.listdir(self._val_dir) if d.endswith('.png')])
-        self._test_index = sorted([d.replace('.png', '') for d in os.listdir(self._test_dir) if d.endswith('.png')])
+        self._train_index = sorted([d.replace('.bin', '') for d in os.listdir(self._train_dir) if d.endswith('.bin')])
+        self._val_index = sorted([d.replace('.bin', '') for d in os.listdir(self._val_dir) if d.endswith('.bin')])
+        self._test_index = sorted([d.replace('.bin', '') for d in os.listdir(self._test_dir) if d.endswith('.bin')])
         #Limiter
         rand = SystemRandom()
         if(shuffle_en):
-            print('shuffling image indices')
+            print('shuffling frame indices')
             rand.shuffle(self._val_index)
             rand.shuffle(self._train_index)
             rand.shuffle(self._test_index)
@@ -89,7 +92,7 @@ class kitti_imdb(db):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_lidar_gt_roidb.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
@@ -118,14 +121,13 @@ class kitti_imdb(db):
         """
         #print('loading kitti anno')
         filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'label_2', index + '.txt')
-        img_filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'image_2', index + '.png')
+        img_filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'velodyne', index + '.{}'.format(self._filetype))
         label_lines = open(filename, 'r').readlines()
         num_objs = len(label_lines)
-        boxes      = np.zeros((num_objs, cfg.IMAGE.NUM_BBOX_ELEM), dtype=np.uint16)
-        boxes_dc   = np.zeros((num_objs, cfg.IMAGE.NUM_BBOX_ELEM), dtype=np.uint16)
+        boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.uint16)
+        boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
-        gt_diff    = np.zeros((num_objs), dtype=np.int8)
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         cat = []
@@ -140,19 +142,20 @@ class kitti_imdb(db):
         for line in label_lines:
             label_arr = line.split(' ')
             # Make pixel indexes 0-based
-            x1 = float(label_arr[4])
-            y1 = float(label_arr[5])
-            x2 = float(label_arr[6])
-            y2 = float(label_arr[7])
-            BBGT_height = y2 - y1
+            x_c = float(label_arr[8])
+            y_c = float(label_arr[9])
+            z_c = float(label_arr[10])
+            l_x = float(label_arr[11])
+            w_y = float(label_arr[12])
+            h_z = float(label_arr[13])
+            heading = float(label_arr[14])
+            #Lock headings to be [pi/2, -pi/2)
+            pi2 = float(np.pi/2.0)
+            heading = np.where(heading > pi2, heading - np.pi, heading)
+            heading = np.where(heading <= -pi2, heading + np.pi, heading)
+            bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
-            if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
-                diff = 0
-            if(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
-                diff = 1
-            if(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
-                diff = 2
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
                 label_arr[0] = 'dontcare'
@@ -160,32 +163,30 @@ class kitti_imdb(db):
                 #print(label_arr)
                 cls = self._class_to_ind[label_arr[0].strip()]
                 cat.append(label_arr[0].strip())
-                boxes[ix, :] = [x1, y1, x2, y2]
+                boxes[ix, :] = bbox
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
-                gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
-                seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
+                seg_areas[ix] = 0
                 ix = ix + 1
             if('dontcare' in label_arr[0].lower().strip()):
                 #print(line)
-                boxes_dc[ix_dc, :] = [x1, y1, x2, y2]
+                boxes_dc[ix_dc, :] = bbox
                 ix_dc = ix_dc + 1
                 
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
         return {
-            'idx': index,
+            'img_index': index,
             'filename': img_filename,
             'det': ignore[0:ix].copy(),
             'ignore':ignore[0:ix],
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
-            'difficulty': gt_diff[0:ix],
             'cat': cat,
             'boxes': boxes[0:ix],
             'boxes_dc': boxes_dc[0:ix_dc],
@@ -231,37 +232,91 @@ class kitti_imdb(db):
     #                print('Saving drawn file at location {}'.format(outfile))
     #                source_img.save(outfile,self._imtype)
 
-    #TODO: Merge with waymo imdb draw and save eval, image specific
+    def _load_pc(self,filename):
+        return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
+
+    #TODO: Merge with waymo lidb draw and save eval, image specific
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
-        if(iter != 0):
-            out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        else:
-            out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        source_img = Image.open(filename)
-        draw = ImageDraw.Draw(source_img)
-        for class_dets in dets:
+        #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        source_bin = self._load_pc(filename)
+        draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
+        draw = ImageDraw.Draw(draw_file)
+        self.draw_bev(source_bin,draw)
+        #TODO: Magic numbers
+        limiter = 10
+        y_start = self._draw_height - 10*(limiter+2)
+        #TODO: Swap axes of dets
+        if(len(roi_dets) > 0):
+            if(roi_dets.shape[1] == 4):
+                for det,label in zip(roi_dets,roi_det_labels):
+                    if(label == 0):
+                        color = 127
+                    else:
+                        color = 255
+                    draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+            elif(roi_dets.shape[1] == 7):
+                for det,label in zip(roi_dets,roi_det_labels):
+                    if(label == 0):
+                        colors = [127,127,127]
+                    else:
+                        colors = [255,255,255]
+                    bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
+
+        for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
-            for det in class_dets:
-                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
-        for det,label in zip(roi_dets,roi_det_labels):
-            if(label == 0):
-                color = 0
-            else:
-                color = 255
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
-        print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,self._imtype)    
+            #Ignore background
+            if(j > 0):
+                if(len(class_dets) > 0):
+                    cls_uncertainties = self._normalize_uncertainties(class_dets,uncertainties[j])
+                    #cls_uncertainties = uncertainties[j]
+                    det_idx = self._sort_dets_by_uncertainty(class_dets,cls_uncertainties,descending=True)
+                    avg_det_string = 'avg: '
+                    num_det = len(det_idx)
+                    if(num_det < limiter):
+                        limiter = num_det
+                    for i,idx in enumerate(det_idx):
+                        uc_gradient = int((limiter-i)/limiter*255.0)
+                        det = class_dets[idx]
+                        #print(det)
+                        if(det.shape[0] > 5):
+                            colors = [0,int(det[7]*255),0]
+                            bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
+                        else:
+                            color_g = int(det[4]*255)
+                            color_b = int(1-det[4])*255
+                            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,color_g,color_b))
+                        det_string = '{:02} '.format(i)
+                        if(i < limiter):
+                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
+                        for key,val in cls_uncertainties.items():
+                            if('cls' in key):
+                                key = key.replace('cls','c').replace('bbox','b').replace('mutual_info','m_i')
+                                if(i == 0):
+                                    avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
+                            else:
+                                if(i == 0):
+                                    avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
+                                det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
+                        det_string += 'con: {:5.3f} '.format(det[-1])
+                        if(i < limiter):
+                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
+                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
+                elif(cfg.DEBUG.EN_TEST_MSG):
+                    print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
+        print('Saving BEV map file at location {}'.format(out_file))
+        draw_file.save(out_file,self._imtype)
 
     def _do_python_eval(self, output_dir='output', mode='train'):
         frame_index = self._get_index_for_mode(mode)
         #annopath is for labels and only labelled images
         annopath = os.path.join(self._devkit_path, self.mode_to_sub_folder(mode), 'label_2')
-        print(annopath)
-        num_d_levels = 3
         cachedir = os.path.join(self._devkit_path, 'annotations_cache')
-        aps = np.zeros((len(self._classes)-1,3))
+        num_d_levels = 3
+        aps = np.zeros((len(self._classes)-1,num_d_levels))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
@@ -277,14 +332,11 @@ class kitti_imdb(db):
             #Run kitti evaluation metrics on each image
             rec, prec, ap = kitti_eval(
                 detfile,
-                self,
+                annopath,
                 frame_index,
                 cls,
                 cachedir,
-                mode,
-                ovthresh=ovt,
-                eval_type='2d',
-                d_levels=num_d_levels)
+                ovthresh=ovt)
             aps[i-1,:] = ap
             #Tell user of AP
             print_str = 'AP for {} = '.format(cls)
@@ -316,7 +368,7 @@ class kitti_imdb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_image_results_file(all_boxes, mode)
+        self._write_lidar_results_file(all_boxes, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['matlab_eval']:
             self._do_matlab_eval(output_dir)

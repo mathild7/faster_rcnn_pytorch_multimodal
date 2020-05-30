@@ -47,6 +47,12 @@ def parse_args(manual_mode):
         default='voc_2007_test',
         type=str)
     parser.add_argument(
+        '--data_dir',
+        dest='data_dir',
+        help='root location of all datasets',
+        default=None,
+        type=str)
+    parser.add_argument(
         '--db_root_dir',
         dest='db_root_dir',
         help='location of dataset',
@@ -149,9 +155,10 @@ if __name__ == '__main__':
         args.net_type = 'image'
         args.weights_file = '{}_{}_faster_rcnn_iter_165000.pth'.format(args.net_type,args.net)
         args.iter = 0
-        args.num_frames = 1500
+        args.num_frames = 1000
         args.scale = 1.0
         args.en_fpn = 1
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_cls_var'
@@ -161,6 +168,8 @@ if __name__ == '__main__':
     print(args)
 
     #TODO: Merge into cfg_from_list()
+    if(args.data_dir is not None):
+        cfg.DATA_DIR = args.data_dir
     if(args.net_type is not None):
         cfg.NET_TYPE = args.net_type
     if(args.iter is not None):
@@ -257,4 +266,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.75,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.8,draw_det=False,eval_det=True)

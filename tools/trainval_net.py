@@ -15,7 +15,6 @@ from datasets.kitti_imdb import kitti_imdb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
 from datasets.waymo_lidb import waymo_lidb
-import datasets.imdb
 import argparse
 import pprint
 import numpy as np
@@ -53,6 +52,12 @@ def parse_args(manual_mode=False):
         '--weights_file',
         dest='weights_file',
         help='initialize with pretrained model weights',
+        default=None,
+        type=str)
+    parser.add_argument(
+        '--data_dir',
+        dest='data_dir',
+        help='root location of all datasets',
         default=None,
         type=str)
     parser.add_argument(
@@ -132,6 +137,12 @@ def parse_args(manual_mode=False):
         '--preload',
         dest='preload',
         help='0: None, 1: preload 1st stage 2: preload full net',
+        default=None,
+        type=int)
+    parser.add_argument(
+        '--fixed_blocks',
+        dest='fixed_blocks',
+        help='(-1,0,1,2,3,4) number of fixed resnet blocks, -1 also enables all batch norm training',
         default=None,
         type=int)
     parser.add_argument(
@@ -229,16 +240,18 @@ if __name__ == '__main__':
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'waymo'
+        args.db_name = 'kitti'
         #args.out_dir = 'output/'
         args.net_type     = 'image'
         args.preload      = 1
-        args.iter         = 4
+        args.iter         = 0
         args.scale        = 1.0
         args.en_full_net  = True
         args.en_fpn       = True
         args.en_epistemic = 0
         args.en_aleatoric = 0
+        args.fixed_blocks = 1
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
@@ -250,6 +263,10 @@ if __name__ == '__main__':
         args.max_iters = 700000
     
     #TODO: Merge into cfg_from_list()
+    if(args.data_dir is not None):
+        cfg.DATA_DIR = args.data_dir
+    if(args.fixed_blocks is not None):
+        cfg.RESNET.FIXED_BLOCKS = args.fixed_blocks
     if(args.net_type is not None):
         cfg.NET_TYPE = args.net_type
     if(args.en_full_net is not None):
@@ -274,7 +291,7 @@ if __name__ == '__main__':
     else:
         cfg.TRAIN.BATCH_SIZE = 256
         cfg.POOLING_MODE = 'align'
-    if(args.weights_file is None):
+    if(args.weights_file is None and cfg.ENABLE_FULL_NET):
         if(cfg.NET_TYPE == 'lidar'):
             args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'res101_lidar_full_100p_136k.pth')
         elif(cfg.NET_TYPE == 'image'):
@@ -306,10 +323,10 @@ if __name__ == '__main__':
     # train set
     if(cfg.NET_TYPE == 'image'):
         db, roidb     = combined_imdb_roidb('train',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,None,limiter=0)
-        _ , val_roidb = combined_imdb_roidb('val',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,db,limiter=0)
+        _, val_roidb  = combined_imdb_roidb('val',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,db,limiter=0)
     elif(cfg.NET_TYPE == 'lidar'):
         db, roidb     = combined_lidb_roidb('train',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,None,limiter=0)
-        _ , val_roidb = combined_lidb_roidb('val',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,db,limiter=0)
+        _, val_roidb  = combined_lidb_roidb('val',args.db_name,cfg.TRAIN.DRAW_ROIDB_GEN,db,limiter=0)
     print('{:d} roidb entries'.format(len(roidb)))
     print('{:d} val roidb entries'.format(len(val_roidb)))
     # output directory where the models are saved

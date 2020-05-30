@@ -144,7 +144,9 @@ with open(os.path.join(mypath,'labels','image_labels_3d_new.json'), 'w') as json
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                frame_idx = i*1000+j  
+                frame_idx = i*1000+j
+                img_filename = '{0:07d}.png'.format(frame_idx)  # 7 numbers with frame idx
+                out_file = os.path.join(savepath, img_filename)
                 if(j%10 == 0):
                     img_calib = {}
                     laser_calib = {}
@@ -179,17 +181,64 @@ with open(os.path.join(mypath,'labels','image_labels_3d_new.json'), 'w') as json
                             im_data = tf.image.decode_jpeg(img.image, channels=3).numpy()  #content and 3 for rgb image      
                             im_arr = im_data
                             im_data = Image.fromarray(im_data)  #pillow method
-                            img_filename = '{0:07d}.png'.format(frame_idx)  # 7 numbers with frame idx
-                            out_file = os.path.join(savepath, img_filename)
                             draw = ImageDraw.Draw(im_data)
                     assert im_data is not None
+                    for labels in frame.camera_labels:                        
+                        #Transform to image domain
+                        if(cam_enum(labels.name) != cam_enum.FRONT):
+                            continue
+                        for label in labels.labels:
+                            if(label.type != 1):
+                                continue
+                            c_x = label.box.center_x
+                            c_y = label.box.center_y
+                            l_x = label.box.length
+                            w_y = label.box.width
+                            bbox = [c_x-l_x/2, c_y-w_y/2, c_x+l_x/2, c_y+w_y/2]
+                            #draw.rectangle(bbox,outline=(0,0,255))
+                    #for labels in frame.projected_lidar_labels:                        
+                    #    #Transform to image domain
+                    #    if(cam_enum(labels.name) != cam_enum.FRONT):
+                    #        continue
+                    #    for label in labels.labels:
+                    #        if(label.type != 1):
+                    #            continue
+                    #        c_x = label.box.center_x
+                    #        c_y = label.box.center_y
+                    #        l_x = label.box.length
+                    #        w_y = label.box.width
+                    #        bbox = [c_x-l_x/2, c_y-w_y/2, c_x+l_x/2, c_y+w_y/2]
+                    #        draw.rectangle(bbox,outline=(0,255,0))
                     for label in frame.laser_labels:                        
                         #Transform to image domain
                         bbox = label.box
                         # bbox2D has format [x1,y1,x2,y2]
+                        if(label.num_lidar_points_in_box < 1):
+                            continue
+                        elif(label.num_lidar_points_in_box < 5):
+                            difficulty_override = 2
+                        if(label.type != 1):
+                            continue
                         bbox2D = label_3D_to_image(img_calib, laser_calib, label.metadata, bbox)  
                         if(bbox2D is None):
                             continue
+                        bbox_top_4pt = bbox2D[:,:,1,:].reshape(-1,2)
+                        bbox_bot_4pt = bbox2D[:,:,0,:].reshape(-1,2)
+                        for i in range(1,4):
+                            top_line = bbox_top_4pt[i][0],bbox_top_4pt[i][1],bbox_top_4pt[i-1][0],bbox_top_4pt[i-1][1]
+                            draw.line(top_line)
+                            bot_line = bbox_bot_4pt[i][0],bbox_bot_4pt[i][1],bbox_bot_4pt[i-1][0],bbox_bot_4pt[i-1][1]
+                            draw.line(bot_line)
+                            conn_line = bbox_bot_4pt[i-1][0],bbox_bot_4pt[i-1][1],bbox_top_4pt[i-1][0],bbox_top_4pt[i-1][1]
+                            draw.line(conn_line)
+                        top_line = bbox_top_4pt[3][0],bbox_top_4pt[3][1],bbox_top_4pt[0][0],bbox_top_4pt[0][1]
+                        draw.line(top_line)
+                        bot_line = bbox_bot_4pt[3][0],bbox_bot_4pt[3][1],bbox_bot_4pt[0][0],bbox_bot_4pt[0][1]
+                        draw.line(bot_line)
+                        conn_line = bbox_bot_4pt[3][0],bbox_bot_4pt[3][1],bbox_top_4pt[3][0],bbox_top_4pt[3][1]
+                        draw.line(conn_line)
+                        #line = bbox_8pt[7][0],bbox_8pt[7][1],bbox_8pt[0][0],bbox_8pt[0][1]
+                        #draw.line(line)
                         bbox2D = compute_2d_bounding_box(im_arr, bbox2D)
-                        draw.rectangle(bbox2D)
+                        draw.rectangle(bbox2D,outline=(255,0,0))
                     im_data.save(out_file,'PNG')   

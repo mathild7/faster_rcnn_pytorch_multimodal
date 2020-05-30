@@ -33,21 +33,22 @@ class imagenet(Network):
             #WAS 4 now is 8 due to downsample layer after FPN
             if(cfg.POOLING_MODE == 'multiscale'):
                 self._feat_stride = 4
-            else:
-                self._feat_stride = 8
-            self._fpn_en      = True
-            self._batchnorm_en = True
+            #DEPRECATED (see lidar for explanation)
+            #else:
+            #    self._feat_stride = 8
+            self._fpn_en               = True
+            self._batchnorm_en         = True
             self._net_conv_channels    = 256
             self._roi_pooling_channels = cfg.POOLING_SIZE*cfg.POOLING_SIZE*self._net_conv_channels
         else:
-            self._feat_stride = 16
-            self._fpn_en      = False
-            self._batchnorm_en = True
+            self._feat_stride          = 16
+            self._fpn_en               = False
+            self._batchnorm_en         = True
             self._net_conv_channels    = 1024
             self._roi_pooling_channels = 1024
         self._fc7_channels         = 2048
         self.inplanes              = 64
-        self._num_resnet_layers = num_layers
+        self._num_resnet_layers    = num_layers
         if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
@@ -64,28 +65,26 @@ class imagenet(Network):
     def init_weights(self):
         normal_init(self.rpn_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         if(cfg.USE_FPN):
-            normal_init(self._fpn.latlayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.latlayer5, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self._fpn.aalayer4, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            self._fpn.init()
+        #FPN custom tail
         if(cfg.ENABLE_CUSTOM_TAIL):
             normal_init(self.t_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
             normal_init(self.t_fc3, 0, 0.01, cfg.TRAIN.TRUNCATED)
-
+        #Bbox epistemic uncertainty FC for dropout
+        if(cfg.UC.EN_BBOX_EPISTEMIC):
+            normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #Class epistemic uncertainty FC for dropout
+        if(cfg.UC.EN_CLS_EPISTEMIC):
+            normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            normal_init(self.cls_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #Detection head
         normal_init(self.rpn_cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.rpn_bbox_pred_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.cls_score_net, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.bbox_pred_net, 0, 0.001, cfg.TRAIN.TRUNCATED)
-        if(cfg.UC.EN_BBOX_EPISTEMIC):
-            normal_init(self.bbox_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self.bbox_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
-        if(cfg.UC.EN_CLS_EPISTEMIC):
-            normal_init(self.cls_fc1, 0, 0.01, cfg.TRAIN.TRUNCATED)
-            normal_init(self.cls_fc2, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        #Aleatoric Uncertainty head
         if(cfg.UC.EN_BBOX_ALEATORIC):
             normal_init(self.bbox_al_var_net, 0, 0.001, True)
         if(cfg.UC.EN_CLS_ALEATORIC):

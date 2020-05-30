@@ -121,12 +121,9 @@ class waymo_imdb(db):
             #print(data)
             #print(data)
             labels = json.loads(data)
-            image_index = None
             sub_total   = 0
-            if(mode == 'train'):
-                image_index = self._train_index
-            elif(mode == 'val'):
-                image_index = self._val_index
+            assert mode != 'test'
+            image_index = self._get_index_for_mode(mode)
             for img in image_index:
                 #print(img)
                 for img_labels in labels:
@@ -134,9 +131,7 @@ class waymo_imdb(db):
                     if(img_labels['assoc_frame'] == img.replace('.{}'.format(self._imtype.lower()),'')):
                         img = os.path.join(mode,'images',img)
                         roi = self._load_waymo_annotation(img,img_labels,tod_filter_list=self._tod_filter_list)
-                        if(roi is None):
-                            sub_total += 1
-                        else:
+                        if(roi is not None):
                             gt_roidb.append(roi)
                         break
             with open(cache_file, 'wb') as fid:
@@ -181,11 +176,7 @@ class waymo_imdb(db):
     #                source_img.save(outfile,self._imtype)
 
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
-        if(draw_folder is None):
-            draw_folder = mode
-        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(draw_folder))
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
+        out_dir = self._find_draw_folder(mode, draw_folder)
         if(iter != 0):
             out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         else:
@@ -240,27 +231,6 @@ class waymo_imdb(db):
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)
-
-    def _normalize_uncertainties(self,dets,uncertainties):
-        normalized_uncertainties = {}
-        for key,uc in uncertainties.items():
-            if('bbox' in key):
-                #stds = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_STDS).unsqueeze(0).expand_as(uc)
-                #means = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS).unsqueeze(0).expand_as(uc)
-                #uc = uc.mul(stds).add(means)
-                #bbox_width  = dets[:,2] - dets[:,0]
-                #bbox_height = dets[:,3] - dets[:,1]
-                #bbox_size = np.sqrt(bbox_width*bbox_height)
-                #uc[:,0] = uc[:,0]/bbox_size
-                #uc[:,2] = uc[:,2]/bbox_size
-                #uc[:,1] = uc[:,1]/bbox_size
-                #uc[:,3] = uc[:,3]/bbox_size
-                normalized_uncertainties[key] = np.mean(uc,axis=1)
-            elif('mutual_info' in key):
-                normalized_uncertainties[key] = uc.squeeze(1)  #*10*(-np.log(dets[:,4]))
-            else:
-                normalized_uncertainties[key] = uc.squeeze(1)
-        return normalized_uncertainties
 
     #Only care about foreground classes
     def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
@@ -457,50 +427,6 @@ class waymo_imdb(db):
         #    'seg_areas': seg_areas[0:ix_filter]
         #}
 
-
-    def _get_waymo_results_file_template(self, mode,class_name):
-        # data/waymo/results/<comp_id>_test_aeroplane.txt
-        filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
-        path = os.path.join(self._devkit_path, 'results', filename)
-        return path
-
-    def _write_waymo_results_file(self, all_boxes, mode):
-        if(mode == 'val'):
-            img_idx = self._val_index
-        elif(mode == 'train'):
-            img_idx = self._train_index
-        elif(mode == 'test'):
-            img_idx = self._test_index
-        for cls_ind, cls in enumerate(self.classes):
-            if cls == 'dontcare' or cls == '__background__':
-                continue
-            print('Writing {} waymo results file'.format(cls))
-            filename = self._get_waymo_results_file_template(mode,cls)
-            with open(filename, 'wt') as f:
-                #f.write('test')
-                for im_ind, img in enumerate(img_idx):
-                    dets = all_boxes[cls_ind][im_ind]
-                    #TODO: Add this to dets file
-                    #dets_bbox_var = dets[0:4]
-                    #dets = dets[4:]
-                    #print('index: ' + index)
-                    #print(dets)
-                    if dets.size == 0:
-                        continue
-                    # expects 1-based indices
-                    #TODO: Add variance to output file
-                    for k in range(dets.shape[0]):
-                        f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}'.format(
-                                im_ind, img, dets[k, 4], 
-                                dets[k, 0], dets[k, 1], 
-                                dets[k, 2], dets[k, 3]))
-                        #Write uncertainties
-                        for l in range(5,dets.shape[1]):
-                            f.write(' {:.2f}'.format(dets[k,l]))
-                        f.write('\n')
-
-
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._image_index has all files
         #imagesetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
@@ -525,7 +451,7 @@ class waymo_imdb(db):
             else:
                 ovt = 0.5
             #waymo/results/comp_X_testing_class.txt
-            detfile = self._get_waymo_results_file_template(mode,cls)
+            detfile = self._get_results_file_template(mode,cls)
             #Run waymo evaluation metrics on each image
             rec, prec, ap = waymo_eval(
                 detfile,
@@ -555,13 +481,13 @@ class waymo_imdb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_waymo_results_file(all_boxes, mode)
+        self._write_image_results_file(all_boxes, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_waymo_results_file_template(mode,cls)
+                filename = self._get_results_file_template(mode,cls)
                 os.remove(filename)
 
 if __name__ == '__main__':

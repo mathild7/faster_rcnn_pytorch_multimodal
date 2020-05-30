@@ -116,7 +116,13 @@ class db(object):
 
     def get_class(self,idx):
        return self._classes[idx]
-       
+
+    def _get_results_file_template(self, mode,class_name):
+        # data/waymo/results/<comp_id>_test_aeroplane.txt
+        filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
+        path = os.path.join(self._devkit_path, 'results', filename)
+        return path
+
     def path_at(self, i, mode='train'):
         """
     Return the absolute path to image i in the image sequence.
@@ -137,6 +143,26 @@ class db(object):
             return self._val_index[i]
         elif(mode == 'test'):
             return self._test_index[i]
+        else:
+            return None
+
+    def mode_to_sub_folder(self,mode):
+        if(mode == 'train'):
+            return self._train_sub_folder
+        elif(mode == 'val'):
+            return self._val_sub_folder
+        elif(mode == 'test'):
+            return self._test_sub_folder
+        else:
+            return None
+
+    def _get_index_for_mode(self, mode):
+        if(mode == 'train'):
+            return self._train_index
+        elif(mode == 'val'):
+            return self._val_index
+        elif(mode == 'test'):
+            return self._test_index
         else:
             return None
 
@@ -210,6 +236,35 @@ class db(object):
         else:
             return None
 
+    def _find_draw_folder(self, mode, draw_folder):
+        if(draw_folder is None):
+            draw_folder = mode
+        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(draw_folder))
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        return out_dir
+
+    def _normalize_uncertainties(self,dets,uncertainties):
+        normalized_uncertainties = {}
+        for key,uc in uncertainties.items():
+            if('bbox' in key):
+                #stds = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_STDS).unsqueeze(0).expand_as(uc)
+                #means = uc.data.new(cfg.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS).unsqueeze(0).expand_as(uc)
+                #uc = uc.mul(stds).add(means)
+                #bbox_width  = dets[:,2] - dets[:,0]
+                #bbox_height = dets[:,3] - dets[:,1]
+                #bbox_size = np.sqrt(bbox_width*bbox_height)
+                #uc[:,0] = uc[:,0]/bbox_size
+                #uc[:,2] = uc[:,2]/bbox_size
+                #uc[:,1] = uc[:,1]/bbox_size
+                #uc[:,3] = uc[:,3]/bbox_size
+                normalized_uncertainties[key] = np.mean(uc,axis=1)
+            elif('mutual_info' in key):
+                normalized_uncertainties[key] = uc.squeeze(1)  #*10*(-np.log(dets[:,4]))
+            else:
+                normalized_uncertainties[key] = uc.squeeze(1)
+        return normalized_uncertainties
+
     def _sort_dets_by_uncertainty(self,dets,uncertainties,descending=False):
         if(cfg.UC.EN_BBOX_ALEATORIC and self._uncertainty_sort_type == 'a_bbox_var'):
             sortable = uncertainties['a_bbox_var']
@@ -231,7 +286,107 @@ class db(object):
             return np.argsort(-sortable)
         else:
             return np.argsort(sortable)
-    
+
+    def _write_image_results_file(self, all_boxes, mode):
+        img_idx = self._get_index_for_mode(mode)
+        for cls_ind, cls in enumerate(self.classes):
+            if cls == 'dontcare' or cls == '__background__':
+                continue
+            print('Writing {} {} results file'.format(self.name, cls))
+            filename = self._get_results_file_template(mode,cls)
+            with open(filename, 'wt') as f:
+                #f.write('test')
+                for im_ind, img in enumerate(img_idx):
+                    dets = all_boxes[cls_ind][im_ind]
+                    #TODO: Add this to dets file
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:]
+                    #print('index: ' + index)
+                    #print(dets)
+                    if dets.size == 0:
+                        continue
+                    # expects 1-based indices
+                    #TODO: Add variance to output file
+                    for k in range(dets.shape[0]):
+                        f.write(
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}'.format(
+                                im_ind, img, dets[k, 4], 
+                                dets[k, 0], dets[k, 1], 
+                                dets[k, 2], dets[k, 3]))
+                        #Write uncertainties
+                        for l in range(5,dets.shape[1]):
+                            f.write(' {:.2f}'.format(dets[k,l]))
+                        f.write('\n')
+
+    def _write_lidar_results_file(self, all_boxes, mode):
+        frame_list = self._get_index_for_mode(mode)
+        for cls_ind, cls in enumerate(self.classes):
+            if cls == 'dontcare' or cls == '__background__':
+                continue
+            print('Writing {} {} results file'.format(self.name, cls))
+            filename = self._get_results_file_template(mode,cls)
+            with open(filename, 'wt') as f:
+                #f.write('test')
+                for ind, frame in enumerate(frame_list):
+                    dets = all_boxes[cls_ind][ind]
+                    #TODO: Add this to dets file
+                    #dets_bbox_var = dets[0:4]
+                    #dets = dets[4:]
+                    #print('index: ' + index)
+                    #print(dets)
+                    if dets.size == 0:
+                        continue
+                    # expects 1-based indices
+                    #TODO: Add variance to output file
+                    for k in range(dets.shape[0]):
+                        f.write(
+                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.2f} {:.2f} {:.2f} {:.3f}'.format(
+                                ind, frame, dets[k, 7], 
+                                dets[k, 0], dets[k, 1], 
+                                dets[k, 2], dets[k, 3],
+                                dets[k, 4], dets[k, 5], dets[k, 6]))
+                        #Write uncertainties
+                        if(dets.shape[1] > cfg.LIDAR.NUM_BBOX_ELEM+1):
+                            for l in range(8,dets.shape[1]):
+                                f.write(' {:.3f}'.format(dets[k,l]))
+                        f.write('\n')
+    #LIDAR specific functions
+    def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
+        y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._draw_height/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
+        x = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._draw_width/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
+        if(inv_x):
+            x = self._draw_width - x
+        if(inv_y):
+            y = self._draw_height - y
+        return (int(x), int(y))
+
+    def draw_bev(self,bev_img,draw):
+        coord = []
+        color = []
+        for i,point in enumerate(bev_img):
+            z_max = cfg.LIDAR.Z_RANGE[1]
+            z_min = cfg.LIDAR.Z_RANGE[0]
+            #Point is contained within slice
+            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
+            if(point[2] >= z_min and point[2] < z_max):
+                coords = self._transform_to_pixel_coords(point,inv_x=False,inv_y=False)
+                c = int((point[2]-z_min)*255/(z_max - z_min))
+                draw.point(coords, fill=(int(c),0,0))
+        return draw
+
+    def draw_bev_slice(self,bev_slice,bev_idx,draw):
+        coord = []
+        color = []
+        for i,point in enumerate(bev_slice):
+            z_max, z_min = self._slice_height(bev_idx)
+            #Point is contained within slice
+            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
+            if(point[2] < z_max or point[2] >= z_min):
+                coords = self._transform_to_pixel_coords(point)
+                c = int((point[2]-z_min)*255/(z_max - z_min))
+                draw.point(coords, fill=int(c))
+        return draw
+
     #DEPRECATED
     #def _sample_bboxes(self,softmax,entropy,bbox,bbox_var):
     #    sampled_det = np.zeros((5,cfg.UC.NUM_BBOX_SAMPLE))

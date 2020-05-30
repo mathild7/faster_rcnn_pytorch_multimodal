@@ -88,6 +88,8 @@ class waymo_lidb(db):
             self._val_index   = self._val_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
+    def _load_pc(self,filename):
+        return np.load(filename)
 
     def path_from_index(self, mode, index):
         """
@@ -172,7 +174,7 @@ class waymo_lidb(db):
     #                draw = ImageDraw.Draw(draw_file)
     #                self.draw_bev(source_bin,draw)
     #                for roi_box, cat in zip(roi['boxes'],roi['cat']):
-    #                    self.draw_bev_bbox(draw,roi_box,None)
+    #                    bbox_utils.draw_bev_bbox(draw,roi_box,None)
     #                #print('Saving entire BEV drawn file at location {}'.format(outfile))
     #                draw_file.save(outfile,self._imtype)
     #                #for slice_idx, bev_slice in enumerate(bev_img):
@@ -187,96 +189,12 @@ class waymo_lidb(db):
     #                #    draw = self.draw_bev_slice(bev_slice,slice_idx,draw)
     #                #    draw.text((0,0),text)
     #                #    for roi_box, cat in zip(roi['boxes'],roi['cat']):
-    #                #        self.draw_bev_bbox(draw,roi_box,slice_idx)
+    #                #        bbox_utils.draw_bev_bbox(draw,roi_box,slice_idx)
     #                #        #draw.text((roi_box[0],roi_box[1]),cat)
     #                #    #for roi_box in roi['boxes_dc']:
     #                #    #    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
     #                #    print('Saving BEV slice {} drawn file at location {}'.format(slice_idx,outfile))
     #                #    draw_file.save(outfile,self._imtype)
-
-    def draw_bev_bbox(self,draw,bbox,slice_idx=None,transform=True,colors=None):
-        bboxes = bbox[np.newaxis,:]
-        if(colors is None):
-            colors = [255,255,255]
-        colors  = np.asarray(colors)[np.newaxis,:]
-        self.draw_bev_bboxes(draw,bboxes,slice_idx,transform,colors)
-
-    def draw_bev_bboxes(self,draw,bboxes,slice_idx,transform=True,colors=None):
-        bboxes_4pt = bbox_utils.bbox_3d_to_bev_4pt(bboxes)
-        #TODO: if clip, keep same angle
-        bboxes_4pt[:,:,0] = np.clip(bboxes_4pt[:,:,0],0,self._draw_width-1)
-        bboxes_4pt[:,:,1] = np.clip(bboxes_4pt[:,:,1],0,self._draw_height-1)
-        bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
-        z1 = bboxes[:,2]-bboxes[:,5]
-        z2 = bboxes[:,2]+bboxes[:,5]
-        
-        if(slice_idx is None):
-            z_max = cfg.LIDAR.NUM_SLICES
-            z_min = 0
-        else:
-            z_max, z_min = self._slice_height(slice_idx) 
-        #if(z1 >= z_min or z2 < z_max):
-        if(colors is None):
-            c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
-            c = [c,c,c]
-        else:
-            c = colors
-
-        for i, bbox in enumerate(bboxes_4pt):
-            self._draw_polygon(draw,bbox,c[i])
-
-    def _draw_polygon(self,draw,pixel_coords,c):
-        for i in range(len(pixel_coords)):
-            if(i == 0):
-                xy1 = pixel_coords[i]
-                xy2 = pixel_coords[len(pixel_coords)-1]
-            else:
-                xy1 = pixel_coords[i]
-                xy2 = pixel_coords[i-1]
-            #if(xy1[0] >= self._draw_width or xy1[0] < 0):
-            #    print(xy1)
-            #if(xy2[0] >= self._draw_width or xy2[0] < 0):
-            #    print(xy2)
-            #print('drawing: {}-{}'.format(xy1,xy2))
-            #line = np.concatenate((xy1,xy2))
-            draw.line([xy1[0],xy1[1],xy2[0],xy2[1]],fill=(c[0],c[1],c[2]),width=2)
-            draw.point(xy1,fill=(c[0],c[1],c[2]))
-
-    def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):
-        y = (coords[1]-cfg.LIDAR.Y_RANGE[0])*self._draw_height/(cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])
-        x = (coords[0]-cfg.LIDAR.X_RANGE[0])*self._draw_width/(cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])
-        if(inv_x):
-            x = self._draw_width - x
-        if(inv_y):
-            y = self._draw_height - y
-        return (int(x), int(y))
-
-    def draw_bev(self,bev_img,draw):
-        coord = []
-        color = []
-        for i,point in enumerate(bev_img):
-            z_max = cfg.LIDAR.Z_RANGE[1]
-            z_min = cfg.LIDAR.Z_RANGE[0]
-            #Point is contained within slice
-            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
-            if(point[2] >= z_min and point[2] < z_max):
-                coords = self._transform_to_pixel_coords(point,inv_x=False,inv_y=False)
-                c = int((point[2]-z_min)*255/(z_max - z_min))
-                draw.point(coords, fill=(int(c),0,0))
-        return draw
-       
-    def draw_bev_slice(self,bev_slice,bev_idx,draw):
-        coord = []
-        color = []
-        for i,point in enumerate(bev_slice):
-            z_max, z_min = self._slice_height(bev_idx)
-            #Point is contained within slice
-            #TODO: Ensure <= for all if's, or else elements right on the divide will be ignored
-            if(point[2] < z_max or point[2] >= z_min):
-                coords = self._transform_to_pixel_coords(point)
-                c = int((point[2]-z_min)*255/(z_max - z_min))
-                draw.point(coords, fill=int(c))
-        return draw
 
     #DEPRECATED
     #def point_cloud_to_bev(self,pc):
@@ -300,17 +218,13 @@ class waymo_lidb(db):
             z_min = self._bev_slice_locations[i-1]
             z_max = self._bev_slice_locations[i]
         return z_max, z_min
-        
+
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
-        if(draw_folder is None):
-            draw_folder = mode
-        out_dir = os.path.join(get_output_dir(self,mode=mode),'{}_drawn'.format(draw_folder))
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
+        out_dir = self._find_draw_folder(mode, draw_folder)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        source_bin = np.load(filename)
+        source_bin = self._load_pc(filename)
         draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
@@ -332,7 +246,7 @@ class waymo_lidb(db):
                         colors = [127,127,127]
                     else:
                         colors = [255,255,255]
-                    self.draw_bev_bbox(draw,det,None,transform=False, colors=colors)
+                    bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
 
         for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
@@ -352,7 +266,7 @@ class waymo_lidb(db):
                         #print(det)
                         if(det.shape[0] > 5):
                             colors = [0,int(det[7]*255),0]
-                            self.draw_bev_bbox(draw,det,None,transform=False, colors=colors)
+                            bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
                         else:
                             color_g = int(det[4]*255)
                             color_b = int(1-det[4])*255
@@ -378,26 +292,6 @@ class waymo_lidb(db):
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
         print('Saving BEV map file at location {}'.format(out_file))
         draw_file.save(out_file,self._imtype)
-
-    def _normalize_uncertainties(self,dets,uncertainties):
-        normalized_uncertainties = {}
-        for key,uc in uncertainties.items():
-            if('bbox' in key):
-                #uc = uc*cfg.TRAIN.LIDAR.BBOX_NORMALIZE_STDS
-                #bbox_width  = dets[:,2] - dets[:,0]
-                #bbox_height = dets[:,3] - dets[:,1]
-                #bbox_size = np.sqrt(bbox_width*bbox_height)
-                #uc[:,0] = uc[:,0]/bbox_size
-                #uc[:,2] = uc[:,2]/bbox_size
-                #uc[:,1] = uc[:,1]/bbox_size
-                #uc[:,3] = uc[:,3]/bbox_size
-                normalized_uncertainties[key] = np.mean(uc,axis=1)
-            elif('mutual_info' in key):
-                normalized_uncertainties[key] = uc.squeeze(1)
-            else:
-                normalized_uncertainties[key] = uc.squeeze(1)
-        return normalized_uncertainties
-                
 
     #Only care about foreground classes
     def _load_waymo_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
@@ -601,62 +495,9 @@ class waymo_lidb(db):
         #    'seg_areas': seg_areas[0:ix_filter]
         #}
 
-
-
-    def _get_waymo_results_file_template(self, mode,class_name):
-        # data/waymo/results/<comp_id>_test_aeroplane.txt
-        filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
-        path = os.path.join(self._devkit_path, 'results', filename)
-        return path
-
-    def _write_waymo_results_file(self, all_boxes, mode):
-        if(mode == 'val'):
-            frame_list = self._val_index
-        elif(mode == 'train'):
-            frame_list = self._train_index
-        elif(mode == 'test'):
-            frame_list = self._test_index
-        for cls_ind, cls in enumerate(self.classes):
-            if cls == 'dontcare' or cls == '__background__':
-                continue
-            print('Writing {} waymo results file'.format(cls))
-            filename = self._get_waymo_results_file_template(mode,cls)
-            with open(filename, 'wt') as f:
-                #f.write('test')
-                for ind, frame in enumerate(frame_list):
-                    dets = all_boxes[cls_ind][ind]
-                    #TODO: Add this to dets file
-                    #dets_bbox_var = dets[0:4]
-                    #dets = dets[4:]
-                    #print('index: ' + index)
-                    #print(dets)
-                    if dets.size == 0:
-                        continue
-                    # expects 1-based indices
-                    #TODO: Add variance to output file
-                    for k in range(dets.shape[0]):
-                        f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.2f} {:.2f} {:.2f} {:.3f}'.format(
-                                ind, frame, dets[k, 7], 
-                                dets[k, 0], dets[k, 1], 
-                                dets[k, 2], dets[k, 3],
-                                dets[k, 4], dets[k, 5], dets[k, 6]))
-                        #Write uncertainties
-                        if(dets.shape[1] > cfg.LIDAR.NUM_BBOX_ELEM+1):
-                            for l in range(8,dets.shape[1]):
-                                f.write(' {:.3f}'.format(dets[k,l]))
-                        f.write('\n')
-
-
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._index has all files
-        #pcsetfile = os.path.join(self._devkit_path, self._mode_sub_folder + '.txt')
-        if(mode == 'train'):
-            pcset = self._train_index
-        elif(mode == 'val'):
-            pcset = self._val_index
-        elif(mode == 'test'):
-            pcset = self._test_index
+        pcset = self._get_index_for_mode(mode)
         cachedir = os.path.join(self._devkit_path, 'cache')
         num_d_levels = 2
         #AP: Level 1, Level 2
@@ -672,7 +513,7 @@ class waymo_lidb(db):
             else:
                 ovt = 0.5
             #waymo/results/comp_X_testing_class.txt
-            detfile = self._get_waymo_results_file_template(mode,cls)
+            detfile = self._get_results_file_template(mode,cls)
             #Run waymo evaluation metrics on each pc
             rec, prec, ap = waymo_eval(
                 detfile,
@@ -702,13 +543,13 @@ class waymo_lidb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_waymo_results_file(all_boxes, mode)
+        self._write_lidar_results_file(all_boxes, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_waymo_results_file_template(mode,cls)
+                filename = self._get_results_file_template(mode,cls)
                 os.remove(filename)
 
 if __name__ == '__main__':

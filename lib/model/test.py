@@ -186,7 +186,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
             frame = cv2.imread(filename)
         elif(cfg.NET_TYPE == 'lidar'):
             filename = db.path_at(i,mode)
-            frame = np.load(filename)
+            frame = db._load_pc(filename)
         #Put frame into array, single element only supported
         frame = [frame]
         _t['preload'].tic()
