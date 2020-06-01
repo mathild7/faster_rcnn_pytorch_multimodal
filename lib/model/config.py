@@ -20,10 +20,10 @@ __C.DEBUG                    = edict()
 
 __C.DEBUG.EN                 = False
 
+__C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
-__C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.FREEZE_DB          = False
 __C.DEBUG.FREEZE_DB_INDS     = 1
@@ -365,14 +365,14 @@ __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
 #Lidar Config
-__C.LIDAR = edict()
-__C.LIDAR.X_RANGE            = [0,70]
-__C.LIDAR.Y_RANGE            = [-40,40]
-__C.LIDAR.Z_RANGE            = [-3,3]
-__C.LIDAR.VOXEL_LEN          = 0.1
+__C.LIDAR = edict()                      #KITTI    #WAYMO
+__C.LIDAR.X_RANGE            = [0,35]    #[0,35]   #[0,70]
+__C.LIDAR.Y_RANGE            = [-20,20]  #[-20,20] #[-40,40]
+__C.LIDAR.Z_RANGE            = [-2,2]    #[-2,2]   #[-3,3]
+__C.LIDAR.VOXEL_LEN          = 0.05       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 12
-__C.LIDAR.NUM_META_CHANNEL   = 3
+__C.LIDAR.NUM_SLICES         = 8         #8        #12
+__C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
@@ -392,8 +392,8 @@ __C.IMAGE = edict()
 __C.IMAGE.NUM_BBOX_ELEM = 4
 
 __C.KITTI = edict()
-__C.KITTI.MAX_FRAME = 2000
-
+__C.KITTI.MAX_FRAME = 10000
+__C.KITTI.IMG_SIZE = [375,1242]
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.

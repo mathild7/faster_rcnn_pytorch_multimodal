@@ -27,6 +27,8 @@ import utils.bbox as bbox_utils
 import shutil
 import re
 from datasets.waymo_lidb import waymo_lidb
+from utils.kitti_utils import Calibration as kitti_calib
+import utils.kitti_utils as kitti_utils
 
 def draw_and_save_image_minibatch(blobs,cnt):
 
@@ -50,7 +52,7 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     filename = blob['filename']
     info = blob['info']
     scale = info[6]
-    lidb = waymo_lidb()
+    #lidb = waymo_lidb()
     #Extract voxel grid size
     #width   = int(info[1] - info[0])
     #Y is along height axis in image domain
@@ -89,7 +91,7 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     for bbox in blob['gt_boxes']:
         #bbox[0:2] = bbox[0:2]*scale
         #bbox[3:5] = bbox[3:5]*scale
-        bbox_utils.draw_bev_bbox(draw,bbox,[voxel_grid.shape[0], voxel_grid.shape[1], cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False)
+        bbox_utils.draw_bev_bbox(draw,bbox,[voxel_grid.shape[1], voxel_grid.shape[0], cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False)
     #for bbox_dc in enumerate(blob['gt_boxes_dc']):
     #    lidb.draw_bev_bbox(draw,bbox_dc)
     print('Saving BEV map file at location {}'.format(out_file))
@@ -214,6 +216,10 @@ def get_image_minibatch(roidb, num_classes, augment_en, scale, cnt):
     #assert((item is False for item in roidb[0]['ignore']).any(), 'All GT boxes are set to ignore.')
     return blobs
 
+def filter_points(pc):
+    pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
+    pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,0] < cfg.LIDAR.X_RANGE[1]) & (pc_min_thresh[:,1] < cfg.LIDAR.Y_RANGE[1]) & (pc_min_thresh[:,2] < cfg.LIDAR.Z_RANGE[1])]
+    return pc_min_and_max_thresh
 
 def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
     """Builds an input blob from the images in the roidb at the specified
@@ -230,7 +236,14 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         else:
             filen = roidb[i]['filename']
             if('.bin' in filen):
-                source_bin = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
+                points = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
+                calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
+                calib = kitti_calib(calib_file)
+                pts_rect = calib.project_velo_to_rect(points[:, 0:3])
+                fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
+                pts_fov = points[fov_flag]
+                #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
+                source_bin = filter_points(pts_fov)
             elif('.npy' in filen):
                 source_bin = np.load(roidb[i]['filename'])
             else:
@@ -298,32 +311,33 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         maxheight_tuple = tuple(zip(*coords))
         bev_map[maxheight_tuple] = voxel_max_height
         #Scatter intensity into bev_map
+
         if(cfg.LIDAR.NUM_META_CHANNEL >= 1):
+            voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
+            voxel_d_mean     = np.mean(voxel_density)
+            #Scatter density into bev_map
+            density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
+            density_coords    = np.hstack((xy_coords,density_loc))
+            density_tuple     = tuple(zip(*density_coords))
+            bev_map[density_tuple] = voxel_density
+
+        if(cfg.LIDAR.NUM_META_CHANNEL >= 2):
             voxel_intensity = np.sum(voxels[:,:,3], axis=1)/num_points_per_voxel
-            intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES)
+            intensity_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
             intensity_coords = np.hstack((xy_coords,intensity_loc))
             intensity_tuple = tuple(zip(*intensity_coords))
             tanh_intensity = np.tanh(voxel_intensity)
             tanh_i_mean    = np.mean(tanh_intensity)
             bev_map[intensity_tuple] = tanh_intensity
 
-        if(cfg.LIDAR.NUM_META_CHANNEL >= 2):
+        if(cfg.LIDAR.NUM_META_CHANNEL >= 3):
             #Scatter elongation into bev_map
             voxel_elongation = np.sum(voxels[:,:,4], axis=1)/num_points_per_voxel
-            elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+1)
+            elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
             elongation_coords = np.hstack((xy_coords,elongation_loc))
             elongation_tuple = tuple(zip(*elongation_coords))
             bev_map[elongation_tuple] = np.tanh(voxel_elongation)
 
-        #TODO: Reset voxel density to first meta channel
-        if(cfg.LIDAR.NUM_META_CHANNEL >= 3):
-            voxel_density    = num_points_per_voxel/cfg.LIDAR.MAX_PTS_PER_VOXEL
-            voxel_d_mean     = np.mean(voxel_density)
-            #Scatter density into bev_map
-            density_loc       = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
-            density_coords    = np.hstack((xy_coords,density_loc))
-            density_tuple     = tuple(zip(*density_coords))
-            bev_map[density_tuple] = voxel_density
         #Transpose so Y(left-right)/X(front-back) is X(left-right)/Y(front-back)
         bev_map        = np.transpose(bev_map,axes=[1,0,2])
         #proc_bev_map = prep_bev_map_for_blob(bev_map, cfg.LIDAR.MEANS, cfg.LIDAR.STDDEVS, scale)
@@ -460,7 +474,7 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
                 if(local_roidb[i]['ignore'][j] is False and hc > h):
                     print('new y diff is larger than old y diff')
             im = img_arr
-        #draw_and_save_minibatch(im,local_roidb[0])
+        #nibatch(im,local_roidb[0])
         #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
         #TODO: Move scaling to be before imgaug, to save time
         im = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, im_scale)
@@ -472,3 +486,17 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
     blob = im_list_to_blob(processed_ims)
 
     return im_infos, blob, local_roidb
+
+def get_fov_flag(pts_rect, img_shape, calib):
+    '''
+    Valid point should be in the image (and in the PC_AREA_SCOPE)
+    :param pts_rect:
+    :param img_shape:
+    :return:
+    '''
+    pts_img = calib.project_rect_to_image(pts_rect)
+    val_flag_1 = np.logical_and(pts_img[:, 0] >= 0, pts_img[:, 0] < img_shape[1])
+    val_flag_2 = np.logical_and(pts_img[:, 1] >= 0, pts_img[:, 1] < img_shape[0])
+    val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
+
+    return val_flag_merge

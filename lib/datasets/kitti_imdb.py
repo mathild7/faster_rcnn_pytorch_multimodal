@@ -60,10 +60,17 @@ class kitti_imdb(db):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_index = sorted([d.replace('.png', '') for d in os.listdir(self._train_dir) if d.endswith('.png')])
-        self._val_index = sorted([d.replace('.png', '') for d in os.listdir(self._val_dir) if d.endswith('.png')])
-        self._test_index = sorted([d.replace('.png', '') for d in os.listdir(self._test_dir) if d.endswith('.png')])
+        self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.png')])
+        self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.png')])
+        self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.png')])
         #Limiter
+        if(limiter != 0):
+            if(limiter < len(self._val_index)):
+                self._val_index   = self._val_index[:limiter]
+            if(limiter < len(self._train_index)):
+                self._train_index = self._train_index[:limiter]
+            if(limiter < len(self._test_index)):
+                self._test_index = self._test_index[:limiter]
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling image indices')
@@ -74,6 +81,21 @@ class kitti_imdb(db):
             'Kitti dataset path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
+
+    def path_from_index(self, mode, index):
+        """
+    Construct an image path from the image's "index" identifier.
+    """
+        if(mode == 'train'):
+            mode_sub_folder = self._train_sub_folder
+        if(mode == 'val'):
+            mode_sub_folder = self._val_sub_folder
+        if(mode == 'test'):
+            mode_sub_folder = self._test_sub_folder
+        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'image_2', index)
+        assert os.path.exists(image_path), \
+            'Path does not exist: {}'.format(image_path)
+        return image_path
 
     def _get_default_path(self):
         """
@@ -102,8 +124,10 @@ class kitti_imdb(db):
 
         gt_roidb = []
         for img in image_index:
-            roi = self._load_kitti_annotation(img, mode)
-            gt_roidb.append(roi)
+            idx = img.replace('.png','')
+            roi = self._load_kitti_annotation(idx, mode)
+            if(roi is not None):
+                gt_roidb.append(roi)
         with open(cache_file, 'wb') as fid:
             pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
@@ -111,7 +135,7 @@ class kitti_imdb(db):
         return gt_roidb
 
     #Only care about foreground classes
-    def _load_kitti_annotation(self, index, mode='train'):
+    def _load_kitti_annotation(self, index, mode='train', remove_without_gt=True):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
@@ -128,6 +152,7 @@ class kitti_imdb(db):
         gt_diff    = np.zeros((num_objs), dtype=np.int8)
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
+        gt_ids     = np.zeros((num_objs), dtype=np.int16)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -147,12 +172,15 @@ class kitti_imdb(db):
             BBGT_height = y2 - y1
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
+            diff = -1
             if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
                 diff = 0
-            if(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
+            elif(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
                 diff = 1
-            if(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
+            elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
                 diff = 2
+            if(diff == -1):
+                label_arr[0] = 'dontcare'
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
                 label_arr[0] = 'dontcare'
@@ -164,6 +192,7 @@ class kitti_imdb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
@@ -177,6 +206,9 @@ class kitti_imdb(db):
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
+        if(ix == 0 and remove_without_gt is True):
+            print('removing pc {} with no GT boxes specified'.format(index))
+            return None
         return {
             'idx': index,
             'filename': img_filename,
@@ -186,6 +218,7 @@ class kitti_imdb(db):
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
             'difficulty': gt_diff[0:ix],
+            'ids': gt_ids[0:ix],
             'cat': cat,
             'boxes': boxes[0:ix],
             'boxes_dc': boxes_dc[0:ix_dc],
@@ -247,10 +280,14 @@ class kitti_imdb(db):
                 draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 0):
-                color = 0
+                color = (0,0,255)
+            elif(label == 1):
+                color = (127,0,127)
+            elif(label == 2):
+                color = (255,0,0)
             else:
-                color = 255
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(color,color,color))
+                color = (0,0,0)
+            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)    
 

@@ -21,6 +21,7 @@ from nets.vgg16 import vgg16
 from nets.imagenet import imagenet
 from nets.mobilenet_v1 import mobilenetv1
 from datasets.kitti_imdb import kitti_imdb
+from datasets.kitti_lidb import kitti_lidb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
 from datasets.waymo_lidb import waymo_lidb
@@ -151,14 +152,14 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'waymo'
-        args.net_type = 'image'
-        args.weights_file = '{}_{}_faster_rcnn_iter_165000.pth'.format(args.net_type,args.net)
+        args.db_name = 'kitti'
+        args.net_type = 'lidar'
+        args.weights_file = '{}_{}_faster_rcnn_iter_80000.pth'.format(args.net_type,args.net)
         args.iter = 0
-        args.num_frames = 1000
+        args.num_frames = 300
         args.scale = 1.0
-        args.en_fpn = 1
-        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
+        args.en_fpn = 0
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_cls_var'
@@ -214,13 +215,16 @@ if __name__ == '__main__':
     #filename = tag + '/' + filename
     if(cfg.NET_TYPE == 'image'):
         if(args.db_name == 'kitti'):
-            db = kitti_imdb(mode='eval')
+            db = kitti_imdb(mode='eval',limiter=args.num_frames, shuffle_en=True)
         elif(args.db_name == 'nuscenes'):
             db = nuscenes_imdb(mode='val',limiter=args.num_frames)
         elif(args.db_name == 'waymo'):
             db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
-        db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
+        if(args.db_name == 'kitti'):
+            db = kitti_lidb(mode='eval',limiter=args.num_frames, shuffle_en=True)
+        elif(args.db_name == 'waymo'):
+            db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):
@@ -266,4 +270,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.8,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)

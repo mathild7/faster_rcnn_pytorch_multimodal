@@ -79,7 +79,7 @@ def waymo_eval(detpath,
     # assumes framesetfile is a text file with each line an frame name
     # cachedir caches the annotations in a pickle file
 
-    frame_path = eval_utils.get_frame_path(db, mode, eval_type)
+    frame_path = get_frame_path(db, mode, eval_type)
     labels_filename = eval_utils.get_labels_filename(db, eval_type)
 
     class_recs = load_recs(frameset, frame_path, labels_filename, db, mode, classname)
@@ -182,7 +182,7 @@ def waymo_eval(detpath,
                             tp[det_idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(eval_utils.write_det(R,bb,var,jmax))
+                        det_results.append(write_det(R,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
@@ -190,14 +190,14 @@ def waymo_eval(detpath,
                         if(R['difficulty'][jmax] <= 1):
                             fp[det_idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(eval_utils.write_det(R,bb,var))
+                        det_results.append(write_det(R,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[det_idx,0] += 1
                 fp[det_idx,1] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(eval_utils.write_det(R,bb,var))
+                det_results.append(write_det(R,bb,var))
     else:
         print('waymo eval, no GT boxes detected')
     for i in np.arange(cfg.NUM_SCENES):
@@ -254,7 +254,13 @@ def count_npos(class_recs, npos, npos_frame):
                         npos[i,0] += 1
                     npos_frame[int(rec['idx'])] += 1
 
-
+def get_frame_path(db, mode, eval_type):
+    if(eval_type == 'bev' or eval_type == '3d' or eval_type == 'bev_aa'):
+        frame_path = os.path.join(db._devkit_path, mode, 'point_clouds')
+    elif(eval_type == '2d'):
+        frame_path = os.path.join(db._devkit_path, mode, 'images')
+    return frame_path
+    
 def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
     class_recs = []
     filename = os.path.join(db._devkit_path, mode, 'labels',labels_filename)
@@ -315,3 +321,30 @@ def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
             tmp_rec = db._load_waymo_annotation(frame,label,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
             break
     return tmp_rec
+
+def write_det(R,bb,var,jmax=None):
+    scene    = R['scene_idx']
+    frame    = R['frame_idx']
+    out_str  = ''
+    out_str += 'scene_idx: {} frame_idx: {} '.format(scene,frame)
+    out_str += 'bbdet: '
+    for bbox_elem in bb:
+        out_str += '{:4.3f} '.format(bbox_elem)
+    for key,val in var.items():
+        out_str += '{}: '.format(key)
+        for var_elem in val:
+            out_str += '{:4.3f} '.format(var_elem)
+    if(jmax is not None):
+        pts        = R['pts'][jmax]
+        difficulty = R['difficulty'][jmax]
+        track_id   = R['ids'][jmax]
+        class_t    = R['gt_classes'][jmax]
+        bbgt       = R['boxes'][jmax]
+        out_str   += 'track_idx: {} '.format(track_id)
+        out_str   += 'difficulty: {} '.format(difficulty)
+        out_str   += 'pts: {} '.format(pts)
+        out_str   += 'cls: {} '.format(class_t)
+        out_str   += 'bbgt: '
+        for bbox_elem in bbgt:
+            out_str += '{:4.3f} '.format(bbox_elem)
+    return out_str

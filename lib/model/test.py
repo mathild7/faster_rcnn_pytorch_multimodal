@@ -230,7 +230,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                     boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'])
                 elif(cfg.NET_TYPE == 'image'):
                     boxes = gt_boxes['boxes']
-                db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode)
+                db.draw_and_save_eval(filename,boxes,gt_boxes['difficulty'],bbox,uncertainties,0,test_mode)
 
         _t['misc'].toc()
         if(cfg.DEBUG.EN_TEST_MSG):

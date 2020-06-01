@@ -79,7 +79,7 @@ def kitti_eval(detpath,
     # assumes framesetfile is a text file with each line an frame name
     # cachedir caches the annotations in a pickle file
 
-    frame_path = eval_utils.get_frame_path(db, mode, eval_type)
+    frame_path = get_frame_path(db, mode, eval_type)
     class_recs = load_recs(frameset, frame_path, db, mode, classname)
     # read dets
     detfile = detpath.format(classname)
@@ -142,9 +142,9 @@ def kitti_eval(detpath,
             var = {}
             #Variance extraction, collect on a per scene basis
             for key,val in uncertainties.items():
-                uc_avg[key][R['idx']] += val[det_idx, :]
+                uc_avg[key][int(R['idx'])] += val[det_idx, :]
                 var[key] = val[det_idx, :]
-            det_cnt[R['idx']] += 1
+            det_cnt[int(R['idx'])] += 1
             #Variance extraction, collect on a per scene basis
             ovmax = -np.inf
             #Multiple possible bounding boxes, perhaps for multi car detection
@@ -180,7 +180,7 @@ def kitti_eval(detpath,
                             tp[det_idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(eval_utils.write_det(R,bb,var,jmax))
+                        det_results.append(write_det(R,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
@@ -190,7 +190,7 @@ def kitti_eval(detpath,
                         if(R['difficulty'][jmax] <= 0):
                             fp[det_idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(eval_utils.write_det(R,bb,var))
+                        det_results.append(write_det(R,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
@@ -198,7 +198,7 @@ def kitti_eval(detpath,
                 fp[det_idx,1] += 1
                 fp[det_idx,2] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(eval_utils.write_det(R,bb,var))
+                det_results.append(write_det(R,bb,var))
     else:
         print('waymo eval, no GT boxes detected')
     for i in np.arange(cfg.KITTI.MAX_FRAME):
@@ -257,8 +257,15 @@ def count_npos(class_recs, npos, npos_frame):
                         npos[i,0] += 1
                     npos_frame[int(rec['idx'])] += 1
 
+def get_frame_path(db, mode, eval_type):
+    mode_sub_folder = db.subfolder_from_mode(mode)
+    if(eval_type == 'bev' or eval_type == '3d' or eval_type == 'bev_aa'):
+        frame_path = os.path.join(db._devkit_path, mode_sub_folder, 'velodyne')
+    elif(eval_type == '2d'):
+        frame_path = os.path.join(db._devkit_path, mode_sub_folder, 'images_2')
+    return frame_path
 
-def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
+def load_recs(frameset, frame_path, db, mode, classname):
     class_recs = []
     for i, filename in enumerate(frameset):
         frame_idx = re.sub('[^0-9]','',filename)
@@ -269,6 +276,7 @@ def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
             if(cfg.DEBUG.EN_TEST_MSG):
                 print('skipping frame {}, it does not exist in the ROIDB'.format(filename))
             tmp_rec['ignore_frame'] = True
+            tmp_rec['idx'] = frame_idx
         elif(tmp_rec['boxes'].size == 0):
             if(cfg.DEBUG.EN_TEST_MSG):
                 print('skipping frame {}, as it has no GT boxes'.format(filename))
@@ -285,7 +293,7 @@ def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
             tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
             tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
             tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
-        tmp_rec['frame_idx']   = frame_idx
+        #tmp_rec['frame_idx']   = frame_idx
         #List of all frames with GT boxes for a specific class
         class_recs.append(tmp_rec)
         #Only print every hundredth annotation?
@@ -294,3 +302,29 @@ def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
             print('Reading annotation for {:d}/{:d}'.format(
                 i + 1, len(frameset)))
     return class_recs
+
+def write_det(R,bb,var,jmax=None):
+    frame    = R['idx']
+    out_str  = ''
+    out_str += 'frame_idx: {} '.format(frame)
+    out_str += 'bbdet: '
+    for bbox_elem in bb:
+        out_str += '{:4.3f} '.format(bbox_elem)
+    for key,val in var.items():
+        out_str += '{}: '.format(key)
+        for var_elem in val:
+            out_str += '{:4.3f} '.format(var_elem)
+    if(jmax is not None):
+        #pts        = R['pts'][jmax]
+        difficulty = R['difficulty'][jmax]
+        #track_id   = R['ids'][jmax]
+        class_t    = R['gt_classes'][jmax]
+        bbgt       = R['boxes'][jmax]
+        #out_str   += 'track_idx: {} '.format(track_id)
+        out_str   += 'difficulty: {} '.format(difficulty)
+        #out_str   += 'pts: {} '.format(pts)
+        out_str   += 'cls: {} '.format(class_t)
+        out_str   += 'bbgt: '
+        for bbox_elem in bbgt:
+            out_str += '{:4.3f} '.format(bbox_elem)
+    return out_str

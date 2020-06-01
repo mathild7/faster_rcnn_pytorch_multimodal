@@ -1,13 +1,13 @@
 import torch
 import numpy as np
 
-
+#TODO: Add min height 
 def bbox_overlaps(boxes, query_boxes):
     """
     Parameters
     ----------
-    boxes: (N, 4) ndarray or tensor or variable
-    query_boxes: (K, 4) ndarray or tensor or variable
+    boxes: (N, 4) ndarray or tensor or variable (ROI/Prediction)
+    query_boxes: (K, 4) ndarray or tensor or variable (Ground Truth)
     Returns
     -------
     overlaps: (N, K) overlap between boxes and query_boxes
@@ -351,9 +351,9 @@ def draw_bev_bboxes(draw,bboxes,bev_shape,transform=True,colors=None):
     bboxes_4pt = bboxes_4pt.astype(dtype=np.int64)
     z1 = bboxes[:,2]-bboxes[:,5]
     z2 = bboxes[:,2]+bboxes[:,5]
-    z_max = bev_shape[2]
+    z_max = bev_shape[2] - 1
     if(colors is None):
-        c = np.clip(z2/z_max*255,0,255).astype(dtype='uint8')
+        c = np.clip(float(z2/float(z_max))*255,0,255).astype(dtype='uint8')
         c = [c,c,c]
     else:
         c = colors

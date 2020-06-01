@@ -48,7 +48,6 @@ def anchor_target_layer_torch(gt_boxes, gt_boxes_dc, info,
     #Subset of anchors within image boundary
     labels = torch.full((len(inds_inside), ), -1, dtype=torch.int64).to(device=dev)
     #labels.fill(-1)
-
     # overlaps between the anchors and the gt boxes
     # overlaps (ex, gt)
     #from utils.bbox import bbox_overlaps
@@ -69,6 +68,7 @@ def anchor_target_layer_torch(gt_boxes, gt_boxes_dc, info,
     gt_argmax_overlaps = overlaps.argmax(dim=0)
     #grab same subset of 2D array to get corresponding GT boxes with their max overlap counterpart
     gt_max_overlaps = overlaps[gt_argmax_overlaps, torch.arange(overlaps.shape[1]).to(device=dev)]
+    gt_max_overlaps = torch.clamp(gt_max_overlaps,torch.finfo(torch.float32).eps,float('inf'))
     gt_argmax_overlaps = torch.where(overlaps == gt_max_overlaps)[0]
 
     if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
@@ -82,6 +82,7 @@ def anchor_target_layer_torch(gt_boxes, gt_boxes_dc, info,
 
     # fg label: above threshold IOU
     #anything else needs a large overlap as well
+    nz_max_overlaps = max_overlaps.nonzero()
     labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1
     if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
         # assign bg labels last so that negative labels can clobber positives

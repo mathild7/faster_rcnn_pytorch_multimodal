@@ -84,8 +84,12 @@ class waymo_lidb(db):
             rand.shuffle(self._train_index)
             rand.shuffle(self._val_index)
         if(limiter != 0):
-            self._train_index = self._train_index[:limiter]
-            self._val_index   = self._val_index[:limiter]
+            if(limiter < len(self._val_index)):
+                self._val_index   = self._val_index[:limiter]
+            if(limiter < len(self._train_index)):
+                self._train_index = self._train_index[:limiter]
+            if(limiter < len(self._test_index)):
+                self._test_index = self._test_index[:limiter]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
     def _load_pc(self,filename):

@@ -23,6 +23,8 @@ import traceback
 from .kitti_eval import kitti_eval
 from model.config import cfg, get_output_dir
 import shutil
+import utils.kitti_utils as kitti_utils
+from utils.kitti_utils import Calibration as kitti_calib
 from random import SystemRandom
 import utils.bbox as bbox_utils
 
@@ -63,10 +65,17 @@ class kitti_lidb(db):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_index = sorted([d.replace('.bin', '') for d in os.listdir(self._train_dir) if d.endswith('.bin')])
-        self._val_index = sorted([d.replace('.bin', '') for d in os.listdir(self._val_dir) if d.endswith('.bin')])
-        self._test_index = sorted([d.replace('.bin', '') for d in os.listdir(self._test_dir) if d.endswith('.bin')])
+        self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.bin')])
+        self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.bin')])
+        self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.bin')])
         #Limiter
+        if(limiter != 0):
+            if(limiter < len(self._val_index)):
+                self._val_index   = self._val_index[:limiter]
+            if(limiter < len(self._train_index)):
+                self._train_index = self._train_index[:limiter]
+            if(limiter < len(self._test_index)):
+                self._test_index = self._test_index[:limiter]
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling frame indices')
@@ -77,6 +86,25 @@ class kitti_lidb(db):
             'Kitti dataset path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
+
+    def subfolder_from_mode(self, mode):
+        if(mode == 'train'):
+            return self._train_sub_folder
+        if(mode == 'val'):
+            return self._val_sub_folder
+        if(mode == 'test'):
+            return self._test_sub_folder
+        return None
+
+    def path_from_index(self, mode, index):
+        """
+    Construct an image path from the image's "index" identifier.
+    """
+        mode_sub_folder = self.subfolder_from_mode(mode)
+        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'velodyne', index)
+        assert os.path.exists(image_path), \
+            'Path does not exist: {}'.format(image_path)
+        return image_path
 
     def _get_default_path(self):
         """
@@ -93,7 +121,7 @@ class kitti_lidb(db):
         #for line in traceback.format_stack():
         #    print(line.strip())
         cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_lidar_gt_roidb.pkl')
-        image_index = self._get_index_for_mode(mode)
+        frame_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -104,9 +132,11 @@ class kitti_lidb(db):
             return roidb
 
         gt_roidb = []
-        for img in image_index:
-            roi = self._load_kitti_annotation(img, mode)
-            gt_roidb.append(roi)
+        for frame in frame_index:
+            idx = frame.replace('.{}'.format(self._filetype),'')
+            roi = self._load_kitti_annotation(idx, mode)
+            if(roi is not None):
+                gt_roidb.append(roi)
         with open(cache_file, 'wb') as fid:
             pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
@@ -114,27 +144,30 @@ class kitti_lidb(db):
         return gt_roidb
 
     #Only care about foreground classes
-    def _load_kitti_annotation(self, index, mode='train'):
+    def _load_kitti_annotation(self, index, mode='train', remove_without_gt=True):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
         """
         #print('loading kitti anno')
         filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'label_2', index + '.txt')
+        calib_file = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'calib', index + '.txt')
         img_filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'velodyne', index + '.{}'.format(self._filetype))
         label_lines = open(filename, 'r').readlines()
         num_objs = len(label_lines)
-        boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.uint16)
-        boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.uint16)
+        boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
+        boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
+        gt_diff    = np.zeros((num_objs), dtype=np.int8)
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
+        gt_ids     = np.zeros((num_objs), dtype=np.int16)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
-
+        calib = kitti_calib(calib_file)
         # Load object bounding boxes into a data frame.
         ix = 0
         ix_dc = 0
@@ -142,20 +175,49 @@ class kitti_lidb(db):
         for line in label_lines:
             label_arr = line.split(' ')
             # Make pixel indexes 0-based
-            x_c = float(label_arr[8])
-            y_c = float(label_arr[9])
-            z_c = float(label_arr[10])
-            l_x = float(label_arr[11])
-            w_y = float(label_arr[12])
-            h_z = float(label_arr[13])
-            heading = float(label_arr[14])
-            #Lock headings to be [pi/2, -pi/2)
-            pi2 = float(np.pi/2.0)
-            heading = np.where(heading > pi2, heading - np.pi, heading)
-            heading = np.where(heading <= -pi2, heading + np.pi, heading)
-            bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
+            x1 = float(label_arr[4])
+            y1 = float(label_arr[5])
+            x2 = float(label_arr[6])
+            y2 = float(label_arr[7])
+            BBGT_height = y2 - y1
+            h_z = float(label_arr[8])
+            w_y = float(label_arr[9])
+            l_x = float(label_arr[10])
+            x_c = float(label_arr[11])
+            y_c = float(label_arr[12])
+            z_c = float(label_arr[13])
+            heading = float(label_arr[14].replace('\n',''))
+            #Lock headings to be [pi/2, -pi/2)
+            pi2 = float(np.pi/2.0)
+            heading = -heading + pi2
+            if(heading > pi2):
+                heading = heading - np.pi
+            if(heading <= -pi2):
+                heading = heading + np.pi
+            bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
+            bbox = self._bbox3d(bbox, calib)
+            #Translate to PC reference frame
+            trunc = float(label_arr[1])
+            occ   = int(label_arr[2])
+            if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
+                diff = 0
+            elif(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
+                diff = 1
+            elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
+                diff = 2
+            else:
+                label_arr[0] = 'dontcare'
+            #If car doesn't fit inside 2 voxels minimum
+            if(bbox[1] - bbox[4]/2 >= cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.VOXEL_LEN*20):
+                continue
+            if(bbox[0] - bbox[3]/2 >= cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.VOXEL_LEN*20):
+                continue
+            if(bbox[1] + bbox[4]/2 < cfg.LIDAR.Y_RANGE[0] + cfg.LIDAR.VOXEL_LEN*20):
+                continue
+            if(bbox[0] + bbox[3]/2 < cfg.LIDAR.X_RANGE[0] + cfg.LIDAR.VOXEL_LEN*20):
+                continue
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
                 label_arr[0] = 'dontcare'
@@ -167,26 +229,33 @@ class kitti_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_diff[ix]  = diff
+                gt_ids[ix]   = int(index) + ix
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = 0
                 ix = ix + 1
             if('dontcare' in label_arr[0].lower().strip()):
                 #print(line)
-                boxes_dc[ix_dc, :] = bbox
+                boxes_dc[ix_dc, :] = np.zeros((cfg.LIDAR.NUM_BBOX_ELEM))
                 ix_dc = ix_dc + 1
                 
 
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #assert(len(boxes) != 0, "Boxes is empty for label {:s}".format(index))
+        if(ix == 0 and remove_without_gt is True):
+            print('removing pc {} with no GT boxes specified'.format(index))
+            return None
         return {
-            'img_index': index,
+            'idx': index,
+            'ids': gt_ids[0:ix],
             'filename': img_filename,
             'det': ignore[0:ix].copy(),
             'ignore':ignore[0:ix],
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
+            'difficulty': gt_diff[0:ix],
             'cat': cat,
             'boxes': boxes[0:ix],
             'boxes_dc': boxes_dc[0:ix_dc],
@@ -195,6 +264,15 @@ class kitti_lidb(db):
             'flipped': False,
             'seg_areas': seg_areas[0:ix]
         }
+
+    def _bbox3d(self, bbox, calib):
+        #box3d_pts_2d, box3d_pts_3d = kitti_utils.compute_box_3d(bbox, calib.P)
+        xyz = [[bbox[0],bbox[1],bbox[2]]]
+        xyz = calib.project_rect_to_velo(xyz)
+        bbox[0] = xyz[0][0]
+        bbox[1] = xyz[0][1]
+        bbox[2] = xyz[0][2]
+        return bbox
 
     #DEPRECATED
     #def draw_and_save(self,mode,image_token=None):
@@ -314,9 +392,10 @@ class kitti_lidb(db):
         frame_index = self._get_index_for_mode(mode)
         #annopath is for labels and only labelled images
         annopath = os.path.join(self._devkit_path, self.mode_to_sub_folder(mode), 'label_2')
-        cachedir = os.path.join(self._devkit_path, 'annotations_cache')
+        print(annopath)
         num_d_levels = 3
-        aps = np.zeros((len(self._classes)-1,num_d_levels))
+        cachedir = os.path.join(self._devkit_path, 'annotations_cache')
+        aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         #Loop through all classes
@@ -332,11 +411,14 @@ class kitti_lidb(db):
             #Run kitti evaluation metrics on each image
             rec, prec, ap = kitti_eval(
                 detfile,
-                annopath,
+                self,
                 frame_index,
                 cls,
                 cachedir,
-                ovthresh=ovt)
+                mode,
+                ovthresh=ovt,
+                eval_type='bev',
+                d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP
             print_str = 'AP for {} = '.format(cls)

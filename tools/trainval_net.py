@@ -12,6 +12,7 @@ from model.train_val import train_net
 from model.config import cfg, cfg_from_file, cfg_from_list, get_output_dir, get_output_tb_dir
 from datasets.factory import get_imdb
 from datasets.kitti_imdb import kitti_imdb
+from datasets.kitti_lidb import kitti_lidb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
 from datasets.waymo_lidb import waymo_lidb
@@ -195,6 +196,8 @@ def combined_lidb_roidb(mode,dataset,draw_and_save=False,lidb=None,limiter=0):
     if(mode == 'train'):
         if(dataset == 'waymo'):
             lidb = waymo_lidb(mode,limiter)
+        elif(dataset == 'kitti'):
+            lidb = kitti_lidb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return
@@ -221,7 +224,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
             imdb = waymo_imdb(mode,limiter)
         else:
             print('Requested dataset is not available')
-            return
+            return None
         print('Loaded dataset `{:s}` for training'.format(imdb.name))
         #Use gt_roidb located in kitti_imdb.py
         #imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
@@ -233,7 +236,7 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = False
+    cfg.DEBUG.EN = True
     #manual_mode = cfg.DEBUG.EN
     manual_mode = False
     args = parse_args(manual_mode)
@@ -242,20 +245,21 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'kitti'
         #args.out_dir = 'output/'
-        args.net_type     = 'image'
-        args.preload      = 1
+        args.net_type     = 'lidar'
+        args.preload      = 2
         args.iter         = 0
         args.scale        = 1.0
         args.en_full_net  = True
-        args.en_fpn       = True
+        args.en_fpn       = False
         args.en_epistemic = 0
         args.en_aleatoric = 0
-        args.fixed_blocks = 1
-        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
+        args.fixed_blocks = -1
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
         #args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
+        args.weights_file  = os.path.join('/home/mat/thesis/data/', args.db_name, 'weights', 'lidar_rpn_10k.pth')
         #IMAGE
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_image_rpn_12k.pth')
         #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
