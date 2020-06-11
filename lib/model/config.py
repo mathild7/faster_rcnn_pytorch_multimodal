@@ -28,7 +28,7 @@ __C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.FREEZE_DB          = False
 __C.DEBUG.FREEZE_DB_INDS     = 1
 __C.DEBUG.PRINT_SCENE_RESULT = False
-__C.DEBUG.EN_TEST_MSG        = False
+__C.DEBUG.EN_TEST_MSG        = True
 
 #Bayesian Config
 __C.UC = edict()
@@ -52,7 +52,7 @@ __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
 __C.SCALE_LOC                = 6
 #WAYMO input size
-__C.IM_SIZE = [1920,930]
+#__C.IM_SIZE = [1920,930]
 #
 # Training options
 #
@@ -93,7 +93,7 @@ __C.TRAIN.TRUNCATED = False
 __C.TRAIN.BIAS_DECAY = False
 
 # Whether to add ground truth boxes to the pool when sampling regions
-__C.TRAIN.USE_GT = False
+__C.TRAIN.USE_GT = True
 
 # The number of snapshots kept, older ones are deleted to save space
 __C.TRAIN.SNAPSHOT_KEPT = 30
@@ -114,7 +114,7 @@ __C.TRAIN.BATCH_SIZE = 256
 __C.TRAIN.FG_FRACTION = 0.25
 
 # Overlap threshold for a ROI to be considered foreground (if >= FG_THRESH)
-__C.TRAIN.FG_THRESH = 0.5
+__C.TRAIN.FG_THRESH = 0.6
 __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
@@ -364,14 +364,17 @@ __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
+
+__C.TRAIN.CADC_FILTER_LIST    = ['none', 'light', 'medium', 'heavy', 'extreme']
+__C.TEST.CADC_FILTER_LIST     = ['none', 'light', 'medium', 'heavy', 'extreme']
 #Lidar Config
 __C.LIDAR = edict()                      #KITTI    #WAYMO
-__C.LIDAR.X_RANGE            = [0,35]    #[0,35]   #[0,70]
-__C.LIDAR.Y_RANGE            = [-20,20]  #[-20,20] #[-40,40]
-__C.LIDAR.Z_RANGE            = [-2,2]    #[-2,2]   #[-3,3]
-__C.LIDAR.VOXEL_LEN          = 0.05       # 0.05    # 0.1
+__C.LIDAR.X_RANGE            = [0,70]    #[0,35]   #[0,70]
+__C.LIDAR.Y_RANGE            = [-40,40]  #[-20,20] #[-40,40]
+__C.LIDAR.Z_RANGE            = [-3,3]    #[-2,2]   #[-3,3]
+__C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 8         #8        #12
+__C.LIDAR.NUM_SLICES         = 12        #8        #12
 __C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32

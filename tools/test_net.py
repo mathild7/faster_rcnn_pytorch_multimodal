@@ -25,6 +25,8 @@ from datasets.kitti_lidb import kitti_lidb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
 from datasets.waymo_lidb import waymo_lidb
+from datasets.cadc_imdb import cadc_imdb
+from datasets.cadc_lidb import cadc_lidb
 from nets.lidarnet import lidarnet
 import torch
 
@@ -151,20 +153,20 @@ if __name__ == '__main__':
     manual_mode = cfg.DEBUG.EN
     args = parse_args(manual_mode)
     if(manual_mode):
-        args.net = 'res101'
-        args.db_name = 'kitti'
-        args.net_type = 'lidar'
-        args.weights_file = '{}_{}_faster_rcnn_iter_80000.pth'.format(args.net_type,args.net)
-        args.iter = 0
-        args.num_frames = 300
-        args.scale = 1.0
-        args.en_fpn = 0
-        args.data_dir     = os.path.join('/home/mat','thesis', 'data')
-        #args.en_epistemic = 1
-        #args.en_aleatoric = 1
-        #args.uc_sort_type = 'a_cls_var'
-        #args.out_dir = 'output/'
-        #args.db_root_dir = '/home/mat/thesis/data2/{}/'.format(args.db_name)
+        args.net           = 'res101'
+        args.db_name       = 'waymo'
+        args.net_type      = 'image'
+        args.weights_file  = '{}_{}_faster_rcnn_iter_130000.pth'.format(args.net_type,args.net)
+        args.iter          = 0
+        args.num_frames    = 0
+        args.scale         = 1.0
+        args.en_fpn        = 1
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
+        args.en_epistemic = 1
+        args.en_aleatoric = 1
+        args.uc_sort_type = 'a_cls_var'
+        #args.out_dir      = 'output/'
+        #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
 
@@ -220,11 +222,15 @@ if __name__ == '__main__':
             db = nuscenes_imdb(mode='val',limiter=args.num_frames)
         elif(args.db_name == 'waymo'):
             db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
+        elif(args.db_name == 'cadc'):
+            db = cadc_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
         if(args.db_name == 'kitti'):
             db = kitti_lidb(mode='eval',limiter=args.num_frames, shuffle_en=True)
         elif(args.db_name == 'waymo'):
             db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
+        elif(args.db_name == 'cadc'):
+            db = cadc_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 
     # load network
     if(cfg.NET_TYPE == 'image'):
@@ -270,4 +276,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.765,draw_det=False,eval_det=True)

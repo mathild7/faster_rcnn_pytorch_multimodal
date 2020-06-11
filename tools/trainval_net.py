@@ -16,6 +16,8 @@ from datasets.kitti_lidb import kitti_lidb
 from datasets.nuscenes_imdb import nuscenes_imdb
 from datasets.waymo_imdb import waymo_imdb
 from datasets.waymo_lidb import waymo_lidb
+from datasets.cadc_imdb import cadc_imdb
+from datasets.cadc_lidb import cadc_lidb
 import argparse
 import pprint
 import numpy as np
@@ -198,6 +200,8 @@ def combined_lidb_roidb(mode,dataset,draw_and_save=False,lidb=None,limiter=0):
             lidb = waymo_lidb(mode,limiter)
         elif(dataset == 'kitti'):
             lidb = kitti_lidb(mode,limiter)
+        elif(dataset == 'cadc'):
+            lidb = cadc_lidb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return
@@ -222,6 +226,8 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
             imdb = nuscenes_imdb(mode,limiter)
         elif(dataset == 'waymo'):
             imdb = waymo_imdb(mode,limiter)
+        elif(dataset == 'cadc'):
+            imdb = cadc_imdb(mode,limiter)
         else:
             print('Requested dataset is not available')
             return None
@@ -236,20 +242,20 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = True
+    cfg.DEBUG.EN = False
     #manual_mode = cfg.DEBUG.EN
     manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'kitti'
+        args.db_name = 'cadc'
         #args.out_dir = 'output/'
         args.net_type     = 'lidar'
-        args.preload      = 2
+        args.preload      = 0
         args.iter         = 0
         args.scale        = 1.0
-        args.en_full_net  = True
+        args.en_full_net  = False
         args.en_fpn       = False
         args.en_epistemic = 0
         args.en_aleatoric = 0
@@ -259,13 +265,13 @@ if __name__ == '__main__':
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
         #args.weights_file  = os.path.join('/home/mat/thesis/data/', 'weights', 'lidar_rpn_60k.pth')
-        args.weights_file  = os.path.join('/home/mat/thesis/data/', args.db_name, 'weights', 'lidar_rpn_10k.pth')
+        #args.weights_file  = os.path.join('/home/mat/thesis/data/', args.db_name, 'weights', 'lidar_rpn_10k.pth')
         #IMAGE
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_image_rpn_12k.pth')
         #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000
-    
+    cfg.DB_NAME = args.db_name
     #TODO: Merge into cfg_from_list()
     if(args.data_dir is not None):
         cfg.DATA_DIR = args.data_dir

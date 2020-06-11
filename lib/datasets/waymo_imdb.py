@@ -50,8 +50,8 @@ class waymo_imdb(db):
         else:
             self._tod_filter_list = cfg.TRAIN.TOD_FILTER_LIST
         self._uncertainty_sort_type = cfg.UC.SORT_TYPE
-        self._draw_width  = cfg.IM_SIZE[0]
-        self._draw_height = cfg.IM_SIZE[1]
+        self._draw_width  = 1920
+        self._draw_height = 930
         self._imtype   = 'PNG'
         self._filetype = 'png'
         self._scene_sel = True
@@ -455,7 +455,7 @@ class waymo_imdb(db):
             else:
                 ovt = 0.5
             #waymo/results/comp_X_testing_class.txt
-            detfile = self._get_results_file_template(mode,cls)
+            detfile = self._get_results_file_template(mode,cls,output_dir)
             #Run waymo evaluation metrics on each image
             rec, prec, ap = waymo_eval(
                 detfile,
@@ -485,13 +485,13 @@ class waymo_imdb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_image_results_file(all_boxes, mode)
+        self._write_image_results_file(all_boxes, output_dir, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_results_file_template(mode,cls)
+                filename = self._get_results_file_template(mode,cls,output_dir)
                 os.remove(filename)
 
 if __name__ == '__main__':

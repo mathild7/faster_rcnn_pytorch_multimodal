@@ -164,7 +164,7 @@ def get_lidar_minibatch(roidb, num_classes, augment_en, scale, cnt):
     blobs['gt_boxes_dc'] = vg_boxes_dc * scale
     blobs['info'] = np.array(np.hstack((info,scale)), dtype=np.float32)
     #blobs['info'] = np.array([pc_blob.shape[0], pc_blob.shape[1], pc_blob.shape[2]], dtype=np.float32)
-    if(cfg.DEBUG.DRAW_MINIBATCH):
+    if(cfg.DEBUG.DRAW_MINIBATCH and cfg.DEBUG.EN):
         draw_and_save_lidar_minibatch(blobs,cnt)
     if(len(blobs['gt_boxes']) == 0):
         #print('No GT boxes for augmented image. Skipping')
@@ -206,7 +206,7 @@ def get_image_minibatch(roidb, num_classes, augment_en, scale, cnt):
         gt_boxes_dc[:, 4] = np.zeros(dc_len)
     blobs['gt_boxes_dc'] = gt_boxes_dc
 
-    if(cfg.DEBUG.DRAW_MINIBATCH):
+    if(cfg.DEBUG.DRAW_MINIBATCH and cfg.DEBUG.EN):
         draw_and_save_image_minibatch(blobs,cnt)
     #print('gt boxes')
     #assert(len(blobs['gt_boxes']) != 0), 'gt_boxes is empty for image {:s}'.format(roi_entry['filename'])
@@ -237,11 +237,15 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             filen = roidb[i]['filename']
             if('.bin' in filen):
                 points = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
-                calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
-                calib = kitti_calib(calib_file)
-                pts_rect = calib.project_velo_to_rect(points[:, 0:3])
-                fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
-                pts_fov = points[fov_flag]
+                if(cfg.DB_NAME == 'kitti'):
+                    calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
+                    calib = kitti_calib(calib_file)
+                    pts_rect = calib.project_velo_to_rect(points[:, 0:3])
+                    fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
+                    pts_fov = points[fov_flag]
+                #TODO: Do this for CADC and waymo too
+                else:
+                    pts_fov = points
                 #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
                 source_bin = filter_points(pts_fov)
             elif('.npy' in filen):

@@ -117,10 +117,13 @@ class db(object):
     def get_class(self,idx):
        return self._classes[idx]
 
-    def _get_results_file_template(self, mode,class_name):
+    def _get_results_file_template(self, mode,class_name,output_dir):
         # data/waymo/results/<comp_id>_test_aeroplane.txt
         filename = 'det_' + mode + '_{:s}.txt'.format(class_name)
-        path = os.path.join(self._devkit_path, 'results', filename)
+        result_dir = os.path.join(output_dir, 'results')
+        if(not os.path.isdir(result_dir)):
+            os.mkdir(result_dir)
+        path = os.path.join(result_dir, filename)
         return path
 
     def path_at(self, i, mode='train'):
@@ -287,13 +290,13 @@ class db(object):
         else:
             return np.argsort(sortable)
 
-    def _write_image_results_file(self, all_boxes, mode):
+    def _write_image_results_file(self, all_boxes, output_dir, mode):
         img_idx = self._get_index_for_mode(mode)
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
             print('Writing {} {} results file'.format(self.name, cls))
-            filename = self._get_results_file_template(mode,cls)
+            filename = self._get_results_file_template(mode,cls,output_dir)
             with open(filename, 'wt') as f:
                 #f.write('test')
                 for im_ind, img in enumerate(img_idx):
@@ -318,13 +321,13 @@ class db(object):
                             f.write(' {:.2f}'.format(dets[k,l]))
                         f.write('\n')
 
-    def _write_lidar_results_file(self, all_boxes, mode):
+    def _write_lidar_results_file(self, all_boxes, output_dir, mode):
         frame_list = self._get_index_for_mode(mode)
         for cls_ind, cls in enumerate(self.classes):
             if cls == 'dontcare' or cls == '__background__':
                 continue
             print('Writing {} {} results file'.format(self.name, cls))
-            filename = self._get_results_file_template(mode,cls)
+            filename = self._get_results_file_template(mode,cls,output_dir)
             with open(filename, 'wt') as f:
                 #f.write('test')
                 for ind, frame in enumerate(frame_list):

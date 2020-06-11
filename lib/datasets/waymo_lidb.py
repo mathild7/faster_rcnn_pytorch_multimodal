@@ -517,7 +517,7 @@ class waymo_lidb(db):
             else:
                 ovt = 0.5
             #waymo/results/comp_X_testing_class.txt
-            detfile = self._get_results_file_template(mode,cls)
+            detfile = self._get_results_file_template(mode,cls,output_dir)
             #Run waymo evaluation metrics on each pc
             rec, prec, ap = waymo_eval(
                 detfile,
@@ -553,7 +553,7 @@ class waymo_lidb(db):
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_results_file_template(mode,cls)
+                filename = self._get_results_file_template(mode,cls,output_dir)
                 os.remove(filename)
 
 if __name__ == '__main__':

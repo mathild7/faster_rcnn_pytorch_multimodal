@@ -310,7 +310,7 @@ class kitti_imdb(db):
             else:
                 ovt = 0.5
             #Kitti/results/comp_X_testing_class.txt
-            detfile = self._get_results_file_template(mode,cls)
+            detfile = self._get_results_file_template(mode,cls,output_dir)
             #Run kitti evaluation metrics on each image
             rec, prec, ap = kitti_eval(
                 detfile,
@@ -353,7 +353,7 @@ class kitti_imdb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_image_results_file(all_boxes, mode)
+        self._write_image_results_file(all_boxes, output_dir, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['matlab_eval']:
             self._do_matlab_eval(output_dir)
@@ -361,7 +361,7 @@ class kitti_imdb(db):
             for cls in self._classes:
                 if cls == 'dontcare'  or cls == '__background__':
                     continue
-                filename = self._get_results_file_template(mode,cls)
+                filename = self._get_results_file_template(mode,cls,output_dir)
                 os.remove(filename)
 
     def competition_mode(self, on):

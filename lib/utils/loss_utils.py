@@ -47,6 +47,7 @@ def smooth_l1_loss(stage,
     #print(bbox_targets)
     #print(bbox_inside_weights)
     #torch.set_printoptions(profile="default")
+    bias = 0
     if(net_type == 'lidar' and stage == 'DET'):
         bbox_shape   = [bbox_pred.shape[0],bbox_pred.shape[1]]
         elem_rm      = int(bbox_shape[1]/7)
@@ -67,8 +68,9 @@ def smooth_l1_loss(stage,
 
     if(bbox_var_en):
         #Don't need covariance matrix as it collapses itself in the end anyway
-        in_loss_box = 0.5*in_loss_box*torch.exp(-bbox_var) + 0.5*torch.exp(bbox_var)
+        in_loss_box = 0.5*in_loss_box*torch.exp(-bbox_var) + 0.5*bbox_var
         in_loss_box = in_loss_box*bbox_inside_weights
+        bias        = 1
         #torch.set_printoptions(profile="full")
         #print(in_loss_box[in_loss_box.nonzero()])
         #torch.set_printoptions(profile="default")
@@ -83,7 +85,7 @@ def smooth_l1_loss(stage,
     #print(loss_box.size())
     #TODO: Could it be mean is taken at a different level between rpn and 2nd stage??
     loss_box = loss_box.mean()
-    return loss_box
+    return loss_box + bias
 
 def compute_bbox_cov(bbox_samples):
     mc_bbox_mean = torch.mean(bbox_samples,dim=0)

@@ -52,8 +52,8 @@ class imagenet(Network):
         if(cfg.UC.EN_BBOX_EPISTEMIC or cfg.UC.EN_CLS_EPISTEMIC):
             self._det_net_channels = int(self._fc7_channels/4)
             self._dropout_en       = True
-            self._cls_drop_rate    = 0.5
-            self._bbox_drop_rate   = 0.2
+            self._cls_drop_rate    = 0.3
+            self._bbox_drop_rate   = 0.1
             self._resnet_drop_rate = 0.5
         else:
             self._det_net_channels = self._fc7_channels

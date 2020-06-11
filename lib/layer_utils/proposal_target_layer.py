@@ -34,10 +34,11 @@ def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_bo
     # Include ground-truth boxes in the set of candidate rois
     if cfg.TRAIN.USE_GT:
         zeros = rpn_rois.new_zeros(gt_boxes.shape[0], 1)
-        all_rois = torch.cat((all_rois, torch.cat(
-            (zeros, gt_boxes[:, :-1]), 1)), 0)
+        gt_rois = torch.cat((zeros,gt_boxes[:, :-1]),1)
+        all_rois = torch.cat((all_rois, gt_rois), 0)
         # not sure if it a wise appending, but anyway i am not using it
         all_scores = torch.cat((all_scores, zeros), 0)
+        all_anchors_3d = torch.cat((all_anchors_3d,true_gt_boxes[:, :-1]),0)
 
     num_images = 1
     rois_per_frame = cfg.TRAIN.BATCH_SIZE / num_images

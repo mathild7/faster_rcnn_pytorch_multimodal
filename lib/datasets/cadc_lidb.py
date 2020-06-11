@@ -20,38 +20,48 @@ from PIL import Image, ImageDraw
 import subprocess
 import uuid
 import traceback
-from .kitti_eval import kitti_eval
+from .cadc_eval import cadc_eval
 from model.config import cfg, get_output_dir
 import shutil
-import utils.kitti_utils as kitti_utils
-from utils.kitti_utils import Calibration as kitti_calib
+#import utils.cadc_utils as cadc_utils
+#from utils.cadc_utils import Calibration as cadc_calib
 from random import SystemRandom
 import utils.bbox as bbox_utils
+import re
+import csv
 
-class kitti_lidb(db):
+class cadc_lidb(db):
     def __init__(self, mode='test',limiter=0, shuffle_en=True):
-        name = 'kitti'
+        name = 'cadc'
         db.__init__(self, name, mode)
         self._devkit_path = self._get_default_path()
         self._data_path = self._devkit_path
         self._mode = mode
+        if(mode == 'test'):
+            self._tod_filter_list = cfg.TEST.CADC_FILTER_LIST
+        else:
+            self._tod_filter_list = cfg.TRAIN.CADC_FILTER_LIST
+        scene_desc_filename = os.path.join(self._data_path, 'cadc_scene_description.csv')
+        self._load_scene_meta(scene_desc_filename)
         self._uncertainty_sort_type = cfg.UC.SORT_TYPE
         self._draw_width = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         self._draw_height = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/cfg.LIDAR.VOXEL_LEN))
         self._num_slices = cfg.LIDAR.NUM_SLICES
-        self._frame_sub_dir = 'velodyne'
-        self._train_dir = os.path.join(self._data_path, 'training', self._frame_sub_dir)
-        self._val_dir   = os.path.join(self._data_path, 'evaluation', self._frame_sub_dir)
-        self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
+        self._frame_sub_dir      = 'point_clouds'
+        self._annotation_sub_dir = 'annotation_00'
+        self._calib_sub_dir      = 'calib'
+        self._train_dir = os.path.join(self._data_path, 'train', self._frame_sub_dir)
+        self._val_dir   = os.path.join(self._data_path, 'val', self._frame_sub_dir)
+        #self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
         self._filetype   = 'bin'
         self._imtype   = 'PNG'
         self.type = 'lidar'
         self._bev_slice_locations = [1,2,3,4,5,7]
         self._mode = mode
         #Backwards compatibility
-        self._train_sub_folder = 'training'
-        self._val_sub_folder = 'evaluation'
-        self._test_sub_folder = 'testing'
+        #self._train_sub_folder = 'training'
+        #self._val_sub_folder = 'evaluation'
+        #self._test_sub_folder = 'testing'
         self._classes = (
             'dontcare',  # always index 0
             #'Pedestrian',
@@ -67,41 +77,31 @@ class kitti_lidb(db):
             list(zip(self.classes, list(range(self.num_classes)))))
         self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.bin')])
         self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.bin')])
-        self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.bin')])
+        #self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.bin')])
         #Limiter
         if(limiter != 0):
             if(limiter < len(self._val_index)):
                 self._val_index   = self._val_index[:limiter]
             if(limiter < len(self._train_index)):
                 self._train_index = self._train_index[:limiter]
-            if(limiter < len(self._test_index)):
-                self._test_index = self._test_index[:limiter]
+            #if(limiter < len(self._test_index)):
+            #    self._test_index = self._test_index[:limiter]
         rand = SystemRandom()
         if(shuffle_en):
             print('shuffling frame indices')
             rand.shuffle(self._val_index)
             rand.shuffle(self._train_index)
-            rand.shuffle(self._test_index)
+            #rand.shuffle(self._test_index)
         assert os.path.exists(self._devkit_path), \
-            'Kitti dataset path does not exist: {}'.format(self._devkit_path)
+            'cadc dataset path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
-
-    def subfolder_from_mode(self, mode):
-        if(mode == 'train'):
-            return self._train_sub_folder
-        if(mode == 'val'):
-            return self._val_sub_folder
-        if(mode == 'test'):
-            return self._test_sub_folder
-        return None
 
     def path_from_index(self, mode, index):
         """
     Construct an image path from the image's "index" identifier.
     """
-        mode_sub_folder = self.subfolder_from_mode(mode)
-        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'velodyne', index)
+        image_path = os.path.join(self._devkit_path, mode, self._frame_sub_dir, index)
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -110,7 +110,7 @@ class kitti_lidb(db):
         """
     Return the default path where PASCAL VOC is expected to be installed.
     """
-        return os.path.join(cfg.DATA_DIR, 'kitti')
+        return os.path.join(cfg.DATA_DIR, 'cadc')
 
     def gt_roidb(self, mode):
         """
@@ -134,7 +134,7 @@ class kitti_lidb(db):
         gt_roidb = []
         for frame in frame_index:
             idx = frame.replace('.{}'.format(self._filetype),'')
-            roi = self._load_kitti_annotation(idx, mode)
+            roi = self._load_cadc_annotation(idx, mode)
             if(roi is not None):
                 gt_roidb.append(roi)
         with open(cache_file, 'wb') as fid:
@@ -144,15 +144,14 @@ class kitti_lidb(db):
         return gt_roidb
 
     #Only care about foreground classes
-    def _load_kitti_annotation(self, index, mode='train', remove_without_gt=True):
+    def _load_cadc_annotation(self, index, mode='train', remove_without_gt=True):
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
         """
-        #print('loading kitti anno')
-        filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'label_2', index + '.txt')
-        calib_file = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'calib', index + '.txt')
-        img_filename = os.path.join(self._data_path, self.mode_to_sub_folder(mode), 'velodyne', index + '.{}'.format(self._filetype))
+        #print('loading cadc anno')
+        filename = os.path.join(self._data_path, mode, 'annotation_00', index + '.txt')
+        frame_filename = os.path.join(self._data_path, mode, self._frame_sub_dir, index + '.bin')
         label_lines = open(filename, 'r').readlines()
         num_objs = len(label_lines)
         boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
@@ -167,7 +166,7 @@ class kitti_lidb(db):
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
-        calib = kitti_calib(calib_file)
+        #calib = cadc_calib(calib_file)
         # Load object bounding boxes into a data frame.
         ix = 0
         ix_dc = 0
@@ -177,38 +176,43 @@ class kitti_lidb(db):
             # Make pixel indexes 0-based
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
+            drive = re.sub('[^0-9]','', label_arr[16])
+            scene = label_arr[17]
+            scene_idx = int(drive)*100 + int(scene)
+            scene_desc = self._get_scene_desc(scene_idx)
+            if(scene_desc not in self._tod_filter_list):
+                continue
             x1 = float(label_arr[4])
             y1 = float(label_arr[5])
             x2 = float(label_arr[6])
             y2 = float(label_arr[7])
             BBGT_height = y2 - y1
-            h_z = float(label_arr[8])
+            l_x = float(label_arr[8])
             w_y = float(label_arr[9])
-            l_x = float(label_arr[10])
+            h_z = float(label_arr[10])
             x_c = float(label_arr[11])
             y_c = float(label_arr[12])
             z_c = float(label_arr[13])
             heading = float(label_arr[14].replace('\n',''))
             #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
-            heading = -heading + pi2
+            #heading = -heading + pi2
             if(heading > pi2):
                 heading = heading - np.pi
             if(heading <= -pi2):
                 heading = heading + np.pi
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
-            bbox = self._bbox3d(bbox, calib)
+            #bbox = self._bbox3d(bbox, calib)
             #Translate to PC reference frame
-            trunc = float(label_arr[1])
-            occ   = int(label_arr[2])
-            if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
-                diff = 0
-            elif(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
-                diff = 1
-            elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
-                diff = 2
-            else:
-                label_arr[0] = 'dontcare'
+            diff = 0
+            #if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
+            #    diff = 0
+            #elif(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
+            #    diff = 1
+            #elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
+            #    diff = 2
+            #else:
+            #    label_arr[0] = 'dontcare'
             #If car doesn't fit inside 2 voxels minimum
             if(bbox[1] - bbox[4]/2 >= cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.VOXEL_LEN*20):
                 continue
@@ -229,8 +233,8 @@ class kitti_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
-                gt_diff[ix]  = diff
                 gt_ids[ix]   = int(index) + ix
+                gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = 0
@@ -248,14 +252,15 @@ class kitti_lidb(db):
             return None
         return {
             'idx': index,
-            'ids': gt_ids[0:ix],
-            'filename': img_filename,
+            'scene_idx': scene_idx,
+            'filename': frame_filename,
             'det': ignore[0:ix].copy(),
             'ignore':ignore[0:ix],
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
             'difficulty': gt_diff[0:ix],
+            'ids': gt_ids[0:ix],
             'cat': cat,
             'boxes': boxes[0:ix],
             'boxes_dc': boxes_dc[0:ix_dc],
@@ -265,14 +270,14 @@ class kitti_lidb(db):
             'seg_areas': seg_areas[0:ix]
         }
 
-    def _bbox3d(self, bbox, calib):
-        #box3d_pts_2d, box3d_pts_3d = kitti_utils.compute_box_3d(bbox, calib.P)
-        xyz = [[bbox[0],bbox[1],bbox[2]]]
-        xyz = calib.project_rect_to_velo(xyz)
-        bbox[0] = xyz[0][0]
-        bbox[1] = xyz[0][1]
-        bbox[2] = xyz[0][2]
-        return bbox
+    #def _bbox3d(self, bbox, calib):
+    #    #box3d_pts_2d, box3d_pts_3d = cadc_utils.compute_box_3d(bbox, calib.P)
+    #    xyz = [[bbox[0],bbox[1],bbox[2]]]
+    #    xyz = calib.project_rect_to_velo(xyz)
+    #    bbox[0] = xyz[0][0]
+    #    bbox[1] = xyz[0][1]
+    #    bbox[2] = xyz[0][2]
+    #    return bbox
 
     #DEPRECATED
     #def draw_and_save(self,mode,image_token=None):
@@ -310,15 +315,62 @@ class kitti_lidb(db):
     #                print('Saving drawn file at location {}'.format(outfile))
     #                source_img.save(outfile,self._imtype)
 
+    def _load_scene_meta(self, scene_desc_filepath):
+        self._scene_meta = {}
+        with open(scene_desc_filepath, newline='\n') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            for i, row in enumerate(reader):
+                for j, elem in enumerate(row):
+                    if(i == 0):
+                        elem_t = elem.replace(' ','_').lower()
+                        self._scene_meta[elem_t] = []
+                    else:
+                        for k, (key,_) in enumerate(self._scene_meta.items()):
+                            if j == k:
+                                self._scene_meta[key].append(elem)
+        self._scene_meta_postprocess()
+        return self._scene_meta
+
+    def _scene_meta_postprocess(self):
+        drive  = self._scene_meta['date']
+        seq    = self._scene_meta['number']
+        snow   = self._scene_meta['snow_points_removed']
+        self._scene_meta['cam00_obs'] = self._scene_meta['cam_00_lens_snow_cover']
+        self._scene_meta['scene_idx'] = []
+        self._scene_meta['scene_desc'] = []
+        self._scene_meta['cam_obs'] = []
+        for i in range(0,len(drive)):
+            scene_idx = int(re.sub('[^0-9]','',drive[i]))*100 + int(seq[i])
+            self._scene_meta['scene_idx'].append(scene_idx)
+            snow_tmp = int(snow[i])
+            if(snow_tmp < 25):
+                scene_desc = 'none'
+            elif(snow_tmp < 250):
+                scene_desc = 'light'
+            elif(snow_tmp < 500):
+                scene_desc = 'medium'
+            elif(snow_tmp < 750):
+                scene_desc = 'heavy'
+            else:
+                scene_desc = 'extreme'
+            self._scene_meta['scene_desc'].append(scene_desc)
+
+
     def _load_pc(self,filename):
         return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
+
+    def _get_scene_desc(self, scene_idx):
+        all_scene_idx = self._scene_meta['scene_idx']
+        loc = all_scene_idx.index(scene_idx)
+        all_scene_desc = self._scene_meta['scene_desc']
+        return all_scene_desc[loc]
 
     #TODO: Merge with waymo lidb draw and save eval, image specific
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        #out_file = filename.replace('/{}/'.format(self._frame_sub_dir),'/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         source_bin = self._load_pc(filename)
         draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
@@ -391,9 +443,9 @@ class kitti_lidb(db):
     def _do_python_eval(self, output_dir='output', mode='train'):
         frame_index = self._get_index_for_mode(mode)
         #annopath is for labels and only labelled images
-        annopath = os.path.join(self._devkit_path, self.mode_to_sub_folder(mode), 'label_2')
+        annopath = os.path.join(self._devkit_path, mode, self._annotation_sub_dir)
         print(annopath)
-        num_d_levels = 3
+        num_d_levels = 1
         cachedir = os.path.join(self._devkit_path, 'annotations_cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
@@ -406,10 +458,10 @@ class kitti_lidb(db):
                 ovt = 0.7
             else:
                 ovt = 0.5
-            #Kitti/results/comp_X_testing_class.txt
+            #cadc/results/comp_X_testing_class.txt
             detfile = self._get_results_file_template(mode,cls,output_dir)
-            #Run kitti evaluation metrics on each image
-            rec, prec, ap = kitti_eval(
+            #Run cadc evaluation metrics on each image
+            rec, prec, ap = cadc_eval(
                 detfile,
                 self,
                 frame_index,
@@ -443,7 +495,7 @@ class kitti_lidb(db):
         cmd = 'cd {} && '.format(path)
         cmd += '{:s} -nodisplay -nodesktop '.format(cfg.MATLAB)
         cmd += '-r "dbstop if error; '
-        cmd += 'kitti_eval(\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
+        cmd += 'cadc_eval(\'{:s}\',\'{:s}\',\'{:s}\'); quit;"' \
             .format(self._devkit_path,  self._mode, output_dir)
         print(('Running:\n{}'.format(cmd)))
         status = subprocess.call(cmd, shell=True)
