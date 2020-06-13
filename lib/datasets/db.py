@@ -318,7 +318,7 @@ class db(object):
                                 dets[k, 2], dets[k, 3]))
                         #Write uncertainties
                         for l in range(5,dets.shape[1]):
-                            f.write(' {:.2f}'.format(dets[k,l]))
+                            f.write(' {:.5f}'.format(dets[k,l]))
                         f.write('\n')
 
     def _write_lidar_results_file(self, all_boxes, output_dir, mode):

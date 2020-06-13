@@ -4,8 +4,8 @@ import torch.nn.functional as F
 import torch
 
 NUM_SAMPLES = 10000
-pred_values = np.arange(-8,8,0.5)
-var_arr     = [2.5,1.75,1,0.5,0.25]
+pred_values = np.arange(-20,20,0.25)
+var_arr     = [0.75,0.5,0.25,0.05,0.01]
 fig, axs = plt.subplots(3)
 eps = 1e-9
 #e^0=1
@@ -48,7 +48,7 @@ for var in var_arr:
         #Step 1: Sample logits
         dist = torch.distributions.Normal(0,np.sqrt(var))
         logit_sampled = dist.sample((NUM_SAMPLES,)) + value
-        logit_sampled = logit_sampled.unsqueeze(1) - 1.5
+        logit_sampled = logit_sampled.unsqueeze(1)
         #Get a similar sized array for other logit
         dummy_val_sampled = torch.tensor([wrong_val],dtype=torch.float32).repeat(NUM_SAMPLES,1)
         dummy_sel        = torch.tensor([0])
@@ -58,8 +58,11 @@ for var in var_arr:
         dist_softmax         = torch.mean(softmax_sampled,dim=0).unsqueeze(0)
         #Step 3: Obtain negative log likelihood (loss)
         dist_loss      = F.nll_loss(torch.log(dist_softmax),dummy_sel)
-
-
+        undist_loss    = torch.mean(ce_loss)
+        diff = dist_loss - undist_loss
+        diff_loss = -F.elu(-diff)
+        #diff_loss = diff
+        elu_dist_loss = diff_loss + undist_loss
 
 
         #Experimental ELU sampling CE loss
@@ -76,11 +79,11 @@ for var in var_arr:
         #elu_loss    = torch.exp(-(elu_diff))
         #elu_avg_diff = torch.mean(elu_diff,dim=0).unsqueeze(0)
         #elu_loss    = F.nll_loss(torch.log(elu_avg_diff),dummy_sel)
-
-        regularizer = var*0.1
+        regularizer = 0
+        regularizer = np.exp(var) - 1
         norm_vector.append(torch.mean(ce_loss))
-        dist_vector.append(dist_loss)
-        elu_dist_vector.append(dist_loss+regularizer)
+        dist_vector.append(dist_loss + var*0.05)
+        elu_dist_vector.append(undist_loss*diff_loss + undist_loss + regularizer)
         #custom_vector.append(elu_loss-dist_loss)
     axs[0].plot(pred_values,norm_vector)
     axs[1].plot(pred_values,dist_vector,label='var {}'.format(var))

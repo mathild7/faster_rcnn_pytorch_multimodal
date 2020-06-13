@@ -24,7 +24,8 @@ class cam_enum(Enum):
     SIDE_RIGHT  = 5
 
 save_imgs = True
-mypath = '/home/mat/thesis/data2/waymo/train'
+frame_skip_override = True
+mypath = '/home/mat/thesis/data2/waymo/val'
 savepath = os.path.join(mypath,'images_new')
 if not os.path.isdir(savepath):
     print('making path: {}'.format(savepath))
@@ -45,7 +46,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%6 == 0):
+                if(j%6 == 0 or frame_skip_override):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))

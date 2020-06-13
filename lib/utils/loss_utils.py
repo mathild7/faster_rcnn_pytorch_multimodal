@@ -70,7 +70,7 @@ def smooth_l1_loss(stage,
         #Don't need covariance matrix as it collapses itself in the end anyway
         in_loss_box = 0.5*in_loss_box*torch.exp(-bbox_var) + 0.5*bbox_var
         in_loss_box = in_loss_box*bbox_inside_weights
-        bias        = 1
+        #bias        = 1
         #torch.set_printoptions(profile="full")
         #print(in_loss_box[in_loss_box.nonzero()])
         #torch.set_printoptions(profile="default")
@@ -136,7 +136,7 @@ def logit_distort(cls_score, cls_var, num_sample):
 def bayesian_cross_entropy(cls_score,cls_var,targets,num_sample):
     #Step 1: Create target mask to shift 'correct' logits
     cls_score_mask = torch.zeros_like(cls_score).scatter_(1, targets.unsqueeze(1), 1)
-    cls_score_shifted = cls_score - cls_score_mask
+    cls_score_shifted = cls_score  #- cls_score_mask
     #Step 2: Get a set of distorted logits sampled from a gaussian distribution
     logit_samples    = logit_distort(cls_score_shifted,cls_var,num_sample)
     #Step 3: Perform softmax over all distorted logits
@@ -144,10 +144,51 @@ def bayesian_cross_entropy(cls_score,cls_var,targets,num_sample):
     #Step 4: Take average of T distorted samples
     avg_softmax     = torch.mean(softmax_samples,dim=0)
     #Step 5: Perform negative log likelihood
-    ce_loss         = F.nll_loss(torch.log(avg_softmax),targets)
+    ce_loss         = F.nll_loss(torch.log(avg_softmax),targets,reduction='none')
     #Step 6: Add regularizer
-    ce_loss         += 0.05*torch.mean(cls_var)
+    ce_loss         += 0.05*torch.mean(cls_var,dim=1)
+    #Step 7: Take average over proposals
+    ce_loss          = torch.mean(ce_loss)
+    #Compute mutual info from logit samples for display on tensorboard
+    a_mutual_info   = categorical_mutual_information(logit_samples)
+    return ce_loss, a_mutual_info
 
+def bayesian_cross_entropy_simple(cls_score,cls_var,targets,num_sample):
+    #Step 1: Create target mask to shift 'correct' logits
+    cls_score_mask = torch.zeros_like(cls_score).scatter_(1, targets.unsqueeze(1), 1)
+    cls_score_shifted = cls_score  #- cls_score_mask
+    #Step 2: Get a set of distorted logits sampled from a gaussian distribution
+    logit_samples    = logit_distort(cls_score_shifted,cls_var,num_sample)
+    #Step 4: Match targets to same size as logit samples
+    target_samples = targets.unsqueeze(1).repeat(1,num_sample)
+    logit_samples  = logit_samples.permute((1,2,0))
+    #Step 3: Perform cross entropy loss
+    ce_loss  = F.cross_entropy(logit_samples,target_samples)
+    #Compute mutual info from logit samples for display on tensorboard
+    a_mutual_info   = categorical_mutual_information(logit_samples)
+    return ce_loss, a_mutual_info
+
+
+def bayesian_elu_cross_entropy(cls_score,cls_var,targets,num_sample):
+    #Step 1: Get undistorted cross entropy loss
+    undist_ce_loss   = F.cross_entropy(cls_score,targets,reduction='none')
+    #Step 2: Get a set of distorted logits sampled from a gaussian distribution
+    logit_samples    = logit_distort(cls_score,cls_var,num_sample)
+    #Step 3: Perform softmax over all distorted logits
+    softmax_samples  = F.softmax(logit_samples,dim=2)
+    #Step 4: Take average of T distorted samples
+    avg_softmax     = torch.mean(softmax_samples,dim=0)
+    #Step 5: Perform negative log likelihood
+    dist_ce_loss    = F.nll_loss(torch.log(avg_softmax),targets,reduction='none')
+    #Step 6: Get difference between distorted and undistorted loss
+    diff = undist_ce_loss - dist_ce_loss
+    #Step 7: Apply elu
+    diff_elu = -F.elu(-diff)
+    #Step 8: Form regularizer
+    regularizer = torch.mean(cls_var,dim=1)  #Average across both logits
+    #Step 8: Combine terms and add regularizer
+    ce_loss         = diff_elu*undist_ce_loss + undist_ce_loss + torch.exp(regularizer) - torch.ones_like(regularizer)
+    ce_loss         = torch.mean(ce_loss)
     #Compute mutual info from logit samples for display on tensorboard
     a_mutual_info   = categorical_mutual_information(logit_samples)
     return ce_loss, a_mutual_info

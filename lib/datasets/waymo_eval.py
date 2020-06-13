@@ -119,8 +119,6 @@ def waymo_eval(detpath,
     if BB.shape[0] > 0:
         # sort by confidence (highest first)
         sorted_ind    = np.argsort(-confidence)
-        sorted_scores = np.sort(-confidence)
-        idx_sorted          = [int(frame_idx[x]) for x in sorted_ind]
         frame_tokens_sorted = [frame_tokens[x] for x in sorted_ind]
         #print(frame_ids)
 
@@ -143,6 +141,7 @@ def waymo_eval(detpath,
             #R = class_recs[frame_ids[d]]
             bb = BB[det_idx, :].astype(float)
             var = {}
+            det_confidence = confidence[det_idx]
             #Variance extraction, collect on a per scene basis
             for key,val in uncertainties.items():
                 uc_avg[key][R['scene_idx']] += val[det_idx, :]
@@ -182,7 +181,7 @@ def waymo_eval(detpath,
                             tp[det_idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,bb,var,jmax))
+                        det_results.append(write_det(R,det_confidence,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
@@ -190,14 +189,14 @@ def waymo_eval(detpath,
                         if(R['difficulty'][jmax] <= 1):
                             fp[det_idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,bb,var))
+                        det_results.append(write_det(R,det_confidence,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[det_idx,0] += 1
                 fp[det_idx,1] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,bb,var))
+                det_results.append(write_det(R,det_confidence,bb,var))
     else:
         print('waymo eval, no GT boxes detected')
     for i in np.arange(cfg.NUM_SCENES):
@@ -298,15 +297,14 @@ def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
                 tmp_rec['pts']        = tmp_rec['pts'][gt_class_idx]
                 tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
             tmp_rec['filename'] = filename
-            tmp_rec['frame_idx']   = int(int(frame_idx)/cfg.MAX_IMG_PER_SCENE)
+            tmp_rec['frame_idx']   = int(int(frame_idx)%cfg.MAX_IMG_PER_SCENE)
             tmp_rec['idx'] = frame_idx
             #List of all frames with GT boxes for a specific class
             class_recs.append(tmp_rec)
             #Only print every hundredth annotation?
             if i % 10 == 0 and cfg.DEBUG.EN_TEST_MSG:
                 #print(recs[idx_name])
-                print('Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(frameset)))
+                print('Reading annotation for {:d}/{:d}'.format(i + 1, len(frameset)))
     return class_recs
 
 def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
@@ -322,18 +320,20 @@ def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
             break
     return tmp_rec
 
-def write_det(R,bb,var,jmax=None):
+def write_det(R,confidence,bb,var,jmax=None):
     scene    = R['scene_idx']
     frame    = R['frame_idx']
+
     out_str  = ''
     out_str += 'scene_idx: {} frame_idx: {} '.format(scene,frame)
+    out_str += 'confidence: {} '.format(confidence)
     out_str += 'bbdet: '
     for bbox_elem in bb:
-        out_str += '{:4.3f} '.format(bbox_elem)
+        out_str += '{:.3f} '.format(bbox_elem)
     for key,val in var.items():
         out_str += '{}: '.format(key)
         for var_elem in val:
-            out_str += '{:4.3f} '.format(var_elem)
+            out_str += '{:.5f} '.format(var_elem)
     if(jmax is not None):
         pts        = R['pts'][jmax]
         difficulty = R['difficulty'][jmax]
@@ -346,5 +346,13 @@ def write_det(R,bb,var,jmax=None):
         out_str   += 'cls: {} '.format(class_t)
         out_str   += 'bbgt: '
         for bbox_elem in bbgt:
-            out_str += '{:4.3f} '.format(bbox_elem)
+            out_str += '{:.3f} '.format(bbox_elem)
+    else:
+        out_str   += 'track_idx: none '
+        out_str   += 'difficulty: -1 '
+        out_str   += 'pts: -1 '
+        out_str   += 'cls: -1 '
+        out_str   += 'bbgt: '
+        for _i in range(len(bb)):
+            out_str += '-1 '
     return out_str
