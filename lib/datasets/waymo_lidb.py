@@ -527,7 +527,7 @@ class waymo_lidb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='bev',
+                eval_type='3d',
                 d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP
@@ -547,7 +547,7 @@ class waymo_lidb(db):
 
     def evaluate_detections(self, all_boxes, output_dir, mode):
         print('writing results to file...')
-        self._write_lidar_results_file(all_boxes, mode)
+        self._write_lidar_results_file(all_boxes, output_dir, mode)
         self._do_python_eval(output_dir, mode)
         if self.config['cleanup']:
             for cls in self._classes:

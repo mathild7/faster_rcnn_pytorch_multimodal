@@ -37,8 +37,9 @@ def draw_and_save_image_minibatch(blobs,cnt):
         os.makedirs(datapath)
     #datapath = os.path.join(cfg.DATA_DIR, 'waymo','tmp_drawn')
     out_file = os.path.basename(blobs['filename'])
-    out_file = os.path.join(datapath,out_file)
+    out_file = os.path.join(datapath,out_file).replace('.png','_{}.png'.format(cnt))
     img = blobs['data'][0]*cfg.PIXEL_STDDEVS + cfg.PIXEL_MEANS
+    img = img[:,:,cfg.PIXEL_ARRANGE_BGR]
     img = img.astype(dtype='uint8')
     source_img = Image.fromarray(img)
     draw = ImageDraw.Draw(source_img)
@@ -75,12 +76,18 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     #draw_file.save(out_file.replace('.png','_bev.png'),'png')
     voxel_grid = blob['data'][0]
     voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
-    voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+    #voxel_grid_rgb.fill(255)
+    voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,10:12],axis=2)
     max_height = np.max(voxel_grid_rgb[:,:,0])
-    min_height = np.min(voxel_grid_rgb[:,:,0])
+    #min_height = np.min(voxel_grid_rgb[:,:,0])
+    min_height  = 5
+    print(max_height)
+    print(min_height)
     voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+    #voxel_grid_rgb[:,:,1] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+    #voxel_grid_rgb[:,:,2] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
     voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
-    voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+    voxel_grid_rgb[:,:,2]  = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
     voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
     img = Image.fromarray(voxel_grid_rgb,'RGB')
     draw = ImageDraw.Draw(img)
@@ -189,6 +196,7 @@ def get_image_minibatch(roidb, num_classes, augment_en, scale, cnt):
     # gt boxes: (x1, y1, x2, y2, cls)
     #gt_inds = np.where(local_roidb[0]['gt_classes'] != 0)[0]
     #print(local_roidb[0]['ignore'])
+    #TODO: Could remove.. or find some way to keep difficulty -1 seperate
     gt_inds = np.where(roi_entry['ignore'] == 0)[0]
     dc_len  = roi_entry['boxes_dc'].shape[0]
     blobs['filename'] = roi_entry['filename']
@@ -307,7 +315,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         voxel_min_heights = (coords[:,2]/cfg.LIDAR.VOXEL_HEIGHT)
         voxel_min_heights = np.repeat(voxel_min_heights[:,np.newaxis], voxels.shape[1],axis=1)   
         voxel_heights = voxels[:,:,2]
-        voxel_max_height = np.amax(voxel_heights, axis=1) - coords[:,2]*cfg.LIDAR.VOXEL_HEIGHT
+        voxel_max_height = np.amax(voxel_heights, axis=1) #- coords[:,2]*cfg.LIDAR.VOXEL_HEIGHT
         voxel_mh_mean    = np.mean(voxel_max_height)
         #voxel_min_height = np.amin(voxel_heights, axis=1)
         #print('min height of frame: {}'.format(voxel_min_height))

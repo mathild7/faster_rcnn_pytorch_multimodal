@@ -38,6 +38,12 @@ class lidarnet(Network):
             self._batchnorm_en         = True
             self._net_conv_channels    = 256
             self._roi_pooling_channels = cfg.POOLING_SIZE*cfg.POOLING_SIZE*self._net_conv_channels
+        elif(cfg.USE_LIDAR_FPN):
+            self._feat_stride          = 8
+            self._fpn_en               = True
+            self._batchnorm_en         = False
+            self._net_conv_channels    = 1024
+            self._roi_pooling_channels = cfg.POOLING_SIZE*cfg.POOLING_SIZE*self._net_conv_channels
         else:
             self._feat_stride          = 16
             self._fpn_en               = False

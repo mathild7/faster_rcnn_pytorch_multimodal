@@ -176,7 +176,7 @@ def kitti_eval(detpath,
                             tp[det_idx,2] += 1
                         if(R['difficulty'][jmax] <= 1):
                             tp[det_idx,1] += 1
-                        if(R['difficulty'][jmax] <= 0):
+                        if(R['difficulty'][jmax] == 0):
                             tp[det_idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
@@ -187,7 +187,7 @@ def kitti_eval(detpath,
                             fp[det_idx,2] += 1
                         if(R['difficulty'][jmax] <= 1):
                             fp[det_idx,1] += 1
-                        if(R['difficulty'][jmax] <= 0):
+                        if(R['difficulty'][jmax] == 0):
                             fp[det_idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
                         det_results.append(write_det(R,bb,var))
@@ -253,7 +253,7 @@ def count_npos(class_recs, npos, npos_frame):
                         npos[i,2] += 1
                     if(rec['difficulty'][j] <= 1):
                         npos[i,1] += 1
-                    if(rec['difficulty'][j] <= 0):
+                    if(rec['difficulty'][j] == 0):
                         npos[i,0] += 1
                     npos_frame[int(rec['idx'])] += 1
 

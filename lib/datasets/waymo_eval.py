@@ -327,7 +327,10 @@ def write_det(R,confidence,bb,var,jmax=None):
     out_str  = ''
     out_str += 'scene_idx: {} frame_idx: {} '.format(scene,frame)
     out_str += 'confidence: {} '.format(confidence)
-    out_str += 'bbdet: '
+    if(len(bb) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbdet3d: '
+    else:
+        out_str += 'bbdet: '
     for bbox_elem in bb:
         out_str += '{:.3f} '.format(bbox_elem)
     for key,val in var.items():
@@ -344,7 +347,10 @@ def write_det(R,confidence,bb,var,jmax=None):
         out_str   += 'difficulty: {} '.format(difficulty)
         out_str   += 'pts: {} '.format(pts)
         out_str   += 'cls: {} '.format(class_t)
-        out_str   += 'bbgt: '
+        if(len(bbgt) > cfg.IMAGE.NUM_BBOX_ELEM):
+            out_str += 'bbgt3d: '
+        else:
+            out_str += 'bbgt: '
         for bbox_elem in bbgt:
             out_str += '{:.3f} '.format(bbox_elem)
     else:

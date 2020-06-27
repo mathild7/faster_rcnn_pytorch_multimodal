@@ -82,16 +82,20 @@ class kitti_imdb(db):
         assert os.path.exists(self._data_path), \
             'Path does not exist: {}'.format(self._data_path)
 
+    def subfolder_from_mode(self, mode):
+        if(mode == 'train'):
+            return self._train_sub_folder
+        if(mode == 'val'):
+            return self._val_sub_folder
+        if(mode == 'test'):
+            return self._test_sub_folder
+        return None
+
     def path_from_index(self, mode, index):
         """
     Construct an image path from the image's "index" identifier.
     """
-        if(mode == 'train'):
-            mode_sub_folder = self._train_sub_folder
-        if(mode == 'val'):
-            mode_sub_folder = self._val_sub_folder
-        if(mode == 'test'):
-            mode_sub_folder = self._test_sub_folder
+        mode_sub_folder = self.subfolder_from_mode(mode)
         image_path = os.path.join(self._devkit_path, mode_sub_folder, 'image_2', index)
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
@@ -149,6 +153,7 @@ class kitti_imdb(db):
         boxes_dc   = np.zeros((num_objs, cfg.IMAGE.NUM_BBOX_ELEM), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
+        hit        = np.zeros((num_objs), dtype=np.bool)
         gt_diff    = np.zeros((num_objs), dtype=np.int8)
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
@@ -179,8 +184,6 @@ class kitti_imdb(db):
                 diff = 1
             elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
                 diff = 2
-            if(diff == -1):
-                label_arr[0] = 'dontcare'
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
                 label_arr[0] = 'dontcare'
@@ -194,6 +197,8 @@ class kitti_imdb(db):
                 gt_occ[ix]   = occ
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
+                if(diff == -1):
+                    ignore[ix] = True
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
@@ -212,9 +217,9 @@ class kitti_imdb(db):
         return {
             'idx': index,
             'filename': img_filename,
-            'det': ignore[0:ix].copy(),
+            'det': hit[0:ix].copy(),
             'ignore':ignore[0:ix],
-            'hit': ignore[0:ix].copy(),
+            'hit': hit[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
             'difficulty': gt_diff[0:ix],
@@ -279,12 +284,8 @@ class kitti_imdb(db):
             for det in class_dets:
                 draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
         for det,label in zip(roi_dets,roi_det_labels):
-            if(label == 0):
+            if(label == 1):
                 color = (0,0,255)
-            elif(label == 1):
-                color = (127,0,127)
-            elif(label == 2):
-                color = (255,0,0)
             else:
                 color = (0,0,0)
             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)

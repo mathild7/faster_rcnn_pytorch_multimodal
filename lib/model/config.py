@@ -26,7 +26,7 @@ __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
 __C.DEBUG.TEST_FRAME_PRINT   = False
 __C.DEBUG.FREEZE_DB          = False
-__C.DEBUG.FREEZE_DB_INDS     = 1
+__C.DEBUG.FREEZE_DB_INDS     = 3
 __C.DEBUG.PRINT_SCENE_RESULT = False
 __C.DEBUG.EN_TEST_MSG        = True
 
@@ -47,7 +47,8 @@ __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
 __C.PRELOAD_FULL             = False
-__C.USE_FPN = False
+__C.USE_FPN                  = False
+__C.USE_LIDAR_FPN            = False
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
 __C.SCALE_LOC                = 6
@@ -60,7 +61,7 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
@@ -68,10 +69,10 @@ __C.TRAIN.MOMENTUM = 0.6
 
 # Weight decay, for regularization
 #WAYMO
-__C.TRAIN.WEIGHT_DECAY = 0.0003
+__C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.1
+__C.TRAIN.GAMMA = 0.3
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
@@ -93,7 +94,7 @@ __C.TRAIN.TRUNCATED = False
 __C.TRAIN.BIAS_DECAY = False
 
 # Whether to add ground truth boxes to the pool when sampling regions
-__C.TRAIN.USE_GT = True
+__C.TRAIN.USE_GT = False
 
 # The number of snapshots kept, older ones are deleted to save space
 __C.TRAIN.SNAPSHOT_KEPT = 30
@@ -108,7 +109,7 @@ __C.TRAIN.SCALES = (1.0,)
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
-__C.TRAIN.BATCH_SIZE = 256
+__C.TRAIN.BATCH_SIZE = 128
 
 # Fraction of minibatch that is labeled foreground (i.e. class > 0)
 __C.TRAIN.FG_FRACTION = 0.25
@@ -119,7 +120,7 @@ __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
 __C.TRAIN.BG_THRESH_HI = 0.5
-__C.TRAIN.BG_THRESH_LO = 0.1
+__C.TRAIN.BG_THRESH_LO = 0.0
 
 # Use horizontally-flipped images during training?
 __C.TRAIN.USE_FLIPPED = True
@@ -217,7 +218,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS = 0.4
+__C.TEST.NMS = 0.3
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -350,7 +351,7 @@ __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
 #__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
-__C.ANCHOR_SCALES  = [2,4,16]
+__C.ANCHOR_SCALES  = [8,16,32]
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]
 
@@ -375,7 +376,7 @@ __C.LIDAR.Z_RANGE            = [-3,3]    #[-2,2]   #[-3,3]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12        #8        #12
-__C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
+__C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000

@@ -71,6 +71,7 @@ class RoIDataLayer(object):
         while (minibatch is None):
             db_inds = self._get_next_minibatch_inds()
             minibatch_db = [self._roidb[i] for i in db_inds]
+            #minibatch_db = [self._roidb[0]]
             #print('minibatch')
             #print(minibatch_db)
             minibatch = get_minibatch(minibatch_db, self._num_classes, augment_en, self._cnt)

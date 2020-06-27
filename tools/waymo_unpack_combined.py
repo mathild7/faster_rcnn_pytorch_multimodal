@@ -7,8 +7,9 @@ import itertools
 import json
 from PIL import Image, ImageDraw
 from enum import Enum
-from waymo_open_dataset.utils import  frame_utils
+from waymo_open_dataset.utils import frame_utils
 from waymo_open_dataset import dataset_pb2 as open_dataset
+from waymo_open_dataset.utils import transform_utils
 from multiprocessing import Process, Pool
 import multiprocessing.managers
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -20,11 +21,12 @@ from PIL import Image, ImageDraw
 
 tf.enable_eager_execution()
 
-top_crop = 300
-bot_crop = 50
+top_crop = 0
+bot_crop = 0
 bbox_edge_thresh = 10
+lidar_thresh_dist = 30
 save_imgs = True
-mypath = '/home/mat/thesis/data2/waymo/train'
+mypath = '/home/mat/thesis/data2/waymo/val'
 img_savepath = os.path.join(mypath,'images_new')
 if not os.path.isdir(img_savepath):
     print('making path: {}'.format(img_savepath))
@@ -51,7 +53,6 @@ class laser_enum(Enum):
     REAR        = 5
 
 def main():
-    mypath = '/home/mat/thesis/data2/waymo/train'
     tfrecord_path = mypath + '/compressed_tfrecords'
     #savepath = os.path.join(mypath,'point_clouds_new')
     #if not os.path.isdir(savepath):
@@ -65,7 +66,7 @@ def main():
     #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
     #pool = Pool(processes=16)
     #m = 
-    with open(os.path.join(mypath,'labels','lidar_labels_new.json'), 'w') as json_file:
+    with open(os.path.join(mypath,'labels','combined_labels_new.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
             #if(i > 25):
@@ -104,7 +105,8 @@ def frame_loop(proc_data):
         points_top_filtered   = filter_points(points_top)
         points_2              = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
         points_top_2          = points_2[laser_enum.TOP.value-1]
-        points_top_filtered_2 = points_top_2[laser_enum.TOP.value-1]
+        # points_top_filtered_2 = points_top_2[laser_enum.TOP.value-1]
+        points_top_filtered_2   = filter_points(points_top_2)
         bin_filename = '{0:07d}.npy'.format(frame_idx)
         out_file     = os.path.join(lidar_savepath,bin_filename)
         if(len(points_top_filtered) > 0):
@@ -124,8 +126,8 @@ def frame_loop(proc_data):
                 im_arr = cv2.cvtColor(im_arr, cv2.COLOR_RGB2BGR)
                 #im_arr = tf.image.decode_jpeg(img.image, channels=3)
                 #im_arr = im_arr.numpy()
-                im_arr = im_arr[:][top_crop:][:]
-                im_arr = im_arr[:][:-bot_crop][:]
+                #im_arr = im_arr[:][top_crop:][:]
+                #im_arr = im_arr[:][:-bot_crop][:]
                 #im_data = Image.fromarray(im_arr)
                 img_filename = '{0:07d}.png'.format(frame_idx)
                 out_file = os.path.join(img_savepath, img_filename)
@@ -136,7 +138,8 @@ def frame_loop(proc_data):
         points_top_filtered = None
 
     pc_bin = points_top_filtered
-
+    source_img = Image.open(out_file)
+    draw = ImageDraw.Draw(source_img)
     json_calib = {}
     #print(frame.context)
     for calib in frame.context.laser_calibrations:
@@ -177,7 +180,7 @@ def frame_loop(proc_data):
     #print(json_calib)
     json_labels['calibration'] = []
     json_labels['calibration'].append(json_calib)
-    for label in frame.laser_labels:
+    for t, label in enumerate(frame.laser_labels):
         difficulty_override = 0
         if(label.num_lidar_points_in_box < 1):
             continue
@@ -210,16 +213,6 @@ def frame_loop(proc_data):
             #print('object either too high or below car')
             continue
 
-        bbox2D = label_3D_to_image(json_calib, label.metadata, label.box)  
-        if(bbox2D is None):
-            continue
-        bbox2D         = compute_2d_bounding_box(bbox2D)
-        bbox2D_clipped = compute_2d_bounding_box(im_arr, bbox2D)
-        truncation     = compute_truncation(bbox2D,bbox2D_clipped)
-        #TODO: Need all points in the bbox to compute this!
-        avg_intensity  = 0
-        avg_elongation = 0
-        return_ratio   = 0
         #if(not skip_binaries):
         #    bbox = np.asarray([[z_c,y_c,z_c,lx,wy,hz,heading]])
         #    points_in_bbox = pc_points_in_bbox(pc_bin,bbox)
@@ -229,7 +222,56 @@ def frame_loop(proc_data):
         #if(y2-y1 <= bbox_top_min and y1 == 0):
         #    continue
 
-        #ANDREWS WORK
+        # ANDREWS WORK
+       
+
+        bbox = np.zeros(7)       
+        bbox[0] = x_c
+        bbox[1] = y_c
+        bbox[2] = z_c
+        bbox[3] = lx
+        bbox[4] = wy
+        bbox[5] = hz
+        bbox[6] = heading
+        #bboxes.append(bbox)
+        if(x_c <= 10):
+            continue
+        # x_c < 30m: min max transformed bbox points
+        # x_c >= 30m: transformed lidar bboxes
+        if(x_c < lidar_thresh_dist):
+            pc_in_bbox = pc_points_in_bbox(points_top_filtered,bbox)
+            if pc_in_bbox.shape[1] > 1:  # need 2 points for a bbox
+                pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)  # second return
+                transformed_pc = points_3D_to_image(json_calib, label.metadata, pc_in_bbox)
+                #for point in transformed_pc:
+                #    draw.point(point)
+                bbox2D = transformed_pc_to_bbox(transformed_pc)      
+        else:
+            continue
+        #else:
+        #    pc_in_bbox = pc_points_in_bbox(points_top_filtered,bbox)  # need for intensity, elongation
+        #    pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)
+        #    bbox2D = label_3D_to_image(json_calib, label.metadata, label.box)  
+        #    if(bbox2D is None):
+        #        continue
+        #    bbox2D = compute_2d_bounding_box(bbox2D)
+    
+        bbox2D_clipped = clip_2d_bounding_box(im_arr, bbox2D)
+        truncation     = compute_truncation(bbox2D,bbox2D_clipped)
+        draw.rectangle(bbox2D_clipped)
+        #TODO: Need all points in the bbox to compute this!
+        # Need avg intensity, elongation, return ratio
+        if pc_in_bbox.shape[1]:
+            avg_intensity  = np.mean(pc_in_bbox[:,:,3])
+            avg_elongation = np.mean(pc_in_bbox[:,:,4])
+        else:
+            avg_intensity  = 0
+            avg_elongation = 0
+            return_ratio = 0
+        if (pc2_in_bbox.shape[1] and pc_in_bbox.shape[1]):
+            return_ratio   = pc2_in_bbox.shape[1]/pc_in_bbox.shape[1]  # divide num points from each return
+        else:
+            return_ratio   = 0
 
         json_labels['box'].append({
             'xc': '{:.3f}'.format(x_c),
@@ -240,6 +282,11 @@ def frame_loop(proc_data):
             'hz': '{:.3f}'.format(hz),
             'heading': '{:.3f}'.format(heading),
         })
+        #bbox_2d = frame.projected_lidar_labels[t]
+        #x1 = bbox_2d.center_x - bbox_2d.width/2.0
+        #x2 = bbox_2d.center_x + bbox_2d.width/2.0
+        #y1 = bbox_2d.center_y - bbox_2d.length/2.0
+        #y2 = bbox_2d.center_y + bbox_2d.length/2.0
         json_labels['box_2d'].append({
             'x1': '{:.3f}'.format(bbox2D_clipped[0]),
             'y1': '{:.3f}'.format(bbox2D_clipped[1]),
@@ -269,6 +316,7 @@ def frame_loop(proc_data):
         k_l = k_l + 1
     #print(k)
     k_i = 0
+    source_img.save(out_file.replace('.png','_drawn.png'),'PNG')
     return json_labels
 
 
@@ -435,6 +483,46 @@ def compute_truncation(points, clipped_points):
     else:
         return clipped_area/orig_area
 
+def points_3D_to_image(json_calib, metadata, points):  
+    instrinsic = json_calib['cam_intrinsic']
+    extrinsic = np.array(json_calib['cam_extrinsic_transform']).reshape(4,4)
+    vehicle_to_image = get_image_transform(instrinsic, extrinsic)  # magic array 4,4 to multiply and get image domain
+
+    points_transform = []
+    for box_points in points:
+        transformed_points = []
+        point_xyz = box_points[:,0:3]
+        one_concat = np.ones(len(point_xyz)) # ones to append
+        one_concat = one_concat[:,np.newaxis]
+        point_ext = np.concatenate((point_xyz,one_concat),axis=1)
+        for point in point_ext:
+            transformed_points.append(np.matmul(vehicle_to_image,point))
+        transformed_points = np.asarray(transformed_points)
+        points_transform.append(transformed_points)
+
+    
+    points_transform = np.asarray(points_transform) 
+    for bbox_points in points_transform:
+        if (not len(bbox_points)):  # prevent index error for 0 point bboxes
+            continue
+        bbox_points[:,0] = bbox_points[:,0]/bbox_points[:,2]  # x/z
+        bbox_points[:,1] = bbox_points[:,1]/bbox_points[:,2]  # y/z
+    
+    return points_transform
+
+def transformed_pc_to_bbox(points,draw=None):
+    # input: point cloud in image domain, Can also draw rect on img
+    # output: [x1,y1,x2,y2] bbox 
+    
+    if (not len(points)):  # no points
+        return
+    # topleft = (np.amin(points[:,0]),np.amin(points[:,1]))
+    # botright = (np.amax(points[:,0]),np.amax(points[:,1]))
+    coordinates = (np.amin(points[:,0]),np.amin(points[:,1]),np.amax(points[:,0]),np.amax(points[:,1]))
+    if draw is not None:
+        draw.rectangle(coordinates,outline=(255,0,0))
+    return coordinates
+
 def label_3D_to_image(json_calib, metadata, bbox):
     bbox_transform_matrix = get_box_transformation_matrix(bbox)  
     instrinsic = json_calib['cam_intrinsic']
@@ -465,6 +553,68 @@ def label_3D_to_image(json_calib, metadata, bbox):
     vertices = vertices.astype(np.int32)
 
     return vertices
+
+def pc_points_in_bbox(point,box,draw=None):
+    """Obtains point clouds inside bounding bboxes
+       Currently used per box 
+    Args:
+        point: [N, 5] tensor. [x,y,z,intensity,elongation]
+        box: [M, 7] tensor. Inner dims are: [center_x, center_y, center_z, length,
+        width, height, heading].
+        Returns:
+        point_cloud: [N,5] np matrix. Cloud inside bbox
+  """
+
+    #with tf.compat.v1.name_scope(name, 'ComputeNumPointsInBox3D', [point, box]):
+    # [N, M]
+    point = tf.convert_to_tensor(point[:,:],dtype=tf.float32)
+    box = tf.convert_to_tensor(box,dtype=tf.float32)
+    point_xyz = point[:, 0:3]
+
+    # Check if multiple or one bbox(7 values)
+    if (box.get_shape() == 7):
+        box = box[np.newaxis,:]
+
+    point_in_box = tf.cast(is_within_box_3d(point_xyz, box), dtype=tf.int32)  # returns boolean, cast to int
+    point_in_box = tf.transpose(point_in_box)
+    point_in_box = np.asarray(point_in_box)
+    point = np.asarray(point)
+    points_vector = np.asarray(tf.reduce_sum(input_tensor=point_in_box, axis=1))
+    num_points_in_box = tf.reduce_sum(input_tensor=point_in_box, axis=0)
+    point_clouds = []
+    for row in point_in_box:
+        values = []
+        idx = np.nonzero(row)  # grab indexs where there are values
+        values.append(point[idx])  # fancy indexing
+        values = np.asarray(values)
+        values = np.reshape(values,(-1, 5))  # x,y,z,intensity,elongation
+        point_clouds.append(values)
+    #draw_points_in_bbox(point,points_draw_vector,draw)
+    point_clouds = np.asarray(point_clouds)
+    return point_clouds
+
+def is_within_box_3d(point, box, name=None):
+    center = box[:, 0:3]  # xc,yc,zc
+    dim = box[:, 3:6] # L,W,H
+    heading = box[:, 6]
+    # [M, 3, 3]
+    rotation = transform_utils.get_yaw_rotation(heading)  # rotation matrix 
+    # [M, 4, 4]
+    transform = transform_utils.get_transform(rotation, center)  # transform matrix
+    # [M, 4, 4]
+    transform = tf.linalg.inv(transform)
+    # [M, 3, 3]
+    rotation = transform[:, 0:3, 0:3]
+    # [M, 3]
+    translation = transform[:, 0:3, 3]  # translation matrix 
+
+    # [N, M, 3]
+    point_in_box_frame = tf.einsum('nj,mij->nmi', point, rotation) + translation  # 
+    # [N, M, 3]
+    point_in_box = tf.logical_and(point_in_box_frame <= dim * 0.5, point_in_box_frame >= -dim * 0.5)
+    # [N, M]
+    point_in_box = tf.cast(tf.reduce_prod(input_tensor=tf.cast(point_in_box, dtype=tf.uint8), axis=-1),dtype=tf.bool)
+    return point_in_box 
 
 def get_box_transformation_matrix(box):
     """Create a transformation matrix for a given label box pose."""
@@ -505,6 +655,17 @@ def get_image_transform(intrinsic, extrinsic):
     vehicle_to_image = np.matmul(camera_model, np.matmul(axes_transformation, np.linalg.inv(extrinsic)))
     return vehicle_to_image
 
+def draw_transformed_pc(points, draw):
+    # input multiple transformed point clouds 
+    # each point cloud has x,y values to be drawn 
+
+    # Draw all points
+    for box in points:
+        if (not len(box)):  # no points
+            continue
+        for point in box:
+            xy = (point[0],point[1])
+            draw.point(xy,fill=(255,0,0))
 
 #Cheat to have secondary functions below main
 if __name__ == '__main__':
