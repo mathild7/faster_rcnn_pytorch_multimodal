@@ -21,7 +21,7 @@ import json
 import re
 from scipy.spatial import ConvexHull
 import utils.eval_utils as eval_utils
-
+import matplotlib.pyplot as plt
 #Values    Name      Description
 #----------------------------------------------------------------------------
 #   1    type         Describes the type of object: 'Car', 'Van', 'Truck',
@@ -40,7 +40,7 @@ import utils.eval_utils as eval_utils
 #   1    rotation_y   Rotation ry around Y-axis in camera coordinates [-pi..pi]
 #   1    score        Only for results: Float, indicating confidence in
 #                     detection, needed for p/r curves, higher is better.
-
+# https://github.com/rafaelpadilla/Object-Detection-Metrics
 def kitti_eval(detpath,
                db,
                frameset,
@@ -126,11 +126,14 @@ def kitti_eval(detpath,
         #sorted_ind -> Needed to know which detection we are selecting next
         #frame_tokens_sorted -> Needed to know which set of GT's are for the same frame as the det
         print('num dets {}'.format(len(sorted_ind)))
+        idx = 0
         for det_idx,token in zip(sorted_ind,frame_tokens_sorted):
+            det_confidence = confidence[det_idx]
             #R is a subset of detections for a specific class
             #print('doing det for frame {}'.format(frame_idx[d]))
             #Need to find associated GT frame ID alongside its detection id 'd'
             #Only one such frame, why appending?
+            #print(confidence[det_idx])
             R = None
             skip_iter = True
             R = eval_utils.find_rec(class_recs,token)
@@ -172,33 +175,44 @@ def kitti_eval(detpath,
                 #ignore if not contained within easy, medium, hard
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
+                        print('TP')
                         if(R['difficulty'][jmax] <= 2):
-                            tp[det_idx,2] += 1
+                            tp[idx,2] += 1
                         if(R['difficulty'][jmax] <= 1):
-                            tp[det_idx,1] += 1
-                        if(R['difficulty'][jmax] == 0):
-                            tp[det_idx,0] += 1
+                            tp[idx,1] += 1
+                        if(R['difficulty'][jmax] <= 0):
+                            tp[idx,0] += 1
+                            print('ez')
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,bb,var,jmax))
+                        det_results.append(write_det(R,bb,det_confidence,var,jmax))
                     else:
+                        print('FP-hit')
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
-                            fp[det_idx,2] += 1
+                            fp[idx,2] += 1
                         if(R['difficulty'][jmax] <= 1):
-                            fp[det_idx,1] += 1
-                        if(R['difficulty'][jmax] == 0):
-                            fp[det_idx,0] += 1
+                            fp[idx,1] += 1
+                        if(R['difficulty'][jmax] <= 0):
+                            fp[idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,bb,var))
+                        det_results.append(write_det(R,bb,det_confidence,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
+                print('FP-else')
                 #elif(BBGT.size > 0)
-                fp[det_idx,0] += 1
-                fp[det_idx,1] += 1
-                fp[det_idx,2] += 1
+                #if(R['difficulty'][jmax] <= 2):
+                #    fp[det_idx,2] += 1
+                #if(R['difficulty'][jmax] <= 1):
+                #    fp[det_idx,1] += 1
+                #if(R['difficulty'][jmax] <= 0):
+                #    fp[det_idx,0] += 1
+                fp[idx,2] += 1
+                fp[idx,1] += 1
+                fp[idx,0] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,bb,var))
+                det_results.append(write_det(R,bb,det_confidence,var))
+            idx = idx + 1
     else:
         print('waymo eval, no GT boxes detected')
     for i in np.arange(cfg.KITTI.MAX_FRAME):
@@ -225,6 +239,9 @@ def kitti_eval(detpath,
     #fn     = 1-fp
     #fn_sum = np.cumsum(fn, axis=0)
     npos_sum = np.sum(npos, axis=0)
+    print(tp_sum)
+    print(fp_sum)
+    print(npos_sum)
     #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
     #recall
     #Per frame per class AP
@@ -235,9 +252,13 @@ def kitti_eval(detpath,
             npos_sum_d = np.sum([1])
         rec = tp_sum[:,i] / npos_sum_d.astype(float)
         prec = tp_sum[:,i] / np.maximum(tp_sum[:,i] + fp_sum[:,i], np.finfo(np.float64).eps)
+        #print(rec)
+        #print(prec)
         # avoid divide by zero in case the first detection matches a difficult
         # ground truth precision
         rec, prec = zip(*sorted(zip(rec, prec)))
+        #plt.scatter(rec,prec)
+        #plt.show()
         mprec[i]  = np.average(prec)
         mrec[i]   = np.average(rec)
         map[i]    = eval_utils.ap(rec, prec)
@@ -253,7 +274,7 @@ def count_npos(class_recs, npos, npos_frame):
                         npos[i,2] += 1
                     if(rec['difficulty'][j] <= 1):
                         npos[i,1] += 1
-                    if(rec['difficulty'][j] == 0):
+                    if(rec['difficulty'][j] <= 0):
                         npos[i,0] += 1
                     npos_frame[int(rec['idx'])] += 1
 
@@ -293,6 +314,9 @@ def load_recs(frameset, frame_path, db, mode, classname):
             tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
             tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
             tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
+            for i, elem in enumerate(tmp_rec['difficulty']):
+                if elem != 0 and elem != 1 and elem != 2:
+                    tmp_rec['ignore'][i] = True
         #tmp_rec['frame_idx']   = frame_idx
         #List of all frames with GT boxes for a specific class
         class_recs.append(tmp_rec)
@@ -303,10 +327,11 @@ def load_recs(frameset, frame_path, db, mode, classname):
                 i + 1, len(frameset)))
     return class_recs
 
-def write_det(R,bb,var,jmax=None):
+def write_det(R,bb,confidence,var,jmax=None):
     frame    = R['idx']
     out_str  = ''
     out_str += 'frame_idx: {} '.format(frame)
+    out_str += 'confidence: {} '.format(confidence)
     out_str += 'bbdet: '
     for bbox_elem in bb:
         out_str += '{:4.3f} '.format(bbox_elem)

@@ -21,10 +21,10 @@ from PIL import Image, ImageDraw
 
 tf.enable_eager_execution()
 
-top_crop = 0
-bot_crop = 0
+top_crop = 300
+bot_crop = 30
 bbox_edge_thresh = 10
-lidar_thresh_dist = 30
+lidar_thresh_dist = 40
 save_imgs = True
 mypath = '/home/mat/thesis/data2/waymo/val'
 img_savepath = os.path.join(mypath,'images_new')
@@ -54,13 +54,13 @@ class laser_enum(Enum):
 
 def main():
     tfrecord_path = mypath + '/compressed_tfrecords'
-    #savepath = os.path.join(mypath,'point_clouds_new')
-    #if not os.path.isdir(savepath):
-    #    print('making path: {}'.format(savepath))
-    #    os.makedirs(savepath)
     num_proc = 16
-    #top_crop = 550
-    bbox_top_min = 30
+
+    # top_crop = 550
+    # bbox_top_min = 30
+
+    top_crop = 0
+    bbox_top_min = 0
     file_list = [os.path.join(tfrecord_path,f) for f in os.listdir(tfrecord_path) if os.path.isfile(os.path.join(tfrecord_path,f))]
     file_list = sorted(file_list)
     #filename = 'segment-11799592541704458019_9828_750_9848_750_with_camera_labels.tfrecord'
@@ -79,7 +79,7 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%10 == 0):
+                    if(j%2 == 0):
                         frame = open_dataset.Frame()
                         frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                         proc_data = (i,j,frame,mypath)
@@ -126,8 +126,8 @@ def frame_loop(proc_data):
                 im_arr = cv2.cvtColor(im_arr, cv2.COLOR_RGB2BGR)
                 #im_arr = tf.image.decode_jpeg(img.image, channels=3)
                 #im_arr = im_arr.numpy()
-                #im_arr = im_arr[:][top_crop:][:]
-                #im_arr = im_arr[:][:-bot_crop][:]
+                im_arr = im_arr[:][top_crop:][:]
+                im_arr = im_arr[:][:-bot_crop][:]
                 #im_data = Image.fromarray(im_arr)
                 img_filename = '{0:07d}.png'.format(frame_idx)
                 out_file = os.path.join(img_savepath, img_filename)
@@ -140,6 +140,7 @@ def frame_loop(proc_data):
     pc_bin = points_top_filtered
     source_img = Image.open(out_file)
     draw = ImageDraw.Draw(source_img)
+
     json_calib = {}
     #print(frame.context)
     for calib in frame.context.laser_calibrations:
@@ -180,7 +181,7 @@ def frame_loop(proc_data):
     #print(json_calib)
     json_labels['calibration'] = []
     json_labels['calibration'].append(json_calib)
-    for t, label in enumerate(frame.laser_labels):
+    for label in frame.laser_labels:
         difficulty_override = 0
         if(label.num_lidar_points_in_box < 1):
             continue
@@ -234,44 +235,39 @@ def frame_loop(proc_data):
         bbox[5] = hz
         bbox[6] = heading
         #bboxes.append(bbox)
-        if(x_c <= 10):
-            continue
+
         # x_c < 30m: min max transformed bbox points
         # x_c >= 30m: transformed lidar bboxes
-        if(x_c < lidar_thresh_dist):
-            pc_in_bbox = pc_points_in_bbox(points_top_filtered,bbox)
-            if pc_in_bbox.shape[1] > 1:  # need 2 points for a bbox
-                pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)  # second return
-                transformed_pc = points_3D_to_image(json_calib, label.metadata, pc_in_bbox)
-                #for point in transformed_pc:
-                #    draw.point(point)
-                bbox2D = transformed_pc_to_bbox(transformed_pc)      
+        pc_in_bbox  = pc_points_in_bbox(points_top_filtered,bbox) # need for intensity, elongation
+        pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)  # second return
+        if(x_c < lidar_thresh_dist and pc_in_bbox.shape[1] > 5):
+            transformed_pc = points_3D_to_image(json_calib, label.metadata, pc_in_bbox)
+            bbox2D = transformed_pc_to_bbox(transformed_pc)     
+            color = (255,0,0)
         else:
-            continue
-        #else:
-        #    pc_in_bbox = pc_points_in_bbox(points_top_filtered,bbox)  # need for intensity, elongation
-        #    pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)
-        #    bbox2D = label_3D_to_image(json_calib, label.metadata, label.box)  
-        #    if(bbox2D is None):
-        #        continue
-        #    bbox2D = compute_2d_bounding_box(bbox2D)
+            pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)
+            bbox2D = label_3D_to_image(json_calib, label.metadata, label.box)  
+            if(bbox2D is None):
+                continue
+            bbox2D = compute_2d_bounding_box(bbox2D)
+            color = (0,255,0)
     
+        # Account for image cropping 
+        bbox2D = [bbox2D[0], bbox2D[1]-top_crop, bbox2D[2], bbox2D[3]-top_crop]
         bbox2D_clipped = clip_2d_bounding_box(im_arr, bbox2D)
         truncation     = compute_truncation(bbox2D,bbox2D_clipped)
-        draw.rectangle(bbox2D_clipped)
+        draw.rectangle(bbox2D_clipped,outline=color)    
         #TODO: Need all points in the bbox to compute this!
         # Need avg intensity, elongation, return ratio
+        avg_intensity  = 0
+        avg_elongation = 0
+        return_ratio = 0
         if pc_in_bbox.shape[1]:
             avg_intensity  = np.mean(pc_in_bbox[:,:,3])
             avg_elongation = np.mean(pc_in_bbox[:,:,4])
-        else:
-            avg_intensity  = 0
-            avg_elongation = 0
-            return_ratio = 0
+            
         if (pc2_in_bbox.shape[1] and pc_in_bbox.shape[1]):
             return_ratio   = pc2_in_bbox.shape[1]/pc_in_bbox.shape[1]  # divide num points from each return
-        else:
-            return_ratio   = 0
 
         json_labels['box'].append({
             'xc': '{:.3f}'.format(x_c),
@@ -282,11 +278,6 @@ def frame_loop(proc_data):
             'hz': '{:.3f}'.format(hz),
             'heading': '{:.3f}'.format(heading),
         })
-        #bbox_2d = frame.projected_lidar_labels[t]
-        #x1 = bbox_2d.center_x - bbox_2d.width/2.0
-        #x2 = bbox_2d.center_x + bbox_2d.width/2.0
-        #y1 = bbox_2d.center_y - bbox_2d.length/2.0
-        #y2 = bbox_2d.center_y + bbox_2d.length/2.0
         json_labels['box_2d'].append({
             'x1': '{:.3f}'.format(bbox2D_clipped[0]),
             'y1': '{:.3f}'.format(bbox2D_clipped[1]),
@@ -316,7 +307,7 @@ def frame_loop(proc_data):
         k_l = k_l + 1
     #print(k)
     k_i = 0
-    source_img.save(out_file.replace('.png','_drawn.png'),'PNG')
+    source_img.save(out_file.replace('.png ','_drawn.png'),'PNG')
     return json_labels
 
 
@@ -518,9 +509,9 @@ def transformed_pc_to_bbox(points,draw=None):
         return
     # topleft = (np.amin(points[:,0]),np.amin(points[:,1]))
     # botright = (np.amax(points[:,0]),np.amax(points[:,1]))
-    coordinates = (np.amin(points[:,0]),np.amin(points[:,1]),np.amax(points[:,0]),np.amax(points[:,1]))
-    if draw is not None:
-        draw.rectangle(coordinates,outline=(255,0,0))
+    coordinates = (np.amin(points[:,:,0]),np.amin(points[:,:,1]),np.amax(points[:,:,0]),np.amax(points[:,:,1]))
+    # if draw is not None:
+    #     draw.rectangle(coordinates,outline=(255,0,0))
     return coordinates
 
 def label_3D_to_image(json_calib, metadata, bbox):

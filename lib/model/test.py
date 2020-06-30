@@ -183,7 +183,9 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         #Variance comes up here, and is actually computed below.
         if(cfg.NET_TYPE == 'image'):
             filename = db.path_at(i,mode)
+            print(filename)
             frame = cv2.imread(filename)
+            #np.set_printoptions(threshold=np.inf)
         elif(cfg.NET_TYPE == 'lidar'):
             filename = db.path_at(i,mode)
             frame = db._load_pc(filename)

@@ -127,6 +127,7 @@ def waymo_eval(detpath,
         #sorted_ind -> Needed to know which detection we are selecting next
         #frame_tokens_sorted -> Needed to know which set of GT's are for the same frame as the det
         print('num dets {}'.format(len(sorted_ind)))
+        idx = 0
         for det_idx,token in zip(sorted_ind,frame_tokens_sorted):
             #R is a subset of detections for a specific class
             #print('doing det for frame {}'.format(frame_idx[d]))
@@ -176,27 +177,28 @@ def waymo_eval(detpath,
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
                         if(R['difficulty'][jmax] <= 2):
-                            tp[det_idx,1] += 1
+                            tp[idx,1] += 1
                         if(R['difficulty'][jmax] <= 1):
-                            tp[det_idx,0] += 1
+                            tp[idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
                         det_results.append(write_det(R,det_confidence,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
-                            fp[det_idx,1] += 1
+                            fp[idx,1] += 1
                         if(R['difficulty'][jmax] <= 1):
-                            fp[det_idx,0] += 1
+                            fp[idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
                         det_results.append(write_det(R,det_confidence,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
-                fp[det_idx,0] += 1
-                fp[det_idx,1] += 1
+                fp[idx,0] += 1
+                fp[idx,1] += 1
                 fp_frame[int(R['idx'])] += 1
                 det_results.append(write_det(R,det_confidence,bb,var))
+            idx = idx + 1
     else:
         print('waymo eval, no GT boxes detected')
     for i in np.arange(cfg.NUM_SCENES):

@@ -49,7 +49,6 @@ def proposal_layer(rpn_cls_prob, rpn_bbox_pred, info, cfg_key,
         keep = keep[:post_nms_topN]
     proposals = proposals[keep, :]
     scores    = scores[keep, ]
-    anchors   = anchors[keep, :]
     anchors_3d = anchors_3d[keep, :]
     # Only support single image as input
     batch_inds = proposals.new_zeros(proposals.size(0), 1)

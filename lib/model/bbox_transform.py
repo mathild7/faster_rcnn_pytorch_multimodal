@@ -242,9 +242,9 @@ def clip_boxes(boxes, shape):
     #   boxes[:,:,2].clamp(0, shape[0]),
     #   boxes[:,:,3].clamp(0, shape[1])], 2).view(boxes.size(0), -1)
 
-    boxes = torch.stack([boxes[:,:,0].clamp(shape[0], shape[1]),
-                         boxes[:,:,1].clamp(shape[2], shape[3]),
-                         boxes[:,:,2].clamp(shape[0], shape[1]),
-                         boxes[:,:,3].clamp(shape[2], shape[3])], 2).view(boxes.size(0), -1)
+    boxes = torch.stack([boxes[:,:,0].clamp(shape[0], shape[1] - 1),
+                         boxes[:,:,1].clamp(shape[2], shape[3] - 1),
+                         boxes[:,:,2].clamp(shape[0], shape[1] - 1),
+                         boxes[:,:,3].clamp(shape[2], shape[3] - 1)], 2).view(boxes.size(0), -1)
 
     return boxes

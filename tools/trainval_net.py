@@ -242,18 +242,18 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = False
+    cfg.DEBUG.EN = True
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = False
+    manual_mode = True
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'kitti'
+        args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        args.net_type     = 'image'
-        args.preload      = 1
-        args.iter         = 1
+        args.net_type     = 'lidar'
+        args.preload      = 2
+        args.iter         = 6
         args.scale        = 1.0
         args.en_full_net  = True
         args.en_fpn       = False
@@ -261,7 +261,7 @@ if __name__ == '__main__':
         args.en_aleatoric = 0
         #args.uc_sort_type = 'a_cls_var'
         args.fixed_blocks = 1
-        args.data_dir     = os.path.join('/home/mat','thesis', 'data')
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
@@ -383,8 +383,8 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=5000,
-        batch_size=2,
-        val_batch_size=4,
+        batch_size=1,
+        val_batch_size=8,
         val_thresh=0.4,
         augment_en=True,
         val_augment_en=False)

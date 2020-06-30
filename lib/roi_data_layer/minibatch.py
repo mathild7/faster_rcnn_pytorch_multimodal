@@ -77,12 +77,12 @@ def draw_and_save_lidar_minibatch(blob,cnt):
     voxel_grid = blob['data'][0]
     voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
     #voxel_grid_rgb.fill(255)
-    voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,10:12],axis=2)
+    voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
     max_height = np.max(voxel_grid_rgb[:,:,0])
-    #min_height = np.min(voxel_grid_rgb[:,:,0])
-    min_height  = 5
-    print(max_height)
-    print(min_height)
+    min_height = np.min(voxel_grid_rgb[:,:,0])
+    #min_height  = 5
+    #print(max_height)
+    #print(min_height)
     voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
     #voxel_grid_rgb[:,:,1] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
     #voxel_grid_rgb[:,:,2] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)

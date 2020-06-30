@@ -61,18 +61,18 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.02
+__C.TRAIN.LEARNING_RATE = 0.001
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
-__C.TRAIN.MOMENTUM = 0.6
+__C.TRAIN.MOMENTUM = 0.7
 
 # Weight decay, for regularization
 #WAYMO
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.3
+__C.TRAIN.GAMMA = 0.5
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
@@ -115,7 +115,7 @@ __C.TRAIN.BATCH_SIZE = 128
 __C.TRAIN.FG_FRACTION = 0.25
 
 # Overlap threshold for a ROI to be considered foreground (if >= FG_THRESH)
-__C.TRAIN.FG_THRESH = 0.6
+__C.TRAIN.FG_THRESH = 0.5
 __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
@@ -350,8 +350,8 @@ __C.POOLING_MODE = 'align'
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-#__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
-__C.ANCHOR_SCALES  = [8,16,32]
+__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
+#__C.ANCHOR_SCALES  = [8,16,32]
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]
 

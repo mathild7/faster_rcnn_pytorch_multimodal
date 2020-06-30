@@ -184,6 +184,8 @@ class kitti_imdb(db):
                 diff = 1
             elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
                 diff = 2
+            else:
+                diff = 3
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
                 label_arr[0] = 'dontcare'
@@ -197,8 +199,8 @@ class kitti_imdb(db):
                 gt_occ[ix]   = occ
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
-                if(diff == -1):
-                    ignore[ix] = True
+                #if(diff == -1):
+                #    ignore[ix] = True
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
@@ -285,10 +287,11 @@ class kitti_imdb(db):
                 draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),0))
         for det,label in zip(roi_dets,roi_det_labels):
             if(label == 1):
-                color = (0,0,255)
+                color = (255,255,255)
             else:
                 color = (0,0,0)
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)
+            if(label == 1):
+                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)
         print('Saving file at location {}'.format(out_file))
         source_img.save(out_file,self._imtype)    
 

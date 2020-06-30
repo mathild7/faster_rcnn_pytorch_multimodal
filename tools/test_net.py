@@ -154,14 +154,15 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'kitti'
+        args.db_name       = 'waymo'
         args.net_type      = 'image'
-        args.weights_file  = '{}_{}_60k_2.pth'.format(args.net_type,args.net)
+        #args.weights_file  = '{}_{}_90k_2.pth'.format(args.net_type,args.net)
+        args.weights_file  = 'image_base_65k.pth'
         args.iter          = 0
-        args.num_frames    = 0
+        args.num_frames    = 200
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_cls_var'
@@ -276,4 +277,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.7,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.8,draw_det=True,eval_det=True)
