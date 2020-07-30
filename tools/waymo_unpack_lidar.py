@@ -52,7 +52,7 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%10 == 0):
+                    if(j%5 == 0):
                         frame = open_dataset.Frame()
                         frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                         proc_data = (i,j,frame,mypath)

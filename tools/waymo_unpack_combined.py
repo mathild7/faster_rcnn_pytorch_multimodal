@@ -25,6 +25,9 @@ top_crop = 300
 bot_crop = 30
 bbox_edge_thresh = 10
 lidar_thresh_dist = 40
+max_dist = 75
+img_x_max = 1920
+img_y_max = 1280 - top_crop - bot_crop
 save_imgs = True
 mypath = '/home/mat/thesis/data2/waymo/val'
 img_savepath = os.path.join(mypath,'images_new')
@@ -128,18 +131,18 @@ def frame_loop(proc_data):
                 #im_arr = im_arr.numpy()
                 im_arr = im_arr[:][top_crop:][:]
                 im_arr = im_arr[:][:-bot_crop][:]
-                #im_data = Image.fromarray(im_arr)
+                im_data = Image.fromarray(im_arr)
                 img_filename = '{0:07d}.png'.format(frame_idx)
                 out_file = os.path.join(img_savepath, img_filename)
                 plt.imsave(out_file, im_arr, format='png')
-                #draw = ImageDraw.Draw(im_data)
-                #im_data.save(out_file,'PNG')
+                draw = ImageDraw.Draw(im_data)
+                im_data.save(out_file,'PNG')
     else:
         points_top_filtered = None
 
     pc_bin = points_top_filtered
-    source_img = Image.open(out_file)
-    draw = ImageDraw.Draw(source_img)
+    #source_img = Image.open(out_file)
+    #draw = ImageDraw.Draw(source_img)
 
     json_calib = {}
     #print(frame.context)
@@ -240,23 +243,40 @@ def frame_loop(proc_data):
         # x_c >= 30m: transformed lidar bboxes
         pc_in_bbox  = pc_points_in_bbox(points_top_filtered,bbox) # need for intensity, elongation
         pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)  # second return
-        if(x_c < lidar_thresh_dist and pc_in_bbox.shape[1] > 5):
+        
+        """
+        weighted average between transformed lidar box and inferenced bbox from pc
+        """
+        if(pc_in_bbox.shape[1] > 5):
             transformed_pc = points_3D_to_image(json_calib, label.metadata, pc_in_bbox)
-            bbox2D = transformed_pc_to_bbox(transformed_pc)     
-            color = (255,0,0)
+            # filter transformed pc to handle points not in image domain
+            filtered_transformed_pc = filter_img_pc(transformed_pc)
+            if filtered_transformed_pc.shape[1]:  # check if points still exist
+                bbox2D_1 = transformed_pc_to_bbox(filtered_transformed_pc)  
+                # color = (255,0,0)
         else:
-            pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)
-            bbox2D = label_3D_to_image(json_calib, label.metadata, label.box)  
-            if(bbox2D is None):
-                continue
-            bbox2D = compute_2d_bounding_box(bbox2D)
-            color = (0,255,0)
-    
+            #bbox2D_1 = (0,0,0,0)  # was not enough points 
+            continue 
+        bbox2D_2 = label_3D_to_image(json_calib, label.metadata, label.box)  
+        if(bbox2D_2 is None):
+            continue
+        bbox2D_2 = compute_2d_bounding_box(bbox2D_2)
+        if not(filtered_transformed_pc.shape[1]):
+            bbox2D_1 = bbox2D_2  # bbox will come entirely from transformed lidar
+
         # Account for image cropping 
-        bbox2D = [bbox2D[0], bbox2D[1]-top_crop, bbox2D[2], bbox2D[3]-top_crop]
+        bbox2D_1 = [bbox2D_1[0], bbox2D_1[1]-top_crop, bbox2D_1[2], bbox2D_1[3]-top_crop]
+        bbox2D_2 = [bbox2D_2[0], bbox2D_2[1]-top_crop, bbox2D_2[2], bbox2D_2[3]-top_crop]
+        bbox2D = bbox_weighted_average(bbox2D_1,bbox2D_2,x_c) 
+
+        #if min(bbox2D)<0:  
+        #    continue  # not inside image frame
         bbox2D_clipped = clip_2d_bounding_box(im_arr, bbox2D)
         truncation     = compute_truncation(bbox2D,bbox2D_clipped)
-        draw.rectangle(bbox2D_clipped,outline=color)    
+        if truncation > .90:
+            continue
+
+        #draw.rectangle(bbox2D_clipped)    
         #TODO: Need all points in the bbox to compute this!
         # Need avg intensity, elongation, return ratio
         avg_intensity  = 0
@@ -307,7 +327,7 @@ def frame_loop(proc_data):
         k_l = k_l + 1
     #print(k)
     k_i = 0
-    source_img.save(out_file.replace('.png ','_drawn.png'),'PNG')
+    #source_img.save(out_file.replace('.png ','_drawn.png'),'PNG')
     return json_labels
 
 
@@ -316,6 +336,36 @@ def filter_points(pc):
     pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,0] < cfg.LIDAR.X_RANGE[1]) & (pc_min_thresh[:,1] < cfg.LIDAR.Y_RANGE[1]) & (pc_min_thresh[:,2] < cfg.LIDAR.Z_RANGE[1])]
     return pc_min_and_max_thresh
 
+def filter_img_pc(pc):
+    """
+    Filter point cloud by taking out all points not within image frame
+    current image: 1920x1280 (with cropping)
+    args: Nx3 pc [x,y,z]
+    return: Nx3 pc (filtered) 
+    """
+    idx = np.where((pc[:,:,0]>=0) & (pc[:,:,0]<img_x_max) & (pc[:,:,1]>=0) & (pc[:,:,1]<img_y_max))
+    idx = np.asarray(idx[1])
+    filtered_pc = np.asarray(pc[:,idx,:])
+    return filtered_pc
+
+def bbox_weighted_average(bbox1, bbox2, dist):
+    """ Find a weighted average between two bboxes 
+        using x_c as weighted average 
+        bbox1 from transformed lidar 
+        bbox2 inferenced from points
+        bbox2D = (x1,y1,x2,y2)
+    """
+    if dist<0:
+        dist = 0
+    weight = dist/max_dist  # lidar range = 75m
+    # low dist -> more bbox1
+    # high dist -> more bbox2
+    bbox2D = [0,0,0,0]
+    bbox2D[0] = (bbox1[0]*weight) + (bbox2[0]*(1-weight))
+    bbox2D[1] = (bbox1[1]*weight) + (bbox2[1]*(1-weight))
+    bbox2D[2] = (bbox1[2]*weight) + (bbox2[2]*(1-weight))
+    bbox2D[3] = (bbox1[3]*weight) + (bbox2[3]*(1-weight))
+    return bbox2D
 
 #COPIED FROM WAYMO DATASET, REMOVED CAMERA PROJECTION
 def parse_range_image(frame,tfp):
@@ -466,13 +516,12 @@ def clip_2d_bounding_box(img, points):
     return (x1,y1,x2,y2)
 
 def compute_truncation(points, clipped_points):
-
     clipped_area = (clipped_points[2] - clipped_points[0])*(clipped_points[3] - clipped_points[1])
     orig_area    = (points[2] - points[0])*(points[3] - points[1])
     if(clipped_area <= 0):
-        return 1.0
+        return 1.0  # nothing has been clipped
     else:
-        return clipped_area/orig_area
+        return 1-(clipped_area/orig_area)
 
 def points_3D_to_image(json_calib, metadata, points):  
     instrinsic = json_calib['cam_intrinsic']

@@ -155,17 +155,18 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net           = 'res101'
         args.db_name       = 'waymo'
-        args.net_type      = 'image'
+        args.net_type      = 'lidar'
         #args.weights_file  = '{}_{}_90k_2.pth'.format(args.net_type,args.net)
-        args.weights_file  = 'image_base_65k.pth'
-        args.iter          = 0
-        args.num_frames    = 200
+        #args.weights_file  = 'image_210k.pth'
+        args.weights_file  = 'lidar_a_e_uc_195k.pth'
+        args.iter          = 9
+        args.num_frames    = 0
         args.scale         = 1.0
         args.en_fpn        = 0
         args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
-        #args.en_epistemic = 1
-        #args.en_aleatoric = 1
-        #args.uc_sort_type = 'a_cls_var'
+        args.en_epistemic = 1
+        args.en_aleatoric = 1
+        args.uc_sort_type = 'a_bbox_var'
         #args.out_dir      = 'output/'
         #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -277,4 +278,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.8,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.77,draw_det=False,eval_det=True)

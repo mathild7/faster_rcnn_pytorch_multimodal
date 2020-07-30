@@ -97,7 +97,7 @@ def tile_anchors_3d(area_extents,
     all_x = before_sub[:, 0]
     all_y = before_sub[:, 1]
     #TODO: Fix for more than one GT box
-    all_z = np.zeros_like(all_x) + anchor_3d_sizes[0][2]
+    all_z = np.zeros_like(all_x) + anchor_3d_sizes[0][2]/2.0
     #all_z = -(a * all_x + c * all_y + d) / b
 
     # Create empty matrix to return

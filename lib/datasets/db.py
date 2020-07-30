@@ -413,7 +413,7 @@ class db(object):
     #        .astype(np.float32, copy=False)
     #    keep = nms(
     #        torch.from_numpy(cls_boxes.astype(np.float32)), torch.from_numpy(cls_scores),
-    #        cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
+    #        cfg.TEST.NMS_THRESH).numpy() if cls_dets.size > 0 else []
     #    cls_dets = cls_dets[keep, :]
     #    #Only if this variable has been provided
     #    return cls_dets, inds, keep

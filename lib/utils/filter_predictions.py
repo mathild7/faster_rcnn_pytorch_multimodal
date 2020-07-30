@@ -64,9 +64,9 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem,db_type):
     cls_dets = np.hstack((cls_boxes.cpu().numpy(), cls_scores.unsqueeze(1).cpu().numpy())) \
         .astype(np.float32, copy=False)
     if(db_type == 'lidar'):
-        keep = nms(cls_boxes_aabb, cls_scores, cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
+        keep = nms(cls_boxes_aabb, cls_scores, cfg.TEST.NMS_THRESH).cpu().numpy() if cls_dets.size > 0 else []
     else:
-        keep = nms(cls_boxes, cls_scores, cfg.TEST.NMS).cpu().numpy() if cls_dets.size > 0 else []
+        keep = nms(cls_boxes, cls_scores, cfg.TEST.NMS_THRESH).cpu().numpy() if cls_dets.size > 0 else []
     cls_dets = cls_dets[keep, :]
     #Only if this variable has been provided
     return cls_dets, inds, keep

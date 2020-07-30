@@ -242,9 +242,9 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = True
+    cfg.DEBUG.EN = False
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -260,12 +260,12 @@ if __name__ == '__main__':
         args.en_epistemic = 0
         args.en_aleatoric = 0
         #args.uc_sort_type = 'a_cls_var'
-        args.fixed_blocks = 1
+        args.fixed_blocks = -1
         args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        #args.weights_file  = os.path.join('/home/mat/thesis/data2/waymo/', 'weights', 'lidar_rpn_20k.pth')
+        args.weights_file  = os.path.join('/home/mat/thesis/data2/waymo/', 'weights', 'lidar_rpn_75k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data/cadc/', 'weights', 'lidar_10k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights', 'image_base_65k.pth')
         #IMAGE
@@ -383,8 +383,8 @@ if __name__ == '__main__':
         max_iters=args.max_iters,
         sum_size=256,
         val_sum_size=5000,
-        batch_size=1,
-        val_batch_size=8,
+        batch_size=16,
+        val_batch_size=32,
         val_thresh=0.4,
-        augment_en=True,
+        augment_en=False,
         val_augment_en=False)

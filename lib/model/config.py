@@ -61,18 +61,18 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
 #__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
-__C.TRAIN.MOMENTUM = 0.7
+__C.TRAIN.MOMENTUM = 0.5
 
 # Weight decay, for regularization
 #WAYMO
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.5
+__C.TRAIN.GAMMA = 0.2
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
@@ -109,7 +109,7 @@ __C.TRAIN.SCALES = (1.0,)
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
-__C.TRAIN.BATCH_SIZE = 128
+__C.TRAIN.BATCH_SIZE = 256
 
 # Fraction of minibatch that is labeled foreground (i.e. class > 0)
 __C.TRAIN.FG_FRACTION = 0.25
@@ -193,7 +193,7 @@ __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 
 # Whether to use all ground truth bounding boxes for training, 
 # For COCO, setting USE_ALL_GT to False will exclude boxes that are flagged as ''iscrowd''
-__C.TRAIN.USE_ALL_GT = True
+__C.TRAIN.USE_ALL_GT = False
 
 #Whether or not to ignore dont care areas when training
 __C.TRAIN.IGNORE_DC = False
@@ -218,7 +218,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS = 0.3
+__C.TEST.NMS_THRESH = 0.3
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -299,7 +299,7 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 # they were trained with
 #__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 #UPDATED for Kitti 
-#__C.PIXEL_MEANS = np.array([[[96.866, 98.76, 93.85]]])
+__C.PIXEL_MEANS = np.array([[[96.866, 98.76, 93.85]]])
 #__C.PIXEL_STDDEVS = np.array([[[81.54, 80.50, 79.466]]])
 #__C.PIXEL_ARRANGE = [0,1,2]
 #UPDATED for waymo
@@ -321,7 +321,7 @@ __C.MOBILENET.DEPTH_MULTIPLIER = 1.0
 __C.GRAD_MAX_CLIP = 20
 
 #cafferesnet101
-__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
+#__C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
 __C.PIXEL_STDDEVS = np.array([[[1, 1, 1]]])
 __C.PIXEL_ARRANGE = [0,1,2]
 __C.PIXEL_ARRANGE_BGR = [2,1,0]
@@ -350,8 +350,8 @@ __C.POOLING_MODE = 'align'
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
-#__C.ANCHOR_SCALES  = [8,16,32]
+#__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
+__C.ANCHOR_SCALES  = [2,4,8,16,32]
 # Anchor ratios for RPN
 __C.ANCHOR_RATIOS = [0.5,1,2]
 
@@ -372,10 +372,10 @@ __C.TEST.CADC_FILTER_LIST     = ['none', 'light', 'medium', 'heavy', 'extreme']
 __C.LIDAR = edict()                      #KITTI    #WAYMO
 __C.LIDAR.X_RANGE            = [0,70]    #[0,35]   #[0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]  #[-20,20] #[-40,40]
-__C.LIDAR.Z_RANGE            = [-3,3]    #[-2,2]   #[-3,3]
+__C.LIDAR.Z_RANGE            = [-3,5]    #[-2,2]   #[-3,3]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 12        #8        #12
+__C.LIDAR.NUM_SLICES         = 16        #8        #12
 __C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
@@ -389,9 +389,10 @@ __C.LIDAR.MAX_NUM_VOXEL      = 25000
 __C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
-__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
+#__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
 __C.LIDAR.NUM_BBOX_ELEM = 7
-
+__C.LIDAR.REG_LOSS_WEIGHT = [1.0,1.0,1.0,1.0,1.0,1.0,1.0] #x,y,z,l,w,h,ry
+__C.LIDAR.EN_RY_SIN = True
 __C.IMAGE = edict()
 __C.IMAGE.NUM_BBOX_ELEM = 4
 

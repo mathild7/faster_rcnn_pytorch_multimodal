@@ -11,6 +11,7 @@ from __future__ import print_function
 import numpy as np
 import torch
 import math
+from model.config import cfg
 
 def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     
@@ -19,6 +20,8 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     ex_lengths  = roi_lengths  #ex_anchors[:,3]
     ex_widths   = roi_widths  #ex_anchors[:,4]
     ex_heights  = ex_anchors[:,5]
+    gt_heights  = gt_rois[:,5]
+    gt_z_ctr    = gt_rois[:,2]
 
     ex_ctr_x    = ex_rois[:,0] + roi_lengths/2.0
     ex_ctr_y    = ex_rois[:,1] + roi_widths/2.0
@@ -35,6 +38,7 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     targets_dy = (gt_rois[:,1] - ex_ctr_y) / ex_widths
     targets_dw = torch.log(gt_rois[:,4] / ex_widths)
 
+    #targets_dz = (gt_rois[:,2] - cfg.LIDAR.Z_RANGE[0] - ex_ctr_z) / ex_heights
     targets_dz = (gt_rois[:,2] - ex_ctr_z) / ex_heights
     targets_dh = torch.log(gt_rois[:,5] / ex_heights)
     #TODO: Apply [Pi/2,-Pi/2) clipping
@@ -164,7 +168,7 @@ def lidar_3d_uncertainty_transform_inv(rois, boxes, deltas, uncertainty, scales=
 
 
 
-def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):
+def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None, ry_asin=False):
     # Input should be both tensor or both Variable and on the same device
     #This is handled by voxel_grid_to_pc()
     if(scales is not None):
@@ -205,10 +209,12 @@ def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):
 
     pred_ctr_x = dx * lengths.unsqueeze(1) + ctr_x.unsqueeze(1)
     pred_ctr_y = dy * widths.unsqueeze(1) + ctr_y.unsqueeze(1)
-    pred_ctr_z = dz * heights.unsqueeze(1) + ctr_z.unsqueeze(1)
+    pred_ctr_z = dz * heights.unsqueeze(1) + ctr_z.unsqueeze(1)  # + cfg.LIDAR.Z_RANGE[0]
     pred_l = torch.exp(dl) * lengths.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
+    if(ry_asin):
+        dr = torch.asin(dr)
     pred_ry = dr  #+ heading.unsqueeze(1)
     #Lock headings to be [pi/2, -pi/2)
     pi2 = float(math.pi/2.0)

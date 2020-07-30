@@ -13,15 +13,26 @@ import os
 
 from model.config import cfg
 
-def huber_loss(pred, targets, huber_delta, sigma, sin_en=False):
-    sigma_2 = sigma**2
+#def huber_loss(pred, targets, huber_delta, sigma, sin_en=False):
+#    sigma_2 = sigma**2
+#    box_diff = pred - targets
+#    if(sin_en):
+#        box_diff = torch.sin(box_diff)
+#    abs_in_box_diff = torch.abs(box_diff)
+#    smoothL1_sign = (abs_in_box_diff < huber_delta / sigma_2).detach().float()
+#    above_one = (abs_in_box_diff - (0.5 * huber_delta / sigma_2)) * (1. - smoothL1_sign)
+#    below_one = torch.pow(box_diff, 2) * (sigma_2 / 2.) * smoothL1_sign
+#    in_loss_box = below_one + above_one
+#    return in_loss_box
+
+def huber_loss(pred, targets, huber_delta, sin_en=False):
     box_diff = pred - targets
     if(sin_en):
         box_diff = torch.sin(box_diff)
     abs_in_box_diff = torch.abs(box_diff)
-    smoothL1_sign = (abs_in_box_diff < huber_delta / sigma_2).detach().float()
-    above_one = (abs_in_box_diff - (0.5 * huber_delta / sigma_2)) * (1. - smoothL1_sign)
-    below_one = torch.pow(box_diff, 2) * (sigma_2 / 2.) * smoothL1_sign
+    smoothL1_sign = (abs_in_box_diff < huber_delta).detach().float()
+    above_one = huber_delta * (abs_in_box_diff - (0.5 * huber_delta)) * (1. - smoothL1_sign)
+    below_one = 0.5 * torch.pow(box_diff, 2) * smoothL1_sign
     in_loss_box = below_one + above_one
     return in_loss_box
 
@@ -32,8 +43,7 @@ def smooth_l1_loss(stage,
                    bbox_inside_weights,
                    bbox_outside_weights,
                    sigma=1.0,
-                   dim=[1],
-                   net_type=None):
+                   dim=[1]):
     if((stage == 'RPN' and cfg.UC.EN_RPN_BBOX_ALEATORIC) or (stage == 'DET' and cfg.UC.EN_BBOX_ALEATORIC)):
         bbox_var_en = True
     else:
@@ -48,23 +58,26 @@ def smooth_l1_loss(stage,
     #print(bbox_inside_weights)
     #torch.set_printoptions(profile="default")
     bias = 0
-    if(net_type == 'lidar' and stage == 'DET'):
+    if(cfg.NET_TYPE == 'lidar' and stage == 'DET'):
         bbox_shape   = [bbox_pred.shape[0],bbox_pred.shape[1]]
         elem_rm      = int(bbox_shape[1]/7)
         bbox_pred_aa = bbox_pred.reshape(-1,7)[:,0:6].reshape(-1,bbox_shape[1]-elem_rm)
         targets_aa   = bbox_targets.reshape(-1,7)[:,0:6].reshape(-1,bbox_shape[1]-elem_rm)
         #TODO: Sum across elements
-        loss_box     = huber_loss(bbox_pred_aa,targets_aa,1.0,sigma)
+        loss_box     = huber_loss(bbox_pred_aa,targets_aa,1.0)
         #TODO: Do i need to compute the sin of the difference here?
         sin_pred     = bbox_pred.reshape(-1,7)[:,6:7].reshape(-1,elem_rm)
         #Convert to sin to normalize, targets will be in degrees off of anchor
         sin_targets  = bbox_targets.reshape(-1,7)[:,6:7].reshape(-1,elem_rm)
-        ry_loss      = huber_loss(sin_pred,sin_targets,1.0/9.0,sigma,sin_en=True)
+        ry_loss      = huber_loss(sin_pred,sin_targets,1.0/9.0,sin_en=cfg.LIDAR.EN_RY_SIN)
         #self._losses['ry_loss'] = torch.mean(torch.sum(ry_loss,dim=1))
         in_loss_box  = torch.cat((loss_box.reshape(-1,6),ry_loss.reshape(-1,1)),dim=1).reshape(-1,bbox_shape[1])
+        reg_loss_weight_tensor = torch.FloatTensor(cfg.LIDAR.REG_LOSS_WEIGHT).to(device=in_loss_box.device)
+        in_loss_box_weighted  = in_loss_box.reshape(-1,7)*reg_loss_weight_tensor
+        in_loss_box = in_loss_box_weighted.reshape(-1,in_loss_box.shape[1])
         #bbox_outside_weights = torch.mean(bbox_outside_weights,axis=1)
     else:
-        in_loss_box = huber_loss(bbox_pred,bbox_targets,1.0,sigma)
+        in_loss_box = huber_loss(bbox_pred,bbox_targets,1.0)
 
     if(bbox_var_en):
         #Don't need covariance matrix as it collapses itself in the end anyway

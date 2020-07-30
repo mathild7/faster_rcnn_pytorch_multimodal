@@ -426,7 +426,7 @@ class SolverWrapper(object):
                         roi_labels_val = roi_labels_val.data.cpu().numpy()
                         bbox_pred_val = bbox_pred_val
                         cls_prob_val  = cls_prob_val
-                        keep = nms(bbox_pred_val, cls_prob_val.squeeze(1), self.val_thresh).cpu().numpy() if cls_prob_val.shape[0] > 0 else []
+                        keep = nms(bbox_pred_val, cls_prob_val.squeeze(1), cfg.TEST.NMS_THRESH).cpu().numpy() if cls_prob_val.shape[0] > 0 else []
                         bbox_pred_val = bbox_pred_val[keep,:].cpu().numpy()
                         cls_prob_val  = cls_prob_val[keep, :].cpu().numpy()
                         bbox_pred_val = np.concatenate((bbox_pred_val,cls_prob_val),axis=1)[np.newaxis,:,:]
