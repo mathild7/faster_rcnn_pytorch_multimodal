@@ -155,12 +155,14 @@ if __name__ == '__main__':
     if(manual_mode):
         args.net           = 'res101'
         args.db_name       = 'waymo'
-        args.net_type      = 'lidar'
+        args.net_type      = 'image'
         #args.weights_file  = '{}_{}_90k_2.pth'.format(args.net_type,args.net)
         #args.weights_file  = 'image_210k.pth'
-        args.weights_file  = 'lidar_a_e_uc_195k.pth'
-        args.iter          = 9
-        args.num_frames    = 0
+        #args.weights_file  = 'lidar_a_e_uc_195k.pth'
+        #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
+        args.weights_file  = 'aug02/image_a_e_uc_105k.pth'
+        args.iter          = 0
+        args.num_frames    = 25
         args.scale         = 1.0
         args.en_fpn        = 0
         args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
@@ -223,14 +225,14 @@ if __name__ == '__main__':
         elif(args.db_name == 'nuscenes'):
             db = nuscenes_imdb(mode='val',limiter=args.num_frames)
         elif(args.db_name == 'waymo'):
-            db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
+            db = waymo_imdb(mode='val',limiter=args.num_frames, shuffle_en=False)
         elif(args.db_name == 'cadc'):
             db = cadc_imdb(mode='val',limiter=args.num_frames, shuffle_en=True)
     elif(cfg.NET_TYPE == 'lidar'):
         if(args.db_name == 'kitti'):
             db = kitti_lidb(mode='eval',limiter=args.num_frames, shuffle_en=True)
         elif(args.db_name == 'waymo'):
-            db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
+            db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=False)
         elif(args.db_name == 'cadc'):
             db = cadc_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
 
@@ -278,4 +280,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.77,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.70,draw_det=True,eval_det=True)

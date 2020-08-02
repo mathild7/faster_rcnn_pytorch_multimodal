@@ -237,7 +237,7 @@ class waymo_imdb(db):
         source_img.save(out_file,self._imtype)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
+    def _load_waymo_annotation(self, img, img_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False, en_aux_features=False):
         filename = os.path.join(self._devkit_path, img)
         num_objs = len(img_labels['box'])
 
@@ -250,6 +250,12 @@ class waymo_imdb(db):
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
+
+        avg_intensities = np.zeros((num_objs), dtype=np.float32)
+        avg_elongations = np.zeros((num_objs), dtype=np.float32)
+        truncations     = np.zeros((num_objs), dtype=np.float32)
+        return_ratios   = np.zeros((num_objs), dtype=np.float32)
+        distances       = np.zeros((num_objs), dtype=np.float32)
         # "Seg" area for pascal is just the box area
         weather = img_labels['scene_type'][0]['weather']
         tod = img_labels['scene_type'][0]['tod']
@@ -262,12 +268,20 @@ class waymo_imdb(db):
             print('TOD {} not in specified filter list'.format(tod))
             return None
         seg_areas  = np.zeros((num_objs), dtype=np.float32)
-        camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
-        camera_intrinsic = img_labels['calibration'][0]['intrinsic']
+        if(en_aux_features):
+            camera_extrinsic = img_labels['calibration'][0]['cam_extrinsic_transform']
+            camera_intrinsic = img_labels['calibration'][0]['cam_intrinsic'] 
+        else:
+            camera_extrinsic = img_labels['calibration'][0]['extrinsic_transform']
+            camera_intrinsic = img_labels['calibration'][0]['intrinsic']
         # Load object bounding boxes into a data frame.
-        ix = 0
+        ix    = 0
         ix_dc = 0
-        for i, bbox in enumerate(img_labels['box']):
+        if(en_aux_features):
+            bbox_2d = img_labels['box_2d']
+        else:
+            bbox_2d = img_labels['box']
+        for i, bbox in enumerate(bbox_2d):
             difficulty = img_labels['difficulty'][i]
             anno_cat   = img_labels['class'][i]
             track_id   = img_labels['id'][i]
@@ -282,6 +296,19 @@ class waymo_imdb(db):
                 anno_cat = class_enum.UNKNOWN.value
             #Change to string 
             anno_cat = self._classes[anno_cat]
+            #TODO: Load differently if combined labels used
+            if(en_aux_features):
+                avg_intensity = float(img_labels['meta'][i]['avg_intensity'])
+                avg_elongation = float(img_labels['meta'][i]['avg_elongation'])
+                truncation     = float(img_labels['meta'][i]['trunc'])
+                return_ratio   = float(img_labels['meta'][i]['return_ratio'])
+                distance       = float(img_labels['box'][i]['xc'])
+            else:
+                avg_intensity  = 0
+                avg_elongation = 0
+                truncation     = 0
+                return_ratio   = 0
+                distance       = 0
             x1 = int(float(bbox['x1']))
             y1 = int(float(bbox['y1']))
             x2 = int(float(bbox['x2']))
@@ -300,6 +327,11 @@ class waymo_imdb(db):
                 cls = self._class_to_ind[anno_cat]
                 #Stop little clips from happening for cars
                 boxes[ix, :] = [x1, y1, x2, y2]
+                avg_intensities[ix] = avg_intensity
+                avg_elongations[ix] = avg_elongation
+                truncations[ix]     = truncation
+                return_ratios[ix]   = return_ratio
+                distances[ix]       = distance
                 #if(anno_cat == 'vehicle.car'):
                 #    #TODO: Magic Numbers
 
@@ -333,23 +365,28 @@ class waymo_imdb(db):
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'img_idx':     img_idx,
-            'scene_idx':   scene_idx,
-            'scene_desc':  scene_desc,
-            'filename':    filename,
-            'ignore':      ignore[0:ix],
-            'det':         ignore[0:ix].copy(),
-            'cat':         cat,
-            'hit':         ignore[0:ix].copy(),
-            'ids':         track_ids[0:ix],
-            'pts':         pts[0:ix],
-            'difficulty':  difficulties[0:ix],
-            'boxes':       boxes[0:ix],
-            'boxes_dc':    boxes_dc[0:ix_dc],
-            'gt_classes':  gt_classes[0:ix],
-            'gt_overlaps': overlaps[0:ix],
-            'flipped':     False,
-            'seg_areas':   seg_areas[0:ix]
+            'img_idx':         img_idx,
+            'scene_idx':       scene_idx,
+            'scene_desc':      scene_desc,
+            'filename':        filename,
+            'ignore':          ignore[0:ix],
+            'det':             ignore[0:ix].copy(),
+            'cat':             cat,
+            'hit':             ignore[0:ix].copy(),
+            'ids':             track_ids[0:ix],
+            'pts':             pts[0:ix],
+            'difficulty':      difficulties[0:ix],
+            'boxes':           boxes[0:ix],
+            'boxes_dc':        boxes_dc[0:ix_dc],
+            'gt_classes':      gt_classes[0:ix],
+            'gt_overlaps':     overlaps[0:ix],
+            'avg_intensity':   avg_intensities[0:ix],
+            'avg_elongation':  avg_elongations[0:ix],
+            'truncation':      truncations[0:ix],
+            'return_ratio':    return_ratios[0:ix],
+            'distance':        distances[0:ix],
+            'flipped':         False,
+            'seg_areas':       seg_areas[0:ix]
         }
 
         #Post Process Step

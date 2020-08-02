@@ -59,10 +59,6 @@ def main():
     tfrecord_path = mypath + '/compressed_tfrecords'
     num_proc = 16
 
-    # top_crop = 550
-    # bbox_top_min = 30
-
-    top_crop = 0
     bbox_top_min = 0
     file_list = [os.path.join(tfrecord_path,f) for f in os.listdir(tfrecord_path) if os.path.isfile(os.path.join(tfrecord_path,f))]
     file_list = sorted(file_list)
@@ -72,8 +68,8 @@ def main():
     with open(os.path.join(mypath,'labels','combined_labels_new.json'), 'w') as json_file:
         json_struct = []
         for i,filename in enumerate(file_list):
-            #if(i > 25):
-            #    break
+            if(i > 3):
+                break
             if('tfrecord' in filename):
                 print('opening {}'.format(filename))
                 dataset = tf.data.TFRecordDataset(filename,compression_type='')
@@ -82,7 +78,7 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%2 == 0):
+                    if(j%1 == 0):
                         frame = open_dataset.Frame()
                         frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                         proc_data = (i,j,frame,mypath)
@@ -109,7 +105,8 @@ def frame_loop(proc_data):
         points_2              = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
         points_top_2          = points_2[laser_enum.TOP.value-1]
         # points_top_filtered_2 = points_top_2[laser_enum.TOP.value-1]
-        points_top_filtered_2   = filter_points(points_top_2)
+        points_top_filtered_2 = filter_points(points_top_2)
+        points_top_filtered   = np.concatenate((points_top_filtered,points_top_filtered_2),axis=0)
         bin_filename = '{0:07d}.npy'.format(frame_idx)
         out_file     = os.path.join(lidar_savepath,bin_filename)
         if(len(points_top_filtered) > 0):
@@ -247,21 +244,21 @@ def frame_loop(proc_data):
         """
         weighted average between transformed lidar box and inferenced bbox from pc
         """
+        filtered_transformed_pc = None
         if(pc_in_bbox.shape[1] > 5):
-            transformed_pc = points_3D_to_image(json_calib, label.metadata, pc_in_bbox)
+            transformed_pc = points_3D_to_image(json_calib, pc_in_bbox)
             # filter transformed pc to handle points not in image domain
-            filtered_transformed_pc = filter_img_pc(transformed_pc)
+            filtered_transformed_pc, _ = filter_img_pc(transformed_pc)
             if filtered_transformed_pc.shape[1]:  # check if points still exist
+                #BBOX from translated points
                 bbox2D_1 = transformed_pc_to_bbox(filtered_transformed_pc)  
                 # color = (255,0,0)
-        else:
-            #bbox2D_1 = (0,0,0,0)  # was not enough points 
-            continue 
+        #BBox directly translated from 3D to 2D
         bbox2D_2 = label_3D_to_image(json_calib, label.metadata, label.box)  
         if(bbox2D_2 is None):
             continue
         bbox2D_2 = compute_2d_bounding_box(bbox2D_2)
-        if not(filtered_transformed_pc.shape[1]):
+        if (filtered_transformed_pc is None or filtered_transformed_pc.shape[1] == 0):
             bbox2D_1 = bbox2D_2  # bbox will come entirely from transformed lidar
 
         # Account for image cropping 
@@ -286,8 +283,8 @@ def frame_loop(proc_data):
             avg_intensity  = np.mean(pc_in_bbox[:,:,3])
             avg_elongation = np.mean(pc_in_bbox[:,:,4])
             
-        if (pc2_in_bbox.shape[1] and pc_in_bbox.shape[1]):
-            return_ratio   = pc2_in_bbox.shape[1]/pc_in_bbox.shape[1]  # divide num points from each return
+        if (pc_in_bbox.shape[1] > 0):
+            return_ratio   = float(pc2_in_bbox.shape[1])/float(pc_in_bbox.shape[1])  # divide num points from each return
 
         json_labels['box'].append({
             'xc': '{:.3f}'.format(x_c),
@@ -296,7 +293,7 @@ def frame_loop(proc_data):
             'lx': '{:.3f}'.format(lx),
             'wy': '{:.3f}'.format(wy),
             'hz': '{:.3f}'.format(hz),
-            'heading': '{:.3f}'.format(heading),
+            'heading': '{:.5f}'.format(heading),
         })
         json_labels['box_2d'].append({
             'x1': '{:.3f}'.format(bbox2D_clipped[0]),
@@ -310,10 +307,10 @@ def frame_loop(proc_data):
             'ax':             '{:.3f}'.format(label.metadata.accel_x),
             'ay':             '{:.3f}'.format(label.metadata.accel_y),
             'pts':            '{:04d}'.format(label.num_lidar_points_in_box),
-            'trunc':          '{:.2f}'.format(truncation),
-            'avg_intensity':  '{:.2f}'.format(avg_intensity),
-            'avg_elongation': '{:.2f}'.format(avg_elongation),
-            'return_ratio':   '{:.2f}'.format(return_ratio)
+            'trunc':          '{:.3f}'.format(truncation),
+            'avg_intensity':  '{:.3f}'.format(avg_intensity),
+            'avg_elongation': '{:.3f}'.format(avg_elongation),
+            'return_ratio':   '{:.5f}'.format(return_ratio)
         })
         json_labels['id'].append(label.id)
         json_labels['class'].append(label.type)
@@ -330,6 +327,12 @@ def frame_loop(proc_data):
     #source_img.save(out_file.replace('.png ','_drawn.png'),'PNG')
     return json_labels
 
+def fov_filter_points(pc, json_calib):
+    transformed_pc = points_3D_to_image(json_calib, pc)
+    # filter transformed pc to handle points not in image domain
+    filtered_transformed_pc, index = filter_img_pc(transformed_pc)
+    pc = pc[index,:]
+    return pc
 
 def filter_points(pc):
     pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
@@ -346,7 +349,7 @@ def filter_img_pc(pc):
     idx = np.where((pc[:,:,0]>=0) & (pc[:,:,0]<img_x_max) & (pc[:,:,1]>=0) & (pc[:,:,1]<img_y_max))
     idx = np.asarray(idx[1])
     filtered_pc = np.asarray(pc[:,idx,:])
-    return filtered_pc
+    return filtered_pc, idx
 
 def bbox_weighted_average(bbox1, bbox2, dist):
     """ Find a weighted average between two bboxes 
@@ -523,7 +526,7 @@ def compute_truncation(points, clipped_points):
     else:
         return 1-(clipped_area/orig_area)
 
-def points_3D_to_image(json_calib, metadata, points):  
+def points_3D_to_image(json_calib, points):  
     instrinsic = json_calib['cam_intrinsic']
     extrinsic = np.array(json_calib['cam_extrinsic_transform']).reshape(4,4)
     vehicle_to_image = get_image_transform(instrinsic, extrinsic)  # magic array 4,4 to multiply and get image domain

@@ -204,7 +204,7 @@ __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
 __C.TRAIN.LIDAR.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2)
+__C.TRAIN.LIDAR.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1.0)
 
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.IMAGE.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
@@ -255,6 +255,8 @@ __C.TEST.RPN_TOP_N = 5000
 __C.TEST.IGNORE_DC = False
 
 __C.TEST.ITER = 1
+
+__C.TEST.EN_AUX_FEATURES = True
 #
 # ResNet options
 #
@@ -353,7 +355,7 @@ __C.POOLING_SIZE = 7
 #__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
 __C.ANCHOR_SCALES  = [2,4,8,16,32]
 # Anchor ratios for RPN
-__C.ANCHOR_RATIOS = [0.5,1,2]
+__C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
 
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512

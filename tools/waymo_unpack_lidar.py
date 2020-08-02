@@ -52,14 +52,14 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%5 == 0):
-                        frame = open_dataset.Frame()
-                        frame.ParseFromString(bytearray(dataset_list[j].numpy()))
-                        proc_data = (i,j,frame,mypath)
-                        #print('frame: {}'.format(i*1000+j))
-                        labels = frame_loop(proc_data)
-                        #print(len(labels['box']))
-                        json_struct.append(labels)
+                    #if(j%5 == 0):
+                    frame = open_dataset.Frame()
+                    frame.ParseFromString(bytearray(dataset_list[j].numpy()))
+                    proc_data = (i,j,frame,mypath)
+                    #print('frame: {}'.format(i*1000+j))
+                    labels = frame_loop(proc_data)
+                    #print(len(labels['box']))
+                    json_struct.append(labels)
         json.dump(json_struct,json_file)
 
 
@@ -71,14 +71,14 @@ def frame_loop(proc_data):
     #    print('found a NLZ')
     if(not skip_binaries):
         (range_images, range_image_top_pose) = parse_range_image(frame,tfp)
-        points     = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)
-        #points_2   = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
-        #Top extraction
-        points_top       = points[laser_enum.TOP.value-1]
-        #cp_points_top    = cp_points[laser_enum.TOP.value-1]
-        #points_top_2     = points_2[laser_enum.TOP.value-1]
-        points_top_filtered = filter_points(points_top)
-        #cp_points_top_2  = cp_points_2[laser_enum.TOP.value-1]
+        points                = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp)
+        points_top            = points[laser_enum.TOP.value-1]
+        points_top_filtered   = filter_points(points_top)
+        points_2              = convert_range_image_to_point_cloud(frame,range_images,range_image_top_pose, tfp, ri_index=1)
+        points_top_2          = points_2[laser_enum.TOP.value-1]
+        # points_top_filtered_2 = points_top_2[laser_enum.TOP.value-1]
+        points_top_filtered_2 = filter_points(points_top_2)
+        points_top_filtered   = np.concatenate((points_top_filtered,points_top_filtered_2),axis=0)
         bin_filename = '{0:07d}.npy'.format(i*1000+j)
         out_file = os.path.join(mypath, 'point_clouds_new',bin_filename)
         if(len(points_top_filtered) > 0):
@@ -174,7 +174,7 @@ def frame_loop(proc_data):
             'lx': '{:.3f}'.format(lx),
             'wy': '{:.3f}'.format(wy),
             'hz': '{:.3f}'.format(hz),
-            'heading': '{:.3f}'.format(heading),
+            'heading': '{:.5f}'.format(heading),
         })
         json_labels['meta'].append({
             'vx': '{:.3f}'.format(label.metadata.speed_x),

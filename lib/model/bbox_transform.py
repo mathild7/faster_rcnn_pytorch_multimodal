@@ -30,12 +30,13 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
     inv_mask    = torch.where(roi_lengths >= roi_widths, torch.tensor([0]).to(device=roi_lengths.device), torch.tensor([1]).to(device=roi_lengths.device))
     inv_mask    = inv_mask.float()
     ex_headings = inv_mask*math.pi/2.0
+    ex_areas    = torch.sqrt(torch.pow(ex_lengths,2) + torch.pow(ex_widths,2))
     #ex_headings = ex_anchors[:,6]
     #TODO: change targets to be divided by BEV area
-    targets_dx = (gt_rois[:,0] - ex_ctr_x) / ex_lengths
+    targets_dx = (gt_rois[:,0] - ex_ctr_x) / ex_areas
     targets_dl = torch.log(gt_rois[:,3] / ex_lengths)
 
-    targets_dy = (gt_rois[:,1] - ex_ctr_y) / ex_widths
+    targets_dy = (gt_rois[:,1] - ex_ctr_y) / ex_areas
     targets_dw = torch.log(gt_rois[:,4] / ex_widths)
 
     #targets_dz = (gt_rois[:,2] - cfg.LIDAR.Z_RANGE[0] - ex_ctr_z) / ex_heights
@@ -168,7 +169,7 @@ def lidar_3d_uncertainty_transform_inv(rois, boxes, deltas, uncertainty, scales=
 
 
 
-def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None, ry_asin=False):
+def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None):
     # Input should be both tensor or both Variable and on the same device
     #This is handled by voxel_grid_to_pc()
     if(scales is not None):
@@ -206,20 +207,18 @@ def lidar_3d_bbox_transform_inv(rois, boxes, deltas, scales=None, ry_asin=False)
     dw = deltas[:, 4::7]
     dh = deltas[:, 5::7]
     dr = deltas[:, 6::7]
-
-    pred_ctr_x = dx * lengths.unsqueeze(1) + ctr_x.unsqueeze(1)
-    pred_ctr_y = dy * widths.unsqueeze(1) + ctr_y.unsqueeze(1)
+    areas = torch.sqrt(torch.pow(lengths,2)+torch.pow(widths,2))
+    pred_ctr_x = dx * areas.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * areas.unsqueeze(1) + ctr_y.unsqueeze(1)
     pred_ctr_z = dz * heights.unsqueeze(1) + ctr_z.unsqueeze(1)  # + cfg.LIDAR.Z_RANGE[0]
     pred_l = torch.exp(dl) * lengths.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
-    if(ry_asin):
-        dr = torch.asin(dr)
     pred_ry = dr  #+ heading.unsqueeze(1)
     #Lock headings to be [pi/2, -pi/2)
     pi2 = float(math.pi/2.0)
-    pred_ry = torch.where(pred_ry > pi2, pred_ry - math.pi, pred_ry)
-    pred_ry = torch.where(pred_ry <= -pi2, pred_ry + math.pi, pred_ry)
+    #pred_ry = torch.where(pred_ry > pi2, pred_ry - math.pi, pred_ry)
+    #pred_ry = torch.where(pred_ry <= -pi2, pred_ry + math.pi, pred_ry)
 
     pred_boxes = torch.cat(
         [_.unsqueeze(2) for _ in [pred_ctr_x,

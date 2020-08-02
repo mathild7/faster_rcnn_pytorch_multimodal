@@ -298,23 +298,29 @@ class waymo_lidb(db):
         draw_file.save(out_file,self._imtype)
 
     #Only care about foreground classes
-    def _load_waymo_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False):
+    def _load_waymo_annotation(self, pc_file_path, pc_labels, remove_without_gt=True,tod_filter_list=[],filter_boxes=False, en_aux_features=False):
         filename = os.path.join(self._devkit_path, pc_file_path)
         num_objs = len(pc_labels['box'])
 
         boxes      = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         boxes_dc   = np.zeros((num_objs, cfg.LIDAR.NUM_BBOX_ELEM), dtype=np.float32)
         ids        = []
-        num_pts    = np.zeros((num_objs,), dtype=np.int32)
         cat        = []
-        difficulty = np.zeros((num_objs, ),dtype=np.int32)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         ignore     = np.zeros((num_objs), dtype=np.bool)
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
-        weather = pc_labels['scene_type'][0]['weather']
-        tod = pc_labels['scene_type'][0]['tod']
-        pc_id = pc_labels['id']
+        #Metadata
+        difficulty      = np.zeros((num_objs), dtype=np.int32)
+        avg_intensities = np.zeros((num_objs), dtype=np.float32)
+        avg_elongations = np.zeros((num_objs), dtype=np.float32)
+        truncations     = np.zeros((num_objs), dtype=np.float32)
+        return_ratios   = np.zeros((num_objs), dtype=np.float32)
+        distances       = np.zeros((num_objs), dtype=np.float32)
+        num_pts         = np.zeros((num_objs, ),dtype=np.int32)
+        weather    = pc_labels['scene_type'][0]['weather']
+        tod        = pc_labels['scene_type'][0]['tod']
+        pc_id      = pc_labels['id']
         scene_desc = json.dumps(pc_labels['scene_type'][0])
         #TODO: Magic number
         scene_idx  = int(int(pc_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
@@ -354,9 +360,22 @@ class waymo_lidb(db):
             heading = float(bbox['heading'])
             #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
-            heading = np.where(heading > pi2, heading - np.pi, heading)
-            heading = np.where(heading <= -pi2, heading + np.pi, heading)
+            #heading = np.where(heading > pi2, heading - np.pi, heading)
+            #heading = np.where(heading <= -pi2, heading + np.pi, heading)
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
+            #Collect additional features from GT label
+            if(en_aux_features):
+                avg_intensity = float(pc_labels['meta'][i]['avg_intensity'])
+                avg_elongation = float(pc_labels['meta'][i]['avg_elongation'])
+                truncation     = float(pc_labels['meta'][i]['trunc'])
+                return_ratio   = float(pc_labels['meta'][i]['return_ratio'])
+                distance       = float(pc_labels['box'][i]['xc'])
+            else:
+                avg_intensity  = 0
+                avg_elongation = 0
+                truncation     = 0
+                return_ratio   = 0
+                distance       = 0
             #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
             #if(x1 < cfg.LIDAR.X_RANGE[0] or x2 > cfg.LIDAR.X_RANGE[1]):
@@ -374,6 +393,11 @@ class waymo_lidb(db):
                 difficulty[ix] = diff
                 num_pts[ix]    = pts
                 ids.append(track_id)
+                avg_intensities[ix] = avg_intensity
+                avg_elongations[ix] = avg_elongation
+                truncations[ix]     = truncation
+                return_ratios[ix]   = return_ratio
+                distances[ix]       = distance
                 #TODO: Not sure what to filter these to yet.
                 #if(anno_cat == 'vehicle.car' and self._mode == 'train'):
                     #TODO: Magic Numbers
@@ -403,22 +427,27 @@ class waymo_lidb(db):
         overlaps = scipy.sparse.csr_matrix(overlaps)
         #TODO: Double return
         return {
-            'pc_idx':      pc_idx,
-            'scene_idx':   scene_idx,
-            'scene_desc':  scene_desc,
-            'filename':    filename,
-            'ignore':      ignore[0:ix],
-            'det':         ignore[0:ix].copy(),
-            'cat':         cat,
-            'difficulty':  difficulty,
-            'hit':         ignore[0:ix].copy(),
-            'boxes':       boxes[0:ix],
-            'ids':         ids[0:ix],
-            'pts':         num_pts[0:ix],
-            'boxes_dc':    boxes_dc[0:ix_dc],
-            'gt_classes':  gt_classes[0:ix],
-            'gt_overlaps': overlaps[0:ix],
-            'flipped':     False
+            'pc_idx':          pc_idx,
+            'scene_idx':       scene_idx,
+            'scene_desc':      scene_desc,
+            'filename':        filename,
+            'ignore':          ignore[0:ix],
+            'det':             ignore[0:ix].copy(),
+            'cat':             cat,
+            'difficulty':      difficulty[0:ix],
+            'hit':             ignore[0:ix].copy(),
+            'boxes':           boxes[0:ix],
+            'ids':             ids[0:ix],
+            'pts':             num_pts[0:ix],
+            'boxes_dc':        boxes_dc[0:ix_dc],
+            'gt_classes':      gt_classes[0:ix],
+            'gt_overlaps':     overlaps[0:ix],
+            'avg_intensity':   avg_intensities[0:ix],
+            'avg_elongation':  avg_elongations[0:ix],
+            'truncation':      truncations[0:ix],
+            'return_ratio':    return_ratios[0:ix],
+            'distance':        distances[0:ix],
+            'flipped':         False
         }
 
         #Post Process Step
@@ -527,7 +556,7 @@ class waymo_lidb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='3d',
+                eval_type='bev',
                 d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP

@@ -69,7 +69,7 @@ def smooth_l1_loss(stage,
         sin_pred     = bbox_pred.reshape(-1,7)[:,6:7].reshape(-1,elem_rm)
         #Convert to sin to normalize, targets will be in degrees off of anchor
         sin_targets  = bbox_targets.reshape(-1,7)[:,6:7].reshape(-1,elem_rm)
-        ry_loss      = huber_loss(sin_pred,sin_targets,1.0/9.0,sin_en=cfg.LIDAR.EN_RY_SIN)
+        ry_loss      = huber_loss(sin_pred,sin_targets,1.0,sin_en=cfg.LIDAR.EN_RY_SIN)
         #self._losses['ry_loss'] = torch.mean(torch.sum(ry_loss,dim=1))
         in_loss_box  = torch.cat((loss_box.reshape(-1,6),ry_loss.reshape(-1,1)),dim=1).reshape(-1,bbox_shape[1])
         reg_loss_weight_tensor = torch.FloatTensor(cfg.LIDAR.REG_LOSS_WEIGHT).to(device=in_loss_box.device)
@@ -121,7 +121,7 @@ def compute_bbox_var(bbox_samples):
 
 def categorical_entropy(cls_prob):
     #Compute entropy for each class(y=c)
-    cls_entropy = cls_prob*torch.log(cls_prob)
+    cls_entropy = cls_prob*torch.log2(cls_prob)
     #Sum across classes
     total_entropy = -torch.sum(cls_entropy,dim=1)
     #true_cls      = torch.gather(cls_score,1,labels.unsqueeze(1)).squeeze(1)
@@ -134,7 +134,7 @@ def categorical_mutual_information(cls_score):
     avg_cls_prob = torch.mean(cls_prob,dim=0)
     total_entropy = categorical_entropy(avg_cls_prob)
     #Take sum of entropy across classes
-    mutual_info = torch.sum(cls_prob*torch.log(cls_prob),dim=2)
+    mutual_info = torch.sum(cls_prob*torch.log2(cls_prob),dim=2)
     #Get expectation over T forward passes
     mutual_info = torch.mean(mutual_info,dim=0)
     mutual_info += total_entropy

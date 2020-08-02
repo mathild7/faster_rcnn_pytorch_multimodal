@@ -80,8 +80,11 @@ def waymo_eval(detpath,
     # cachedir caches the annotations in a pickle file
 
     frame_path = get_frame_path(db, mode, eval_type)
-    labels_filename = eval_utils.get_labels_filename(db, eval_type)
-
+    #TODO: Add switch here to get combined labels.
+    if(cfg.TEST.EN_AUX_FEATURES):
+        labels_filename = 'combined_labels.json'
+    else:
+        labels_filename = eval_utils.get_labels_filename(db, eval_type)
     class_recs = load_recs(frameset, frame_path, labels_filename, db, mode, classname)
     # read dets
     detfile = detpath.format(classname)
@@ -182,7 +185,7 @@ def waymo_eval(detpath,
                             tp[idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,det_confidence,bb,var,jmax))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
@@ -190,14 +193,14 @@ def waymo_eval(detpath,
                         if(R['difficulty'][jmax] <= 1):
                             fp[idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,det_confidence,bb,var))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[idx,0] += 1
                 fp[idx,1] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,det_confidence,bb,var))
+                det_results.append(write_det(R,det_confidence,ovmax,bb,var))
             idx = idx + 1
     else:
         print('waymo eval, no GT boxes detected')
@@ -288,19 +291,17 @@ def load_recs(frameset, frame_path, labels_filename, db, mode, classname):
                     gt_class_idx = np.where(tmp_rec['gt_classes'] == db._class_to_ind[classname])[0]
                 else:
                     gt_class_idx = np.empty((0,))
-                tmp_rec['gt_classes'] = tmp_rec['gt_classes'][gt_class_idx]
-                tmp_rec['boxes'] = tmp_rec['boxes'][gt_class_idx]
+                tmp_rec['gt_classes']  = tmp_rec['gt_classes'][gt_class_idx]
+                tmp_rec['boxes']       = tmp_rec['boxes'][gt_class_idx]
                 tmp_rec['gt_overlaps'] = tmp_rec['gt_overlaps'][gt_class_idx]
-                tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
-                tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
-                #tmp_rec['scene_idx'] = tmp_rec['scene_idx']
-                #tmp_rec['scene_desc'] = tmp_rec['scene_desc']
-                tmp_rec['ids']        = [tmp_rec['ids'][i] for i in gt_class_idx]
-                tmp_rec['pts']        = tmp_rec['pts'][gt_class_idx]
-                tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
-            tmp_rec['filename'] = filename
-            tmp_rec['frame_idx']   = int(int(frame_idx)%cfg.MAX_IMG_PER_SCENE)
-            tmp_rec['idx'] = frame_idx
+                tmp_rec['det']         = tmp_rec['det'][gt_class_idx]
+                tmp_rec['ignore']      = tmp_rec['ignore'][gt_class_idx]
+                tmp_rec['ids']         = [tmp_rec['ids'][i] for i in gt_class_idx]
+                tmp_rec['pts']         = tmp_rec['pts'][gt_class_idx]
+                tmp_rec['difficulty']  = tmp_rec['difficulty'][gt_class_idx]
+            tmp_rec['filename']     = filename
+            tmp_rec['frame_idx']    = int(int(frame_idx)%cfg.MAX_IMG_PER_SCENE)
+            tmp_rec['idx']          = frame_idx
             #List of all frames with GT boxes for a specific class
             class_recs.append(tmp_rec)
             #Only print every hundredth annotation?
@@ -318,14 +319,24 @@ def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
             #TODO: filter if not in preferred scene
             #TODO: here is where I get my ROI for the frame. Can use this as well as the variance to get average entropy
             #Do I really want multiple paths in which ROI's can be loaded? I should really fetch this from the existing ROIDB
-            tmp_rec = db._load_waymo_annotation(frame,label,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST)
+            tmp_rec = db._load_waymo_annotation(frame,label,remove_without_gt=False,tod_filter_list=cfg.TEST.TOD_FILTER_LIST,en_aux_features=cfg.TEST.EN_AUX_FEATURES)
             break
     return tmp_rec
 
-def write_det(R,confidence,bb,var,jmax=None):
+def write_det(R,confidence,ovmax,bb,var,jmax=None):
     scene    = R['scene_idx']
     frame    = R['frame_idx']
-
+    avg_intensity  = -1
+    avg_elongation = -1
+    truncation     = -1
+    return_ratio   = -1
+    distance       = -1
+    difficulty     = -1
+    iou            = ovmax
+    track_id       = 'none'
+    class_t        = -1
+    bbgt           = np.full((len(bb)),-1)
+    pts            = -1
     out_str  = ''
     out_str += 'scene_idx: {} frame_idx: {} '.format(scene,frame)
     out_str += 'confidence: {} '.format(confidence)
@@ -349,18 +360,28 @@ def write_det(R,confidence,bb,var,jmax=None):
         out_str   += 'difficulty: {} '.format(difficulty)
         out_str   += 'pts: {} '.format(pts)
         out_str   += 'cls: {} '.format(class_t)
-        if(len(bbgt) > cfg.IMAGE.NUM_BBOX_ELEM):
-            out_str += 'bbgt3d: '
-        else:
-            out_str += 'bbgt: '
-        for bbox_elem in bbgt:
-            out_str += '{:.3f} '.format(bbox_elem)
+
+        if(cfg.TEST.EN_AUX_FEATURES):
+            avg_intensity = R['avg_intensity'][jmax]
+            avg_elongation = R['avg_elongation'][jmax]
+            truncation     = R['truncation'][jmax]
+            return_ratio   = R['return_ratio'][jmax]
+            distance       = R['distance'][jmax]
+
+    out_str   += 'track_idx: {} difficulty: {} pts: {} cls: {} '.format(track_id,
+                                                                        difficulty,
+                                                                        pts,
+                                                                        class_t)
+    if(len(bbgt) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbgt3d: '
     else:
-        out_str   += 'track_idx: none '
-        out_str   += 'difficulty: -1 '
-        out_str   += 'pts: -1 '
-        out_str   += 'cls: -1 '
-        out_str   += 'bbgt: '
-        for _i in range(len(bb)):
-            out_str += '-1 '
+        out_str += 'bbgt: '
+    for i in range(len(bbgt)):
+        out_str += '{:.3f} '.format(bbgt[i])
+    out_str += 'avg_intensity: {:.5f} avg_elongation: {:.5f} truncation: {:.3f} return_ratio: {:.5f} distance: {:.3f} iou: {:.3f}'.format(avg_intensity,
+                                                                                                                                          avg_elongation,
+                                                                                                                                          truncation,
+                                                                                                                                          return_ratio,
+                                                                                                                                          distance,
+                                                                                                                                          iou)
     return out_str
