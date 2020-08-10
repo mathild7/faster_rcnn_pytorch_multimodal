@@ -179,14 +179,22 @@ class waymo_imdb(db):
     #                print('Saving drawn file at location {}'.format(outfile))
     #                source_img.save(outfile,self._imtype)
 
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         if(iter != 0):
             out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         else:
             out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        source_img = Image.open(filename)
+        if(frame_arr is None):
+            source_img = Image.open(filename)
+        else:
+            img_arr = frame_arr[0]
+            img_arr = img_arr*cfg.PIXEL_STDDEVS
+            img_arr += cfg.PIXEL_MEANS
+            img_arr = img_arr[:,:,cfg.PIXEL_ARRANGE_BGR]
+            img_arr = img_arr.astype(np.uint8)
+            source_img = Image.fromarray(img_arr)
         draw = ImageDraw.Draw(source_img)
         #TODO: Magic numbers
         limiter = 15

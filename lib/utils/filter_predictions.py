@@ -28,10 +28,10 @@ def nms_hstack_var_torch(var_type,var,inds,keep,c,bbox_elem):
         cls_var = cls_var[keep].unsqueeze(1)
         return cls_var.cpu().numpy()
     elif(var_type == 'cls_var'):
-        cls_var = var[inds,c]
+        cls_var = var[inds]
         #Removed dependency on class, as entropy is measured across all classes
         #cls_var = var[inds,c]
-        cls_var = cls_var[keep].unsqueeze(1)
+        cls_var = cls_var[keep]
         return cls_var.cpu().numpy()
     elif(var_type == 'bbox'):
         cls_bbox_var = var[inds, c * bbox_elem:(c + 1) * bbox_elem]
@@ -70,8 +70,6 @@ def nms_hstack_torch(scores,mean_boxes,thresh,c,bbox_elem,db_type):
     cls_dets = cls_dets[keep, :]
     #Only if this variable has been provided
     return cls_dets, inds, keep
-
-
 
 #TODO: Could use original imwidth/imheight
 def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_classes,thresh=0.1,db_type='none'):
@@ -115,10 +113,11 @@ def filter_and_draw_prep(rois, cls_score, pred_boxes, uncertainties, info, num_c
             if(cfg.UC.EN_CLS_ALEATORIC):
                 uncertainties['a_entropy']     = nms_hstack_var_torch('cls',uncertainties['a_entropy'],inds,keep,j,bbox_elem)
                 uncertainties['a_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['a_mutual_info'],inds,keep,j,bbox_elem)
-                uncertainties['a_cls_var']         = nms_hstack_var_torch('cls_var',uncertainties['a_cls_var'],inds,keep,j,bbox_elem)
+                uncertainties['a_cls_var']     = nms_hstack_var_torch('cls_var',uncertainties['a_cls_var'],inds,keep,j,bbox_elem)
             if(cfg.UC.EN_CLS_EPISTEMIC):
-                uncertainties['e_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['e_mutual_info'],inds,keep,j,bbox_elem)
                 uncertainties['e_entropy']     = nms_hstack_var_torch('cls',uncertainties['e_entropy'],inds,keep,j,bbox_elem)
+                uncertainties['e_mutual_info'] = nms_hstack_var_torch('cls',uncertainties['e_mutual_info'],inds,keep,j,bbox_elem)
+                uncertainties['e_cls_var']     = nms_hstack_var_torch('cls_var',uncertainties['e_cls_var'],inds,keep,j,bbox_elem)
             if(cfg.UC.EN_BBOX_ALEATORIC):
                 uncertainties['a_bbox_var'] = nms_hstack_var_torch('bbox',uncertainties['a_bbox_var'],inds,keep,j,bbox_elem)
             if(cfg.UC.EN_BBOX_EPISTEMIC):

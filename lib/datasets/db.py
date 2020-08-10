@@ -264,6 +264,8 @@ class db(object):
                 normalized_uncertainties[key] = np.mean(uc,axis=1)
             elif('mutual_info' in key):
                 normalized_uncertainties[key] = uc.squeeze(1)  #*10*(-np.log(dets[:,4]))
+            elif('cls_var' in key):
+                normalized_uncertainties[key] = np.mean(uc,axis=1)
             else:
                 normalized_uncertainties[key] = uc.squeeze(1)
         return normalized_uncertainties
@@ -318,7 +320,7 @@ class db(object):
                                 dets[k, 2], dets[k, 3]))
                         #Write uncertainties
                         for l in range(5,dets.shape[1]):
-                            f.write(' {:.5f}'.format(dets[k,l]))
+                            f.write(' {:.10f}'.format(dets[k,l]))
                         f.write('\n')
 
     def _write_lidar_results_file(self, all_boxes, output_dir, mode):
@@ -343,7 +345,7 @@ class db(object):
                     #TODO: Add variance to output file
                     for k in range(dets.shape[0]):
                         f.write(
-                            '{:d} {:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.2f} {:.2f} {:.2f} {:.3f}'.format(
+                            '{:d} {:s} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.5f}'.format(
                                 ind, frame, dets[k, 7], 
                                 dets[k, 0], dets[k, 1], 
                                 dets[k, 2], dets[k, 3],
@@ -351,7 +353,7 @@ class db(object):
                         #Write uncertainties
                         if(dets.shape[1] > cfg.LIDAR.NUM_BBOX_ELEM+1):
                             for l in range(8,dets.shape[1]):
-                                f.write(' {:.3f}'.format(dets[k,l]))
+                                f.write(' {:.10f}'.format(dets[k,l]))
                         f.write('\n')
     #LIDAR specific functions
     def _transform_to_pixel_coords(self,coords,inv_x=False,inv_y=False):

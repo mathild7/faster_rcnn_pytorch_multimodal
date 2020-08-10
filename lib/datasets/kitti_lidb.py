@@ -41,8 +41,12 @@ class kitti_lidb(db):
         self._num_slices = cfg.LIDAR.NUM_SLICES
         self._frame_sub_dir = 'velodyne'
         self._train_dir = os.path.join(self._data_path, 'training', self._frame_sub_dir)
-        self._val_dir   = os.path.join(self._data_path, 'evaluation', self._frame_sub_dir)
+        self._val_dir   = os.path.join(self._data_path, 'training', self._frame_sub_dir)
         self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
+        self._split_dir  = os.path.join(self._data_path, 'splits')
+        self._test_index = open(self._split_dir+'/test.txt').readlines()
+        self._train_index = open(self._split_dir+'/train.txt').readlines()
+        self._val_index = open(self._split_dir+'/val.txt').readlines()
         self._filetype   = 'bin'
         self._imtype   = 'PNG'
         self.type = 'lidar'
@@ -50,7 +54,7 @@ class kitti_lidb(db):
         self._mode = mode
         #Backwards compatibility
         self._train_sub_folder = 'training'
-        self._val_sub_folder = 'evaluation'
+        self._val_sub_folder = 'training'
         self._test_sub_folder = 'testing'
         self._classes = (
             'dontcare',  # always index 0
@@ -65,9 +69,9 @@ class kitti_lidb(db):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.bin')])
-        self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.bin')])
-        self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.bin')])
+        #self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.bin')])
+        #self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.bin')])
+        #self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.bin')])
         #Limiter
         if(limiter != 0):
             if(limiter < len(self._val_index)):
@@ -101,7 +105,7 @@ class kitti_lidb(db):
     Construct an image path from the image's "index" identifier.
     """
         mode_sub_folder = self.subfolder_from_mode(mode)
-        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'velodyne', index)
+        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'velodyne', index+'.bin')
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -163,6 +167,7 @@ class kitti_lidb(db):
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
+        gt_dist    = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -229,6 +234,7 @@ class kitti_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_dist[ix]  = x_c
                 gt_diff[ix]  = diff
                 gt_ids[ix]   = int(index) + ix
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -247,22 +253,23 @@ class kitti_lidb(db):
             print('removing pc {} with no GT boxes specified'.format(index))
             return None
         return {
-            'idx': index,
-            'ids': gt_ids[0:ix],
-            'filename': img_filename,
-            'det': ignore[0:ix].copy(),
-            'ignore':ignore[0:ix],
-            'hit': ignore[0:ix].copy(),
-            'trunc': gt_trunc[0:ix],
-            'occ': gt_occ[0:ix],
-            'difficulty': gt_diff[0:ix],
-            'cat': cat,
-            'boxes': boxes[0:ix],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': gt_classes[0:ix],
-            'gt_overlaps': overlaps[0:ix],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix]
+            'idx':          index,
+            'ids':          gt_ids[0:ix],
+            'filename':     img_filename,
+            'det':          ignore[0:ix].copy(),
+            'ignore':       ignore[0:ix],
+            'hit':          ignore[0:ix].copy(),
+            'trunc':        gt_trunc[0:ix],
+            'occ':          gt_occ[0:ix],
+            'difficulty':   gt_diff[0:ix],
+            'cat':          cat,
+            'boxes':        boxes[0:ix],
+            'boxes_dc':     boxes_dc[0:ix_dc],
+            'gt_classes':   gt_classes[0:ix],
+            'gt_overlaps':  overlaps[0:ix],
+            'distance':     gt_dist[0:ix],
+            'flipped':      False,
+            'seg_areas':    seg_areas[0:ix]
         }
 
     def _bbox3d(self, bbox, calib):
@@ -314,12 +321,15 @@ class kitti_lidb(db):
         return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
 
     #TODO: Merge with waymo lidb draw and save eval, image specific
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        source_bin = self._load_pc(filename)
+        if(frame_arr is None):
+            source_bin = self._load_pc(filename)
+        else:
+            source_bin = frame_arr[0]
         draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)

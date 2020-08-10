@@ -52,6 +52,7 @@ def lidar_3d_bbox_transform(ex_rois, ex_anchors, gt_rois):
 def bbox_transform(ex_rois, gt_rois):
     ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
     ex_heights = ex_rois[:, 3] - ex_rois[:, 1] + 1.0
+    ex_area   = torch.sqrt(torch.pow(ex_widths,2) + torch.pow(ex_heights,2))
     ex_ctr_x = ex_rois[:, 0] + 0.5 * ex_widths
     ex_ctr_y = ex_rois[:, 1] + 0.5 * ex_heights
 
@@ -60,8 +61,8 @@ def bbox_transform(ex_rois, gt_rois):
     gt_ctr_x = gt_rois[:, 0] + 0.5 * gt_widths
     gt_ctr_y = gt_rois[:, 1] + 0.5 * gt_heights
 
-    targets_dx = (gt_ctr_x - ex_ctr_x) / ex_widths
-    targets_dy = (gt_ctr_y - ex_ctr_y) / ex_heights
+    targets_dx = (gt_ctr_x - ex_ctr_x) / ex_area  #ex_area  #ex_widths
+    targets_dy = (gt_ctr_y - ex_ctr_y) / ex_area  #ex_area  #ex_heights
     targets_dw = torch.log(gt_widths / ex_widths)
     targets_dh = torch.log(gt_heights / ex_heights)
 
@@ -80,6 +81,7 @@ def bbox_transform_inv(boxes, deltas, scales=None):
 
     widths = boxes[:, 2] - boxes[:, 0] + 1.0
     heights = boxes[:, 3] - boxes[:, 1] + 1.0
+    area    = torch.sqrt(torch.pow(widths,2) + torch.pow(heights,2))
     #Re-centering top left hand corner
     ctr_x = boxes[:, 0] + 0.5 * widths
     ctr_y = boxes[:, 1] + 0.5 * heights
@@ -89,8 +91,8 @@ def bbox_transform_inv(boxes, deltas, scales=None):
     dw = deltas[:, 2::4]
     dh = deltas[:, 3::4]
 
-    pred_ctr_x = dx * widths.unsqueeze(1) + ctr_x.unsqueeze(1)
-    pred_ctr_y = dy * heights.unsqueeze(1) + ctr_y.unsqueeze(1)
+    pred_ctr_x = dx * area.unsqueeze(1) + ctr_x.unsqueeze(1)  #area.unsqueeze(1) + ctr_x.unsqueeze(1)  #widths.unsqueeze(1) + ctr_x.unsqueeze(1)
+    pred_ctr_y = dy * area.unsqueeze(1) + ctr_y.unsqueeze(1)  #area.unsqueeze(1) + ctr_y.unsqueeze(1)  #heights.unsqueeze(1) + ctr_y.unsqueeze(1)
     pred_w = torch.exp(dw) * widths.unsqueeze(1)
     pred_h = torch.exp(dh) * heights.unsqueeze(1)
 

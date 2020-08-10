@@ -345,22 +345,17 @@ def write_det(R,confidence,ovmax,bb,var,jmax=None):
     else:
         out_str += 'bbdet: '
     for bbox_elem in bb:
-        out_str += '{:.3f} '.format(bbox_elem)
+        out_str += '{:.5f} '.format(bbox_elem)
     for key,val in var.items():
         out_str += '{}: '.format(key)
         for var_elem in val:
-            out_str += '{:.5f} '.format(var_elem)
+            out_str += '{:.10f} '.format(var_elem)
     if(jmax is not None):
         pts        = R['pts'][jmax]
         difficulty = R['difficulty'][jmax]
         track_id   = R['ids'][jmax]
         class_t    = R['gt_classes'][jmax]
         bbgt       = R['boxes'][jmax]
-        out_str   += 'track_idx: {} '.format(track_id)
-        out_str   += 'difficulty: {} '.format(difficulty)
-        out_str   += 'pts: {} '.format(pts)
-        out_str   += 'cls: {} '.format(class_t)
-
         if(cfg.TEST.EN_AUX_FEATURES):
             avg_intensity = R['avg_intensity'][jmax]
             avg_elongation = R['avg_elongation'][jmax]

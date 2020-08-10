@@ -39,10 +39,11 @@ __C.UC.EN_RPN_CLS_EPISTEMIC  = False
 __C.UC.EN_BBOX_ALEATORIC     = False
 __C.UC.EN_CLS_ALEATORIC      = False
 __C.UC.EN_BBOX_EPISTEMIC     = False
+__C.UC.EN_BBOX_EPISTEMIC_INV_TRANSFORM = False
 __C.UC.EN_CLS_EPISTEMIC      = False
-__C.UC.A_NUM_CE_SAMPLE       = 80
-__C.UC.A_NUM_BBOX_SAMPLE     = 80
-__C.UC.E_NUM_SAMPLE          = 80
+__C.UC.A_NUM_CE_SAMPLE       = 200
+__C.UC.A_NUM_BBOX_SAMPLE     = 200
+__C.UC.E_NUM_SAMPLE          = 100
 __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
@@ -218,7 +219,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS_THRESH = 0.3
+__C.TEST.NMS_THRESH = 0.7
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -256,7 +257,9 @@ __C.TEST.IGNORE_DC = False
 
 __C.TEST.ITER = 1
 
-__C.TEST.EN_AUX_FEATURES = True
+__C.TEST.EN_AUX_FEATURES = False
+
+__C.TEST.AUGMENT_EN      = False
 #
 # ResNet options
 #
@@ -355,6 +358,7 @@ __C.POOLING_SIZE = 7
 #__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
 __C.ANCHOR_SCALES  = [2,4,8,16,32]
 # Anchor ratios for RPN
+#__C.ANCHOR_RATIOS = [0.5,1,2]
 __C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
 
 # Number of filters for the RPN layer

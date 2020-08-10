@@ -238,7 +238,7 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
     infos = []
     for i in range(num_frame):
         if(mode == 'test'):
-            assert augment_en is False
+            #assert augment_en is False
             source_bin = roidb[i]
             local_roidb = None
         else:
@@ -371,8 +371,9 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
     processed_ims = []
     im_infos = []
     for i in range(num_images):
+        #TODO: Probably can remove this conditional branch by just providing the filename instead of the image itself?
         if(mode == 'test'):
-            assert augment_en is False
+            #assert augment_en is False
             im          = roidb[i]
             local_roidb = None
         else:
@@ -384,7 +385,7 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
         #scale
 
 
-        if(augment_en):
+        if(augment_en and mode != 'test'):
             #print('augmenting image {}'.format(roidb[i]['filename']))
             #shape 0 -> height
             #shape 1 -> width
@@ -490,7 +491,22 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
                 if(local_roidb[i]['ignore'][j] is False and hc > h):
                     print('new y diff is larger than old y diff')
             im = img_arr
-        #nibatch(im,local_roidb[0])
+        elif(augment_en and mode == 'test'):
+            seq = iaa.Sequential(
+                [
+                    iaa.weather.Rain(speed=(0.15,0.25))
+                    #iaa.Dropout((0.2))
+                    #iaa.GaussianBlur(sigma=(3.0,3.5))
+                ], random_order=False)
+            images_aug = seq(images=[img_arr])
+            img_arr = images_aug[0]
+            orig_height = img_arr.shape[0]
+            orig_width  = img_arr.shape[1]
+            img_arr     = np.minimum(img_arr,255)
+            img_arr     = np.maximum(img_arr,0)
+            img_arr     = img_arr.astype('uint8')
+            im = img_arr
+        #minibatch(im,local_roidb[0])
         #draw_and_save_minibatch(im[:,:,cfg.PIXEL_ARRANGE_BGR],roidb[i])
         #TODO: Move scaling to be before imgaug, to save time
         im = prep_im_for_blob(im, cfg.PIXEL_MEANS, cfg.PIXEL_STDDEVS, cfg.PIXEL_ARRANGE, im_scale)

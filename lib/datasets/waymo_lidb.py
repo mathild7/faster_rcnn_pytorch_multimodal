@@ -223,12 +223,15 @@ class waymo_lidb(db):
             z_max = self._bev_slice_locations[i]
         return z_max, z_min
 
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        source_bin = self._load_pc(filename)
+        if(frame_arr is None):
+            source_bin = self._load_pc(filename)
+        else:
+            source_bin = frame_arr[0]
         draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
         draw = ImageDraw.Draw(draw_file)
         self.draw_bev(source_bin,draw)
@@ -285,6 +288,7 @@ class waymo_lidb(db):
                                     avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
                             else:
+                                key = key.replace('cls','c').replace('bbox','b').replace('mutual_info','m_i')
                                 if(i == 0):
                                     avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))

@@ -97,7 +97,7 @@ def kitti_eval(detpath,
     bbox_elem  = cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
     BB         = np.array([[float(z) for z in x[3:3+bbox_elem]] for x in splitlines])
     det_cnt    = np.zeros((cfg.KITTI.MAX_FRAME))
-    uc_avg, uncertainties = eval_utils.extract_uncertainties(bbox_elem,splitlines)
+    _, uncertainties = eval_utils.extract_uncertainties(bbox_elem,splitlines)
     #Repeated for X detections along every frame presented
     idx = len(frame_idx)
     #DEPRECATED ---- 3 types, easy medium hard
@@ -145,7 +145,7 @@ def kitti_eval(detpath,
             var = {}
             #Variance extraction, collect on a per scene basis
             for key,val in uncertainties.items():
-                uc_avg[key][int(R['idx'])] += val[det_idx, :]
+                #uc_avg[key][int(R['idx'])] += val[det_idx, :]
                 var[key] = val[det_idx, :]
             det_cnt[int(R['idx'])] += 1
             #Variance extraction, collect on a per scene basis
@@ -175,19 +175,19 @@ def kitti_eval(detpath,
                 #ignore if not contained within easy, medium, hard
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
-                        print('TP')
+                        #print('TP')
                         if(R['difficulty'][jmax] <= 2):
                             tp[idx,2] += 1
                         if(R['difficulty'][jmax] <= 1):
                             tp[idx,1] += 1
                         if(R['difficulty'][jmax] <= 0):
                             tp[idx,0] += 1
-                            print('ez')
+                            #print('ez')
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,bb,det_confidence,var,jmax))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax))
                     else:
-                        print('FP-hit')
+                        #print('FP-hit')
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
                             fp[idx,2] += 1
@@ -196,10 +196,10 @@ def kitti_eval(detpath,
                         if(R['difficulty'][jmax] <= 0):
                             fp[idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,bb,det_confidence,var))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
-                print('FP-else')
+                #print('FP-else')
                 #elif(BBGT.size > 0)
                 #if(R['difficulty'][jmax] <= 2):
                 #    fp[det_idx,2] += 1
@@ -211,25 +211,25 @@ def kitti_eval(detpath,
                 fp[idx,1] += 1
                 fp[idx,0] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,bb,det_confidence,var))
+                det_results.append(write_det(R,det_confidence,ovmax,bb,var))
             idx = idx + 1
     else:
         print('waymo eval, no GT boxes detected')
-    for i in np.arange(cfg.KITTI.MAX_FRAME):
-        frame_dets = np.sum(det_cnt[i])
-        frame_uc = eval_utils.write_frame_uncertainty(uc_avg,frame_dets,i)
-        if(frame_uc != '' and cfg.DEBUG.PRINT_SCENE_RESULT):
-            print(frame_uc)
-        frame_uncertainties.append(frame_uc)
+    #for i in np.arange(cfg.KITTI.MAX_FRAME):
+    #    frame_dets = np.sum(det_cnt[i])
+    #    frame_uc = eval_utils.write_frame_uncertainty(uc_avg,frame_dets,i)
+    #    if(frame_uc != '' and cfg.DEBUG.PRINT_SCENE_RESULT):
+    #        print(frame_uc)
+    #    frame_uncertainties.append(frame_uc)
 
     if(cfg.DEBUG.TEST_FRAME_PRINT):
         eval_utils.display_frame_counts(tp_frame,fp_frame,npos_frame)
     out_dir = get_output_dir(db,mode='test')
     out_file = '{}_detection_results.txt'.format(classname)
     eval_utils.save_detection_results(det_results, out_dir, out_file)
-    if(len(frame_uncertainties) != 0):
-        uc_out_file = '{}_frame_uncertainty_results.txt'.format(classname)
-        eval_utils.save_detection_results(frame_uncertainties, out_dir, uc_out_file)
+    #if(len(frame_uncertainties) != 0):
+    #    uc_out_file = '{}_frame_uncertainty_results.txt'.format(classname)
+    #    eval_utils.save_detection_results(frame_uncertainties, out_dir, uc_out_file)
 
     map = mrec = mprec = np.zeros((d_levels,))
     prec = 0
@@ -327,29 +327,86 @@ def load_recs(frameset, frame_path, db, mode, classname):
                 i + 1, len(frameset)))
     return class_recs
 
-def write_det(R,bb,confidence,var,jmax=None):
+def write_det(R,confidence,ovmax,bb,var,jmax=None):
     frame    = R['idx']
+    truncation     = -1
+    occlusion      = -1
+    distance       = -1
+    difficulty     = -1
+    iou            = ovmax
+    class_t        = -1
+    bbgt           = np.full((len(bb)),-1)
+    #pts            = -1
     out_str  = ''
     out_str += 'frame_idx: {} '.format(frame)
     out_str += 'confidence: {} '.format(confidence)
-    out_str += 'bbdet: '
+    if(len(bb) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbdet3d: '
+    else:
+        out_str += 'bbdet: '
     for bbox_elem in bb:
-        out_str += '{:4.3f} '.format(bbox_elem)
+        out_str += '{:.5f} '.format(bbox_elem)
     for key,val in var.items():
         out_str += '{}: '.format(key)
         for var_elem in val:
-            out_str += '{:4.3f} '.format(var_elem)
+            out_str += '{:.10f} '.format(var_elem)
     if(jmax is not None):
         #pts        = R['pts'][jmax]
         difficulty = R['difficulty'][jmax]
         #track_id   = R['ids'][jmax]
         class_t    = R['gt_classes'][jmax]
         bbgt       = R['boxes'][jmax]
-        #out_str   += 'track_idx: {} '.format(track_id)
-        out_str   += 'difficulty: {} '.format(difficulty)
-        #out_str   += 'pts: {} '.format(pts)
-        out_str   += 'cls: {} '.format(class_t)
-        out_str   += 'bbgt: '
-        for bbox_elem in bbgt:
-            out_str += '{:4.3f} '.format(bbox_elem)
+        truncation = R['trunc'][jmax]
+        occlusion  = R['occ'][jmax]
+        distance   = R['distance'][jmax]
+    #out_str   += 'track_idx: {} difficulty: {} pts: {} cls: {} '.format(track_id,
+    #                                                                    difficulty,
+    #                                                                    pts,
+    #                                                                    class_t)
+    out_str   += 'difficulty: {} cls: {} '.format(difficulty,
+                                                  class_t)
+    if(len(bbgt) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbgt3d: '
+    else:
+        out_str += 'bbgt: '
+    for i in range(len(bbgt)):
+        out_str += '{:.3f} '.format(bbgt[i])
+    out_str += 'occlusion: {:.5f} truncation: {:.3f}  distance: {:.3f} iou: {:.3f}'.format(occlusion,
+                                                                                            truncation,
+                                                                                            distance,
+                                                                                            iou)
+    #out_str += 'avg_intensity: {:.5f} avg_elongation: {:.5f} truncation: {:.3f} return_ratio: {:.5f} distance: {:.3f} iou: {:.3f}'.format(avg_intensity,
+    #                                                                                                                                      avg_elongation,
+    #                                                                                                                                      truncation,
+    #                                                                                                                                      return_ratio,
+    #                                                                                                                                      distance,
+    #                                                                                                                                      iou)
     return out_str
+
+#DEPRECATED
+#def write_det(R,bb,confidence,var,jmax=None):
+#    frame    = R['idx']
+#    out_str  = ''
+#    out_str += 'frame_idx: {} '.format(frame)
+#    out_str += 'confidence: {} '.format(confidence)
+#    out_str += 'bbdet: '
+#    for bbox_elem in bb:
+#        out_str += '{:.5f} '.format(bbox_elem)
+#    for key,val in var.items():
+#        out_str += '{}: '.format(key)
+#        for var_elem in val:
+#            out_str += '{:.10f} '.format(var_elem)
+#    if(jmax is not None):
+#        #pts        = R['pts'][jmax]
+#        difficulty = R['difficulty'][jmax]
+#        #track_id   = R['ids'][jmax]
+#        class_t    = R['gt_classes'][jmax]
+#        bbgt       = R['boxes'][jmax]
+#        #out_str   += 'track_idx: {} '.format(track_id)
+#        out_str   += 'difficulty: {} '.format(difficulty)
+#        #out_str   += 'pts: {} '.format(pts)
+#        out_str   += 'cls: {} '.format(class_t)
+#        out_str   += 'bbgt: '
+#        for bbox_elem in bbgt:
+#           out_str += '{:4.3f} '.format(bbox_elem)
+#    return out_str

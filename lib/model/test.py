@@ -34,12 +34,12 @@ def _get_blobs(frame):
     blobs = {}
     if(cfg.NET_TYPE == 'image'):
         scale = cfg.TEST.SCALES[0]
-        infos, blobs['data'], _ = minibatch._get_image_blob(frame,scale,augment_en=False,mode='test')
+        infos, blobs['data'], _ = minibatch._get_image_blob(frame,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
         blobs['info'] = infos[0]
     elif(cfg.NET_TYPE == 'lidar'):
         scale = cfg.TEST.SCALES[0]
         area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
-        infos, blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,scale,augment_en=False,mode='test')
+        infos, blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
         blobs['info'] = infos[0]
     return blobs
 
@@ -152,9 +152,9 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
     if(cfg.UC.EN_BBOX_EPISTEMIC):
         num_uncertainty_pos += cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
     if(cfg.UC.EN_CLS_ALEATORIC):
-        num_uncertainty_pos += 3
+        num_uncertainty_pos += 4
     if(cfg.UC.EN_CLS_EPISTEMIC):
-        num_uncertainty_pos += 2
+        num_uncertainty_pos += 4
 
 
     all_boxes       = [[[] for _ in range(num_images)]
@@ -207,8 +207,8 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 scores = cls_boxes[:, -1]
                 #If we have too many detections, remove any past max allowed with a low score
                 if len(scores) > max_dets:
-                    thresh = np.sort(scores)[-max_dets]
-                    keep = np.where(cls_boxes[:, -1] >= thresh)[0]
+                    filter_thresh = np.sort(scores)[-max_dets]
+                    keep = np.where(cls_boxes[:, -1] >= filter_thresh)[0]
                     cls_boxes = cls_boxes[keep, :]
                     for key in cls_uncertainties:
                         cls_uncertainties[key] = cls_uncertainties[key][keep, :]
@@ -229,10 +229,10 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 db.draw_and_save_eval(filename,[],[],bbox,uncertainties,0,test_mode)
             else:   
                 if(cfg.NET_TYPE == 'lidar'):
-                    boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'])
+                    boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'],frame_arr=blobs['data'])
                 elif(cfg.NET_TYPE == 'image'):
                     boxes = gt_boxes['boxes']
-                db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode)
+                db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode,frame_arr=blobs['data'])
 
         _t['misc'].toc()
         if(cfg.DEBUG.EN_TEST_MSG):

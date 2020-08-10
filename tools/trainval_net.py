@@ -251,22 +251,23 @@ if __name__ == '__main__':
         args.net = 'res101'
         args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        args.net_type     = 'lidar'
-        args.preload      = 2
+        args.net_type     = 'image'
+        args.preload      = 1
         args.iter         = 6
         args.scale        = 1.0
         args.en_full_net  = True
         args.en_fpn       = False
-        args.en_epistemic = 0
-        args.en_aleatoric = 0
-        #args.uc_sort_type = 'a_cls_var'
-        args.fixed_blocks = -1
+        args.en_epistemic = 1
+        args.en_aleatoric = 1
+        args.uc_sort_type = 'a_bbox_var'
+        args.fixed_blocks = 0
         args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
-        args.weights_file  = os.path.join('/home/mat/thesis/data2/waymo/', 'weights', 'lidar_rpn_75k.pth')
+        #args.weights_file  = os.path.join('/home/mat/thesis/data2/waymo/', 'weights', 'lidar_rpn_75k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data/cadc/', 'weights', 'lidar_10k.pth')
+        args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights','aug06','image_diag_area_145k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights', 'image_base_65k.pth')
         #IMAGE
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_image_rpn_12k.pth')

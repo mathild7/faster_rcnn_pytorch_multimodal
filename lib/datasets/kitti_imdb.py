@@ -35,8 +35,9 @@ class kitti_imdb(db):
         self._uncertainty_sort_type = cfg.UC.SORT_TYPE
         self._frame_sub_dir = 'image_2'
         self._train_dir = os.path.join(self._data_path, 'training', self._frame_sub_dir)
-        self._val_dir   = os.path.join(self._data_path, 'evaluation', self._frame_sub_dir)
+        self._val_dir   = os.path.join(self._data_path, 'training', self._frame_sub_dir)
         self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
+        self._split_dir  = os.path.join(self._data_path, 'splits')
         self._imwidth = 1242
         self._imheight = 375
         self._imtype = 'png'
@@ -45,7 +46,7 @@ class kitti_imdb(db):
         self._mode = mode
         #Backwards compatibility
         self._train_sub_folder = 'training'
-        self._val_sub_folder = 'evaluation'
+        self._val_sub_folder = 'training'
         self._test_sub_folder = 'testing'
         self._classes = (
             'dontcare',  # always index 0
@@ -60,9 +61,14 @@ class kitti_imdb(db):
         }
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
-        self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.png')])
-        self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.png')])
-        self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.png')])
+
+        self._test_index = open(self._split_dir+'/test.txt').read().splitlines()
+        self._train_index = open(self._split_dir+'/train.txt').read().splitlines()
+        self._val_index = open(self._split_dir+'/val.txt').read().splitlines()
+
+        #self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.png')])
+        #self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.png')])
+        #self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.png')])
         #Limiter
         if(limiter != 0):
             if(limiter < len(self._val_index)):
@@ -96,7 +102,7 @@ class kitti_imdb(db):
     Construct an image path from the image's "index" identifier.
     """
         mode_sub_folder = self.subfolder_from_mode(mode)
-        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'image_2', index)
+        image_path = os.path.join(self._devkit_path, mode_sub_folder, 'image_2', index+'.png')
         assert os.path.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -157,6 +163,7 @@ class kitti_imdb(db):
         gt_diff    = np.zeros((num_objs), dtype=np.int8)
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
+        gt_dist    = np.zeros((num_objs), dtype=np.float32)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
@@ -199,6 +206,7 @@ class kitti_imdb(db):
                 gt_occ[ix]   = occ
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
+                gt_dist[ix]  = float(label_arr[11])
                 #if(diff == -1):
                 #    ignore[ix] = True
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -216,23 +224,25 @@ class kitti_imdb(db):
         if(ix == 0 and remove_without_gt is True):
             print('removing pc {} with no GT boxes specified'.format(index))
             return None
+        #TODO: Add viewing angle and yaw as metadata
         return {
-            'idx': index,
-            'filename': img_filename,
-            'det': hit[0:ix].copy(),
-            'ignore':ignore[0:ix],
-            'hit': hit[0:ix].copy(),
-            'trunc': gt_trunc[0:ix],
-            'occ': gt_occ[0:ix],
-            'difficulty': gt_diff[0:ix],
-            'ids': gt_ids[0:ix],
-            'cat': cat,
-            'boxes': boxes[0:ix],
-            'boxes_dc': boxes_dc[0:ix_dc],
-            'gt_classes': gt_classes[0:ix],
+            'idx':         index,
+            'filename':    img_filename,
+            'det':         hit[0:ix].copy(),
+            'ignore':      ignore[0:ix],
+            'hit':         hit[0:ix].copy(),
+            'trunc':       gt_trunc[0:ix],
+            'occ':         gt_occ[0:ix],
+            'difficulty':  gt_diff[0:ix],
+            'ids':         gt_ids[0:ix],
+            'cat':         cat,
+            'boxes':       boxes[0:ix],
+            'boxes_dc':    boxes_dc[0:ix_dc],
+            'gt_classes':  gt_classes[0:ix],
             'gt_overlaps': overlaps[0:ix],
-            'flipped': False,
-            'seg_areas': seg_areas[0:ix]
+            'distance':    gt_dist[0:ix],
+            'flipped':     False,
+            'seg_areas':   seg_areas[0:ix]
         }
 
     #DEPRECATED
@@ -272,14 +282,22 @@ class kitti_imdb(db):
     #                source_img.save(outfile,self._imtype)
 
     #TODO: Merge with waymo imdb draw and save eval, image specific
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         if(iter != 0):
             out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         else:
             out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        source_img = Image.open(filename)
+        if(frame_arr is None):
+            source_img = Image.open(filename)
+        else:
+            img_arr = frame_arr[0]
+            img_arr = img_arr*cfg.PIXEL_STDDEVS
+            img_arr += cfg.PIXEL_MEANS
+            img_arr = img_arr[:,:,cfg.PIXEL_ARRANGE_BGR]
+            img_arr = img_arr.astype(np.uint8)
+            source_img = Image.fromarray(img_arr)
         draw = ImageDraw.Draw(source_img)
         for class_dets in dets:
             #Set of detections, one for each class

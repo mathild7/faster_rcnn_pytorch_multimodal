@@ -97,7 +97,7 @@ def cadc_eval(detpath,
     bbox_elem  = cfg[cfg.NET_TYPE.upper()].NUM_BBOX_ELEM
     BB         = np.array([[float(z) for z in x[3:3+bbox_elem]] for x in splitlines])
     #det_cnt    = np.zeros((cfg.CADC.MAX_FRAME))
-    uc_avg, uncertainties = eval_utils.extract_uncertainties(bbox_elem,splitlines)
+    _, uncertainties = eval_utils.extract_uncertainties(bbox_elem,splitlines)
     #Repeated for X detections along every frame presented
     idx = len(frame_idx)
     #DEPRECATED ---- 3 types, easy medium hard
@@ -215,9 +215,9 @@ def cadc_eval(detpath,
     out_dir = get_output_dir(db,mode='test')
     out_file = '{}_detection_results.txt'.format(classname)
     eval_utils.save_detection_results(det_results, out_dir, out_file)
-    if(len(frame_uncertainties) != 0):
-        uc_out_file = '{}_frame_uncertainty_results.txt'.format(classname)
-        eval_utils.save_detection_results(frame_uncertainties, out_dir, uc_out_file)
+    #if(len(frame_uncertainties) != 0):
+    #    uc_out_file = '{}_frame_uncertainty_results.txt'.format(classname)
+    #    eval_utils.save_detection_results(frame_uncertainties, out_dir, uc_out_file)
 
     map = mrec = mprec = np.zeros((d_levels,))
     prec = 0
