@@ -81,7 +81,7 @@ def smooth_l1_loss(stage,
 
     if(bbox_var_en):
         #Don't need covariance matrix as it collapses itself in the end anyway
-        in_loss_box = 0.5*torch.exp(-bbox_var) + 0.5*bbox_var
+        in_loss_box = 0.5*in_loss_box*torch.exp(-bbox_var) + 0.5*bbox_var
         in_loss_box = in_loss_box*bbox_inside_weights
         #bias        = 1
         #torch.set_printoptions(profile="full")

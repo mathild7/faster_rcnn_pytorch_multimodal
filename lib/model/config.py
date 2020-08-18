@@ -43,7 +43,7 @@ __C.UC.EN_BBOX_EPISTEMIC_INV_TRANSFORM = False
 __C.UC.EN_CLS_EPISTEMIC      = False
 __C.UC.A_NUM_CE_SAMPLE       = 200
 __C.UC.A_NUM_BBOX_SAMPLE     = 200
-__C.UC.E_NUM_SAMPLE          = 100
+__C.UC.E_NUM_SAMPLE          = 20
 __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
@@ -62,26 +62,34 @@ __C.TRAIN = edict()
 
 # Initial learning rate
 #WAYMO
-__C.TRAIN.LEARNING_RATE = 0.02
+#__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
-#__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.01
 # Momentum
-__C.TRAIN.MOMENTUM = 0.5
-
+#WAYMO
+# __C.TRAIN.MOMENTUM = 0.5
+#KITTI
+__C.TRAIN.MOMENTUM = 0.6
 # Weight decay, for regularization
 #WAYMO
 __C.TRAIN.WEIGHT_DECAY = 0.0001
 #__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Factor for reducing the learning rate
-__C.TRAIN.GAMMA = 0.2
+__C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
+#__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-#__C.TRAIN.STEPSIZE = [20000,40000,60000,70000,80000]
+__C.TRAIN.STEPSIZE = [18000,60000,70000,80000]
+
+__C.TRAIN.BATCH_SIZE = 2
+__C.TRAIN.VAL_BATCH_SIZE = 64
+
+__C.TRAIN.AUGMENT_EN = False
+__C.TRAIN.VAL_AUGMENT_EN = False
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 512
 
@@ -121,7 +129,7 @@ __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
 __C.TRAIN.BG_THRESH_HI = 0.5
-__C.TRAIN.BG_THRESH_LO = 0.0
+__C.TRAIN.BG_THRESH_LO = 0.1
 
 # Use horizontally-flipped images during training?
 __C.TRAIN.USE_FLIPPED = True
@@ -201,6 +209,8 @@ __C.TRAIN.IGNORE_DC = False
 
 __C.TRAIN.ITER = 1
 
+__C.TRAIN.DRAW_VAL_DETECTIONS = False
+
 __C.TRAIN.LIDAR = edict()
 
 __C.TRAIN.IMAGE = edict()
@@ -219,7 +229,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS_THRESH = 0.7
+__C.TEST.NMS_THRESH = 0.4
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -355,11 +365,15 @@ __C.POOLING_MODE = 'align'
 __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
-#__C.ANCHOR_SCALES = [2,8,16] # 32x32, 64x64, 256x256
-__C.ANCHOR_SCALES  = [2,4,8,16,32]
+#KITTI
+__C.ANCHOR_SCALES = [8,16,32] # 32x32, 64x64, 256x256
+#WAYMO
+#__C.ANCHOR_SCALES  = [2,4,8,16,32]
 # Anchor ratios for RPN
-#__C.ANCHOR_RATIOS = [0.5,1,2]
-__C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
+#KITTI
+__C.ANCHOR_RATIOS = [0.5,1,2]
+#WAYMO
+#__C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
 
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512

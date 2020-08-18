@@ -159,15 +159,15 @@ if __name__ == '__main__':
         #args.weights_file  = 'lidar_a_e_uc_195k.pth'
         #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
         #args.weights_file  = 'aug06/image_diag_area_a_e_uc_95k.pth'
-        args.weights_file  = 'aug09/image_a_e_uc_pow2_95k.pth'
-        args.iter          = 1
+        args.weights_file  = 'aug17/image_165k.pth'
+        args.iter          = 0
         args.num_frames    = 0
         args.scale         = 1.0
         args.en_fpn        = 0
         args.data_dir      = os.path.join('/home/mat','thesis', 'data')
-        args.en_epistemic = 1
-        args.en_aleatoric = 1
-        args.uc_sort_type = 'a_bbox_var'
+        #args.en_epistemic = 1
+        #args.en_aleatoric = 1
+        #args.uc_sort_type = 'a_bbox_var'
         #args.out_dir      = 'output/'
         #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')

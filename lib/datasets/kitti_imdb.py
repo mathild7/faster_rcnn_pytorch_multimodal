@@ -66,6 +66,8 @@ class kitti_imdb(db):
         self._train_index = open(self._split_dir+'/train.txt').read().splitlines()
         self._val_index = open(self._split_dir+'/val.txt').read().splitlines()
 
+        #self._train_index = self._train_index + self._val_index[250:]
+        #self._val_index   = self._val_index[:250]
         #self._train_index = sorted([d for d in os.listdir(self._train_dir) if d.endswith('.png')])
         #self._val_index   = sorted([d for d in os.listdir(self._val_dir) if d.endswith('.png')])
         #self._test_index  = sorted([d for d in os.listdir(self._test_dir) if d.endswith('.png')])
@@ -121,7 +123,7 @@ class kitti_imdb(db):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb_test.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:

@@ -314,9 +314,9 @@ def load_recs(frameset, frame_path, db, mode, classname):
             tmp_rec['det'] = tmp_rec['det'][gt_class_idx]
             tmp_rec['ignore'] = tmp_rec['ignore'][gt_class_idx]
             tmp_rec['difficulty'] = tmp_rec['difficulty'][gt_class_idx]
-            for i, elem in enumerate(tmp_rec['difficulty']):
+            for j, elem in enumerate(tmp_rec['difficulty']):
                 if elem != 0 and elem != 1 and elem != 2:
-                    tmp_rec['ignore'][i] = True
+                    tmp_rec['ignore'][j] = True
         #tmp_rec['frame_idx']   = frame_idx
         #List of all frames with GT boxes for a specific class
         class_recs.append(tmp_rec)

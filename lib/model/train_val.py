@@ -422,21 +422,23 @@ class SolverWrapper(object):
                         bbox_pred_val = np.array(bbox_pred_val)
                     #Final stage is stage 1, prep for drawing
                     else:
+                        #Ground truth
                         rois_val = rois_val.data.cpu().numpy()
                         roi_labels_val = roi_labels_val.data.cpu().numpy()
-                        bbox_pred_val = bbox_pred_val
-                        cls_prob_val  = cls_prob_val
+                        #ROI predictions
                         keep = nms(bbox_pred_val, cls_prob_val.squeeze(1), cfg.TEST.NMS_THRESH).cpu().numpy() if cls_prob_val.shape[0] > 0 else []
                         bbox_pred_val = bbox_pred_val[keep,:].cpu().numpy()
                         cls_prob_val  = cls_prob_val[keep, :].cpu().numpy()
                         bbox_pred_val = np.concatenate((bbox_pred_val,cls_prob_val),axis=1)[np.newaxis,:,:]
                         bbox_pred_val = np.repeat(bbox_pred_val,2,axis=0)
+                        #Uncertainties
                         sorted_uncertainties_val = [{},{}]
 
                     #Ensure that bbox_pred_val is a numpy array so that .size can be used on it.
                     #if(bbox_pred_val.size != 0):
                     #    bbox_pred_val = bbox_pred_val[:,:,:,np.newaxis]
-                    self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'train','trainval')
+                    if(cfg.TRAIN.DRAW_VAL_DETECTIONS):
+                        self.db.draw_and_save_eval(blobs_val['filename'],rois_val,roi_labels_val,bbox_pred_val,sorted_uncertainties_val,iter+i,'train','trainval')
 
                 #Need to add AP calculation here
                 for _sum in summary_val:
