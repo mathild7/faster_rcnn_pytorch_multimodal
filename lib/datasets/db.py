@@ -114,6 +114,13 @@ class db(object):
             for i in range(self.num_images)
         ]
 
+    def _get_cache_dir(self):
+        cache_dir = os.path.join(self._devkit_path, 'cache')
+        if(not os.path.isdir(cache_dir)):
+            print('making cache dir {}'.format(cache_dir))
+            os.path.mkdir(cache_dir)
+        return cache_dir
+
     def get_class(self,idx):
        return self._classes[idx]
 

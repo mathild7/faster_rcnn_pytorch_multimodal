@@ -123,7 +123,8 @@ class kitti_imdb(db):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb2.pkl')
+        cache_dir = self._get_cache_dir()
+        cache_file = os.path.join(cache_dir, self._name + '_' + mode + '_image_gt_roidb2.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
