@@ -29,17 +29,17 @@ import torch
 from utils.filter_predictions import filter_and_draw_prep
 import utils.bbox as bbox_utils
 
-def _get_blobs(frame):
+def _get_blobs(filename):
     """Convert a frame and RoIs within that image into network inputs."""
     blobs = {}
     if(cfg.NET_TYPE == 'image'):
         scale = cfg.TEST.SCALES[0]
-        infos, blobs['data'], _ = minibatch._get_image_blob(frame,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
+        infos, blobs['data'], _ = minibatch._get_image_blob(filename,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
         blobs['info'] = infos[0]
     elif(cfg.NET_TYPE == 'lidar'):
         scale = cfg.TEST.SCALES[0]
         area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
-        infos, blobs['data'], _ = minibatch._get_lidar_blob(frame,area_extents,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
+        infos, blobs['data'], _ = minibatch._get_lidar_blob(filename,area_extents,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
         blobs['info'] = infos[0]
     return blobs
 
@@ -143,6 +143,8 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         num_images = len(db._test_index)
     elif(mode == 'val'):
         num_images = len(db._val_index)
+    else:
+        num_images = 0
     # all detections are collected into:
     #  all_boxes[cls][image] = N x 5 array of detections in
     #  (x1, y1, x2, y2, score)
@@ -183,16 +185,16 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         #Variance comes up here, and is actually computed below.
         if(cfg.NET_TYPE == 'image'):
             filename = db.path_at(i,mode)
-            print(filename)
-            frame = cv2.imread(filename)
+            #print(filename)
+            #frame = cv2.imread(filename)
             #np.set_printoptions(threshold=np.inf)
         elif(cfg.NET_TYPE == 'lidar'):
             filename = db.path_at(i,mode)
-            frame = db._load_pc(filename)
+            #frame = db._load_pc(filename)
         #Put frame into array, single element only supported
-        frame = [frame]
+        #frame = [frame]
         _t['preload'].tic()
-        blobs = _get_blobs(frame)
+        blobs = _get_blobs([filename])
         _t['preload'].toc()
         #assert len(blobs) == 1, "Only single-image batch implemented"
         _t['frame_detect'].tic()
@@ -229,7 +231,7 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
                 db.draw_and_save_eval(filename,[],[],bbox,uncertainties,0,test_mode)
             else:   
                 if(cfg.NET_TYPE == 'lidar'):
-                    boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'],frame_arr=blobs['data'])
+                    boxes = bbox_utils.bbox_pc_to_voxel_grid(gt_boxes['boxes'],area_extents,blobs['info'])
                 elif(cfg.NET_TYPE == 'image'):
                     boxes = gt_boxes['boxes']
                 db.draw_and_save_eval(filename,boxes,gt_boxes['gt_classes'],bbox,uncertainties,0,test_mode,frame_arr=blobs['data'])

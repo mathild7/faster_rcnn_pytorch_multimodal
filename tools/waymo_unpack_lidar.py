@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 from enum import Enum
 from waymo_open_dataset.utils import  frame_utils
 from waymo_open_dataset import dataset_pb2 as open_dataset 
+from waymo_open_dataset.utils import transform_utils
 from multiprocessing import Process, Pool
 import multiprocessing.managers
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -52,14 +53,14 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    #if(j%5 == 0):
-                    frame = open_dataset.Frame()
-                    frame.ParseFromString(bytearray(dataset_list[j].numpy()))
-                    proc_data = (i,j,frame,mypath)
-                    #print('frame: {}'.format(i*1000+j))
-                    labels = frame_loop(proc_data)
-                    #print(len(labels['box']))
-                    json_struct.append(labels)
+                    if(j%2 == 0):
+                        frame = open_dataset.Frame()
+                        frame.ParseFromString(bytearray(dataset_list[j].numpy()))
+                        proc_data = (i,j,frame,mypath)
+                        #print('frame: {}'.format(i*1000+j))
+                        labels = frame_loop(proc_data)
+                        #print(len(labels['box']))
+                        json_struct.append(labels)
         json.dump(json_struct,json_file)
 
 
@@ -123,7 +124,7 @@ def frame_loop(proc_data):
     json_labels['scene_name']  = frame.context.name
     json_labels['scene_type']  = []
     json_labels['scene_type'].append({'weather': frame.context.stats.weather,
-                                        'tod': frame.context.stats.time_of_day})
+                                      'tod': frame.context.stats.time_of_day})
     #print(json_calib)
     json_labels['calibration'] = []
     json_labels['calibration'].append(json_calib)
@@ -167,6 +168,28 @@ def frame_loop(proc_data):
         #    continue
         #if(y2-y1 <= bbox_top_min and y1 == 0):
         #    continue
+        bbox = np.zeros(7)       
+        bbox[0] = x_c
+        bbox[1] = y_c
+        bbox[2] = z_c
+        bbox[3] = lx
+        bbox[4] = wy
+        bbox[5] = hz
+        bbox[6] = heading
+        pc_in_bbox  = pc_points_in_bbox(points_top_filtered,bbox)  # need for intensity, elongation
+        pc2_in_bbox = pc_points_in_bbox(points_top_filtered_2,bbox)  # second return
+
+        avg_intensity  = 0
+        avg_elongation = 0
+        return_ratio = 0
+        if pc_in_bbox.shape[1]:
+            avg_intensity  = np.mean(pc_in_bbox[:,:,3])
+            avg_elongation = np.mean(pc_in_bbox[:,:,4])
+            
+        if (pc_in_bbox.shape[1] > 0):
+            return_ratio   = float(pc2_in_bbox.shape[1])/float(pc_in_bbox.shape[1])  # divide num points from each return
+
+
         json_labels['box'].append({
             'xc': '{:.3f}'.format(x_c),
             'yc': '{:.3f}'.format(y_c),
@@ -181,7 +204,10 @@ def frame_loop(proc_data):
             'vy': '{:.3f}'.format(label.metadata.speed_y),
             'ax': '{:.3f}'.format(label.metadata.accel_x),
             'ay': '{:.3f}'.format(label.metadata.accel_y),
-            'pts': '{}'.format(label.num_lidar_points_in_box)
+            'pts': '{:.5f}'.format(label.num_lidar_points_in_box),
+            'avg_intensity':  '{:.5f}'.format(avg_intensity),
+            'avg_elongation': '{:.5f}'.format(avg_elongation),
+            'return_ratio':   '{:.5f}'.format(return_ratio)
         })
         json_labels['id'].append(label.id)
         json_labels['class'].append(label.type)
@@ -198,15 +224,67 @@ def frame_loop(proc_data):
     return json_labels
 
 
-def pc_points_in_bbox(pc,bbox):
-    #z_min = bbox[0][2] - bbox[0][5]/2.0
-    #z_max = bbox[0][2] + bbox[0][5]/2.0
-    bev_bboxes = bbox_utils.bbaa_graphics_gems(bbox,None,None,False)
-    bev_bbox   = bev_bboxes[0]
-    pc_min_thresh = pc[(pc[:,0] >= bev_bbox[0]) & (pc[:,1] >= bev_bbox[1]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]
-    pc_min_and_max_thresh = pc_min_thresh[(pc_min_thresh[:,0] <= bev_bbox[2]) & (pc_min_thresh[:,1] <= bev_bbox[3]) & (pc_min_thresh[:,2] <= cfg.LIDAR.Z_RANGE[1])]
-    return pc_min_and_max_thresh
+def pc_points_in_bbox(point,box,draw=None):
+    """Obtains point clouds inside bounding bboxes
+       Currently used per box 
+    Args:
+        point: [N, 5] tensor. [x,y,z,intensity,elongation]
+        box: [M, 7] tensor. Inner dims are: [center_x, center_y, center_z, length,
+        width, height, heading].
+        Returns:
+        point_cloud: [N,5] np matrix. Cloud inside bbox
+  """
 
+    #with tf.compat.v1.name_scope(name, 'ComputeNumPointsInBox3D', [point, box]):
+    # [N, M]
+    point = tf.convert_to_tensor(point[:,:],dtype=tf.float32)
+    box = tf.convert_to_tensor(box,dtype=tf.float32)
+    point_xyz = point[:, 0:3]
+
+    # Check if multiple or one bbox(7 values)
+    if (box.get_shape() == 7):
+        box = box[np.newaxis,:]
+
+    point_in_box = tf.cast(is_within_box_3d(point_xyz, box), dtype=tf.int32)  # returns boolean, cast to int
+    point_in_box = tf.transpose(point_in_box)
+    point_in_box = np.asarray(point_in_box)
+    point = np.asarray(point)
+    points_vector = np.asarray(tf.reduce_sum(input_tensor=point_in_box, axis=1))
+    num_points_in_box = tf.reduce_sum(input_tensor=point_in_box, axis=0)
+    point_clouds = []
+    for row in point_in_box:
+        values = []
+        idx = np.nonzero(row)  # grab indexs where there are values
+        values.append(point[idx])  # fancy indexing
+        values = np.asarray(values)
+        values = np.reshape(values,(-1, 5))  # x,y,z,intensity,elongation
+        point_clouds.append(values)
+    #draw_points_in_bbox(point,points_draw_vector,draw)
+    point_clouds = np.asarray(point_clouds)
+    return point_clouds
+
+def is_within_box_3d(point, box, name=None):
+    center = box[:, 0:3]  # xc,yc,zc
+    dim = box[:, 3:6] # L,W,H
+    heading = box[:, 6]
+    # [M, 3, 3]
+    rotation = transform_utils.get_yaw_rotation(heading)  # rotation matrix 
+    # [M, 4, 4]
+    transform = transform_utils.get_transform(rotation, center)  # transform matrix
+    # [M, 4, 4]
+    transform = tf.linalg.inv(transform)
+    # [M, 3, 3]
+    rotation = transform[:, 0:3, 0:3]
+    # [M, 3]
+    translation = transform[:, 0:3, 3]  # translation matrix 
+
+    # [N, M, 3]
+    point_in_box_frame = tf.einsum('nj,mij->nmi', point, rotation) + translation  # 
+    # [N, M, 3]
+    point_in_box = tf.logical_and(point_in_box_frame <= dim * 0.5, point_in_box_frame >= -dim * 0.5)
+    # [N, M]
+    point_in_box = tf.cast(tf.reduce_prod(input_tensor=tf.cast(point_in_box, dtype=tf.uint8), axis=-1),dtype=tf.bool)
+    return point_in_box
 
 def filter_points(pc):
     pc_min_thresh = pc[(pc[:,0] >= cfg.LIDAR.X_RANGE[0]) & (pc[:,1] >= cfg.LIDAR.Y_RANGE[0]) & (pc[:,2] >= cfg.LIDAR.Z_RANGE[0])]

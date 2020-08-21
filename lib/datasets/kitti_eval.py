@@ -239,8 +239,11 @@ def kitti_eval(detpath,
     #fn     = 1-fp
     #fn_sum = np.cumsum(fn, axis=0)
     npos_sum = np.sum(npos, axis=0)
+    print('TP')
     print(tp_sum)
+    print('FP')
     print(fp_sum)
+    print('NPOS')
     print(npos_sum)
     #print('Difficulty Level: {:d}, fp sum: {:f}, tp sum: {:f} npos: {:d}'.format(i, fp_sum[i], tp_sum[i], npos[i]))
     #recall

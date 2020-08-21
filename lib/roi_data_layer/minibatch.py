@@ -239,28 +239,29 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
     for i in range(num_frame):
         if(mode == 'test'):
             #assert augment_en is False
-            source_bin = roidb[i]
+            filen       = roidb[0]
             local_roidb = None
         else:
             filen = roidb[i]['filename']
-            if('.bin' in filen):
-                points = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
-                if(cfg.DB_NAME == 'kitti'):
-                    calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
-                    calib = kitti_calib(calib_file)
-                    pts_rect = calib.project_velo_to_rect(points[:, 0:3])
-                    fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
-                    pts_fov = points[fov_flag]
-                #TODO: Do this for CADC and waymo too
-                else:
-                    pts_fov = points
-                #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
-                source_bin = filter_points(pts_fov)
-            elif('.npy' in filen):
-                source_bin = np.load(roidb[i]['filename'])
+        if('.bin' in filen):
+            points = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
+            if(cfg.DB_NAME == 'kitti'):
+                calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
+                calib = kitti_calib(calib_file)
+                pts_rect = calib.project_velo_to_rect(points[:, 0:3])
+                fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
+                pts_fov = points
+                pts_fov = points[fov_flag]
+            #TODO: Do this for CADC and waymo too
             else:
-                print('Cannot handle this type of binary file')
-            local_roidb = deepcopy(roidb)
+                pts_fov = points
+            #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
+            source_bin = filter_points(pts_fov)
+        elif('.npy' in filen):
+            source_bin = np.load(filen)
+        else:
+            print('Cannot handle this type of binary file')
+        local_roidb = deepcopy(roidb)
         #np.random.shuffle(source_bin)
         if(augment_en):
             #print('augmenting image {}'.format(roidb[i]['filename']))
@@ -374,7 +375,7 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
         #TODO: Probably can remove this conditional branch by just providing the filename instead of the image itself?
         if(mode == 'test'):
             #assert augment_en is False
-            im          = roidb[i]
+            im          = cv2.imread(roidb[i])
             local_roidb = None
         else:
             im          = cv2.imread(roidb[i]['filename'])

@@ -14,7 +14,6 @@ from waymo_open_dataset.utils import range_image_utils
 from waymo_open_dataset.utils import transform_utils
 from waymo_open_dataset.utils import  frame_utils
 from waymo_open_dataset import dataset_pb2 as open_dataset
-
 class cam_enum(Enum):
     UNKNOWN     = 0
     FRONT       = 1
@@ -22,10 +21,9 @@ class cam_enum(Enum):
     FRONT_RIGHT = 3
     SIDE_LEFT   = 4
     SIDE_RIGHT  = 5
-
 save_imgs = True
-frame_skip_override = True
-mypath = '/home/mat/thesis/data2/waymo/val'
+frame_skip_override = False
+mypath = '/home/mat/thesis/data2/waymo/train'
 savepath = os.path.join(mypath,'images_new')
 if not os.path.isdir(savepath):
     print('making path: {}'.format(savepath))
@@ -46,7 +44,7 @@ with open(os.path.join(mypath,'labels','image_labels_new.json'), 'w') as json_fi
             print('opening {}'.format(filename))
             dataset = tf.data.TFRecordDataset(filename,compression_type='')
             for j,data in enumerate(dataset):
-                if(j%6 == 0 or frame_skip_override):
+                if(j%2 == 0 or frame_skip_override):
                     json_calib = {}
                     frame = open_dataset.Frame()
                     frame.ParseFromString(bytearray(data.numpy()))

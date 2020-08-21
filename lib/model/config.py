@@ -53,6 +53,8 @@ __C.USE_LIDAR_FPN            = False
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
 __C.SCALE_LOC                = 6
+
+__C.DB_NAME                  = ''
 #WAYMO input size
 #__C.IM_SIZE = [1920,930]
 #
@@ -64,12 +66,12 @@ __C.TRAIN = edict()
 #WAYMO
 #__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.02
 # Momentum
 #WAYMO
 # __C.TRAIN.MOMENTUM = 0.5
 #KITTI
-__C.TRAIN.MOMENTUM = 0.6
+__C.TRAIN.MOMENTUM = 0.5
 # Weight decay, for regularization
 #WAYMO
 __C.TRAIN.WEIGHT_DECAY = 0.0001
@@ -85,8 +87,8 @@ __C.TRAIN.GAMMA = 0.1
 #WAYMO ~15,000 images in train set
 __C.TRAIN.STEPSIZE = [18000,60000,70000,80000]
 
-__C.TRAIN.BATCH_SIZE = 2
-__C.TRAIN.VAL_BATCH_SIZE = 64
+__C.TRAIN.BATCH_SIZE = 16
+__C.TRAIN.VAL_BATCH_SIZE = 16
 
 __C.TRAIN.AUGMENT_EN = False
 __C.TRAIN.VAL_AUGMENT_EN = False
@@ -129,7 +131,7 @@ __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
 __C.TRAIN.BG_THRESH_HI = 0.5
-__C.TRAIN.BG_THRESH_LO = 0.1
+__C.TRAIN.BG_THRESH_LO = 0.0
 
 # Use horizontally-flipped images during training?
 __C.TRAIN.USE_FLIPPED = True
@@ -209,7 +211,7 @@ __C.TRAIN.IGNORE_DC = False
 
 __C.TRAIN.ITER = 1
 
-__C.TRAIN.DRAW_VAL_DETECTIONS = False
+__C.TRAIN.DRAW_VAL_DETECTIONS = True
 
 __C.TRAIN.LIDAR = edict()
 
@@ -229,7 +231,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS_THRESH = 0.4
+__C.TEST.NMS_THRESH = 0.3
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -392,10 +394,10 @@ __C.TEST.CADC_FILTER_LIST     = ['none', 'light', 'medium', 'heavy', 'extreme']
 __C.LIDAR = edict()                      #KITTI    #WAYMO
 __C.LIDAR.X_RANGE            = [0,70]    #[0,35]   #[0,70]
 __C.LIDAR.Y_RANGE            = [-40,40]  #[-20,20] #[-40,40]
-__C.LIDAR.Z_RANGE            = [-3,5]    #[-2,2]   #[-3,3]
+__C.LIDAR.Z_RANGE            = [-3,3]    #[-3,3]   #[-3,5]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
-__C.LIDAR.NUM_SLICES         = 16        #8        #12
+__C.LIDAR.NUM_SLICES         = 12        #12        #16
 __C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
@@ -406,7 +408,7 @@ __C.LIDAR.MAX_NUM_VOXEL      = 25000
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
 #__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
-__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])
+__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])  #KITTI: [[1.6, 3.9, 1.56]]  #WAYMO: [[4.73,2.08,1.77]]
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 #__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])

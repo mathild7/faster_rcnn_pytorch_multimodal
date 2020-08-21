@@ -123,7 +123,7 @@ class kitti_imdb(db):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb_test.pkl')
+        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb2.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
@@ -206,7 +206,7 @@ class kitti_imdb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
-                gt_ids[ix]   = int(index) + ix
+                gt_ids[ix]   = int(index)*100 + ix
                 gt_diff[ix]  = diff
                 gt_dist[ix]  = float(label_arr[11])
                 #if(diff == -1):

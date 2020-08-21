@@ -249,20 +249,20 @@ if __name__ == '__main__':
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'kitti'
+        args.db_name = 'waymo'
         #args.out_dir = 'output/'
-        args.net_type     = 'image'
-        args.preload      = 1
-        args.iter         = 8
+        args.net_type     = 'lidar'
+        args.preload      = 0
+        args.iter         = 5
         args.scale        = 1.0
-        args.en_full_net  = True
-        args.en_fpn       = True
-        args.fixed_blocks = 0
+        args.en_full_net  = False
+        args.en_fpn       = False
+        args.fixed_blocks = -1
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_bbox_var'
         args.fixed_blocks = 0
-        args.data_dir     = os.path.join('/home/mat','thesis', 'data')
+        args.data_dir     = os.path.join('/home/mat','thesis', 'data2')
         #args.uc_sort_type = 'a_bbox_var'
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
@@ -271,7 +271,7 @@ if __name__ == '__main__':
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights','aug06','image_diag_area_145k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights', 'image_base_65k.pth')
         #IMAGE
-        args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_coco_tf_fpn_1190k.pth')
+        #args.weights_file  = os.path.join('/home/mat/thesis/data2/', 'stock_weights', 'res101_coco_tf_fpn_1190k.pth')
         #args.weights_file = os.path.join('/home/mat/thesis/data/', 'weights', '{}-caffe.pth'.format(args.net))
         #args.imdbval_name = 'evaluation'
         args.max_iters = 700000

@@ -230,11 +230,21 @@ class waymo_lidb(db):
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         if(frame_arr is None):
             source_bin = self._load_pc(filename)
+            draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
+            draw = ImageDraw.Draw(draw_file)
+            self.draw_bev(source_bin,draw)
         else:
-            source_bin = frame_arr[0]
-        draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
-        draw = ImageDraw.Draw(draw_file)
-        self.draw_bev(source_bin,draw)
+            voxel_grid = frame_arr[0]
+            voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+            voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+            max_height = np.max(voxel_grid_rgb[:,:,0])
+            min_height = np.min(voxel_grid_rgb[:,:,0])
+            voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+            voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+            voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+            voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
+            draw_file = Image.fromarray(voxel_grid_rgb,'RGB')
+            draw = ImageDraw.Draw(draw_file)
         #TODO: Magic numbers
         limiter = 10
         y_start = self._draw_height - 10*(limiter+2)
@@ -328,7 +338,7 @@ class waymo_lidb(db):
         scene_desc = json.dumps(pc_labels['scene_type'][0])
         #TODO: Magic number
         scene_idx  = int(int(pc_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
-        pc_idx    = int(int(pc_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
+        pc_idx     = int(int(pc_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
         #Removing night-time/day-time ROI's
         if(tod not in tod_filter_list):
             print('TOD {} not in specified filter list'.format(tod))

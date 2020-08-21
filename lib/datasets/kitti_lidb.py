@@ -44,9 +44,9 @@ class kitti_lidb(db):
         self._val_dir   = os.path.join(self._data_path, 'training', self._frame_sub_dir)
         self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
         self._split_dir  = os.path.join(self._data_path, 'splits')
-        self._test_index = open(self._split_dir+'/test.txt').readlines()
-        self._train_index = open(self._split_dir+'/train.txt').readlines()
-        self._val_index = open(self._split_dir+'/val.txt').readlines()
+        self._test_index = open(self._split_dir+'/test.txt').read().splitlines()
+        self._train_index = open(self._split_dir+'/train.txt').read().splitlines()
+        self._val_index = open(self._split_dir+'/val.txt').read().splitlines()
         self._filetype   = 'bin'
         self._imtype   = 'PNG'
         self.type = 'lidar'
@@ -197,10 +197,10 @@ class kitti_lidb(db):
             #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
             heading = -heading + pi2
-            if(heading > pi2):
-                heading = heading - np.pi
-            if(heading <= -pi2):
-                heading = heading + np.pi
+            #if(heading > pi2):
+            #    heading = heading - np.pi
+            #if(heading <= -pi2):
+            #    heading = heading + np.pi
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             bbox = self._bbox3d(bbox, calib)
             #Translate to PC reference frame
@@ -213,15 +213,15 @@ class kitti_lidb(db):
             elif(occ <= 2 and trunc <= 0.5 and (BBGT_height) >= 25):
                 diff = 2
             else:
-                label_arr[0] = 'dontcare'
+                diff = 3
             #If car doesn't fit inside 2 voxels minimum
-            if(bbox[1] - bbox[4]/2 >= cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.VOXEL_LEN*20):
+            if(bbox[1] - bbox[4]/2 >= cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.VOXEL_LEN*2):
                 continue
-            if(bbox[0] - bbox[3]/2 >= cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.VOXEL_LEN*20):
+            if(bbox[0] - bbox[3]/2 >= cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.VOXEL_LEN*2):
                 continue
-            if(bbox[1] + bbox[4]/2 < cfg.LIDAR.Y_RANGE[0] + cfg.LIDAR.VOXEL_LEN*20):
+            if(bbox[1] + bbox[4]/2 < cfg.LIDAR.Y_RANGE[0] + cfg.LIDAR.VOXEL_LEN*2):
                 continue
-            if(bbox[0] + bbox[3]/2 < cfg.LIDAR.X_RANGE[0] + cfg.LIDAR.VOXEL_LEN*20):
+            if(bbox[0] + bbox[3]/2 < cfg.LIDAR.X_RANGE[0] + cfg.LIDAR.VOXEL_LEN*2):
                 continue
             if(label_arr[0].strip() not in self._classes):
                 #print('replacing {:s} with dont care'.format(label_arr[0]))
@@ -236,7 +236,7 @@ class kitti_lidb(db):
                 gt_occ[ix]   = occ
                 gt_dist[ix]  = x_c
                 gt_diff[ix]  = diff
-                gt_ids[ix]   = int(index) + ix
+                gt_ids[ix]   = int(index)*100 + ix
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = 0
@@ -320,6 +320,18 @@ class kitti_lidb(db):
     def _load_pc(self,filename):
         return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
 
+    def _draw_bev_pseudo_img(self,voxel_grid):
+        voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+        voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+        max_height = np.max(voxel_grid_rgb[:,:,0])
+        min_height = np.min(voxel_grid_rgb[:,:,0])
+        voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+        voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+        voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+        voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
+        draw_file = Image.fromarray(voxel_grid_rgb,'RGB')
+        return draw_file
+
     #TODO: Merge with waymo lidb draw and save eval, image specific
     def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
@@ -328,11 +340,12 @@ class kitti_lidb(db):
         #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         if(frame_arr is None):
             source_bin = self._load_pc(filename)
+            draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
+            draw = ImageDraw.Draw(draw_file)
+            self.draw_bev(source_bin,draw)
         else:
-            source_bin = frame_arr[0]
-        draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
-        draw = ImageDraw.Draw(draw_file)
-        self.draw_bev(source_bin,draw)
+            draw_file = self._draw_bev_pseudo_img(frame_arr[0])
+            draw = ImageDraw.Draw(draw_file)
         #TODO: Magic numbers
         limiter = 10
         y_start = self._draw_height - 10*(limiter+2)

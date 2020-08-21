@@ -154,17 +154,17 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'kitti'
-        args.net_type      = 'image'
+        args.db_name       = 'waymo'
+        args.net_type      = 'lidar'
         #args.weights_file  = 'lidar_a_e_uc_195k.pth'
         #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
         #args.weights_file  = 'aug06/image_diag_area_a_e_uc_95k.pth'
-        args.weights_file  = 'aug17/image_165k.pth'
+        args.weights_file  = 'aug20/lidar_stable_115k.pth'
         args.iter          = 0
-        args.num_frames    = 0
+        args.num_frames    = 1000
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_bbox_var'
@@ -172,7 +172,7 @@ if __name__ == '__main__':
         #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
     print(args)
-
+    cfg.DB_NAME = args.db_name
     #TODO: Merge into cfg_from_list()
     if(args.data_dir is not None):
         cfg.DATA_DIR = args.data_dir
@@ -285,4 +285,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.01,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.01,draw_det=True,eval_det=True)
