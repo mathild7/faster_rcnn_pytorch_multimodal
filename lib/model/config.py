@@ -53,7 +53,7 @@ __C.USE_LIDAR_FPN            = False
 __C.ENABLE_FULL_NET          = True
 __C.NET_TYPE                 = 'lidar'
 __C.SCALE_LOC                = 6
-
+__C.CACHE_DIR                = ''
 __C.DB_NAME                  = ''
 #WAYMO input size
 #__C.IM_SIZE = [1920,930]

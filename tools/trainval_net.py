@@ -64,6 +64,12 @@ def parse_args(manual_mode=False):
         default=None,
         type=str)
     parser.add_argument(
+        '--cache_dir',
+        dest='cache_dir',
+        help='Specify alternate cache directory (not with datasets)',
+        default=None,
+        type=str)
+    parser.add_argument(
         '--db',
         dest='db_name',
         help='dataset to train on',
@@ -80,6 +86,18 @@ def parse_args(manual_mode=False):
         dest='max_iters',
         help='number of iterations to train',
         default=70000,
+        type=int)
+    parser.add_argument(
+        '--batch_size',
+        dest='train_batch_size',
+        help='number of batches to train before backprop',
+        default=None,
+        type=int)
+    parser.add_argument(
+        '--batch_size_val',
+        dest='trainval_batch_size',
+        help='number of batches to validate before backprop',
+        default=None,
         type=int)
     parser.add_argument(
         '--tag', dest='tag', help='tag of the model', default=None, type=str)
@@ -277,6 +295,8 @@ if __name__ == '__main__':
         args.max_iters = 700000
     cfg.DB_NAME = args.db_name
     #TODO: Merge into cfg_from_list()
+    if(args.cache_dir is not None):
+        cfg.CACHE_DIR = args.cache_dir
     if(args.data_dir is not None):
         cfg.DATA_DIR = args.data_dir
     if(args.fixed_blocks is not None):
@@ -288,6 +308,10 @@ if __name__ == '__main__':
             cfg.ENABLE_FULL_NET = True
         elif(args.en_full_net == 0):
             cfg.ENABLE_FULL_NET = False
+    if(args.train_batch_size is not None):
+        cfg.TRAIN.BATCH_SIZE = args.train_batch_size
+    if(args.trainval_batch_size is not None):
+        cfg.TRAIN.BATCH_SIZE_VAL = args.trainval_batch_size
     if(args.iter is not None):
         cfg.TRAIN.ITER = args.iter
     if(args.preload is not None):

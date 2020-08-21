@@ -116,7 +116,7 @@ class waymo_lidb(db):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_lidar_gt_roidb.pkl')
+        cache_file = os.path.join(self._get_cache_dir(), self._name + '_' + mode + '_lidar_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -545,7 +545,6 @@ class waymo_lidb(db):
     def _do_python_eval(self, output_dir='output',mode='val'):
         #Not needed anymore, self._index has all files
         pcset = self._get_index_for_mode(mode)
-        cachedir = os.path.join(self._devkit_path, 'cache')
         num_d_levels = 2
         #AP: Level 1, Level 2
         aps = np.zeros((len(self._classes)-1,num_d_levels))
@@ -567,7 +566,7 @@ class waymo_lidb(db):
                 self,
                 pcset,
                 cls,
-                cachedir,
+                self._get_cache_dir(),
                 mode,
                 ovthresh=ovt,
                 eval_type='bev',

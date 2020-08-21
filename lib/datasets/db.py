@@ -115,10 +115,13 @@ class db(object):
         ]
 
     def _get_cache_dir(self):
-        cache_dir = os.path.join(self._devkit_path, 'cache')
-        if(not os.path.isdir(cache_dir)):
-            print('making cache dir {}'.format(cache_dir))
-            os.path.mkdir(cache_dir)
+        if(cfg.CACHE_DIR != ''):
+            cache_dir = cfg.CACHE_DIR
+        else:
+            cache_dir = os.path.join(self._devkit_path, 'cache')
+            if(not os.path.isdir(cache_dir)):
+                print('making cache dir {}'.format(cache_dir))
+                os.mkdir(cache_dir)
         return cache_dir
 
     def get_class(self,idx):

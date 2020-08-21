@@ -113,7 +113,7 @@ class cadc_imdb(db):
     """
         #for line in traceback.format_stack():
         #    print(line.strip())
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
+        cache_file = os.path.join(self._get_cache_dir(), self._name + '_' + mode + '_image_gt_roidb.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
@@ -350,7 +350,6 @@ class cadc_imdb(db):
         annopath = os.path.join(self._devkit_path, mode, 'label_2')
         print(annopath)
         num_d_levels = 1
-        cachedir = os.path.join(self._devkit_path, 'annotations_cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
@@ -370,7 +369,7 @@ class cadc_imdb(db):
                 self,
                 frame_index,
                 cls,
-                cachedir,
+                self._get_cache_dir(),
                 mode,
                 ovthresh=ovt,
                 eval_type='2d',

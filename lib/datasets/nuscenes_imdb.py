@@ -530,7 +530,6 @@ class nuscenes_imdb(db):
             imageset = self._val_index
         elif(mode == 'test'):
             imageset = self._test_index
-        cachedir = os.path.join(self._devkit_path, 'cache')
         aps = np.zeros((len(self._classes)-1,3))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
@@ -550,7 +549,7 @@ class nuscenes_imdb(db):
                 self,
                 imageset,
                 cls,
-                cachedir,
+                self._get_cache_dir(),
                 mode,
                 ovthresh=ovt)
             aps[i-1,:] = ap

@@ -109,7 +109,7 @@ class waymo_imdb(db):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._devkit_path, 'cache', self._name + '_' + mode + '_image_gt_roidb.pkl')
+        cache_file = os.path.join(self._get_cache_dir(), self._name + '_' + mode + '_image_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -485,7 +485,6 @@ class waymo_imdb(db):
             imageset = self._val_index
         elif(mode == 'test'):
             imageset = self._test_index
-        cachedir = os.path.join(self._devkit_path, 'cache')
         num_d_levels = 2
         #AP: Level 1, Level 2
         aps = np.zeros((len(self._classes)-1,num_d_levels))
@@ -507,7 +506,7 @@ class waymo_imdb(db):
                 self,
                 imageset,
                 cls,
-                cachedir,
+                self._get_cache_dir(),
                 mode,
                 ovthresh=ovt,
                 eval_type='2d',
