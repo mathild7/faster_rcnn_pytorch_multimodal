@@ -120,7 +120,7 @@ __C.TRAIN.SCALES = (1.0,)
 __C.TRAIN.FRAMES_PER_BATCH = 1
 
 # Minibatch size (number of regions of interest [ROIs])
-__C.TRAIN.BATCH_SIZE = 256
+__C.TRAIN.ROI_BATCH_SIZE = 256
 
 # Fraction of minibatch that is labeled foreground (i.e. class > 0)
 __C.TRAIN.FG_FRACTION = 0.25

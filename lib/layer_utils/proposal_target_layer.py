@@ -41,7 +41,7 @@ def proposal_target_layer(rpn_rois, rpn_scores, anchors_3d, gt_boxes, true_gt_bo
         all_anchors_3d = torch.cat((all_anchors_3d,true_gt_boxes[:, :-1]),0)
 
     num_images = 1
-    rois_per_frame = cfg.TRAIN.BATCH_SIZE / num_images
+    rois_per_frame = cfg.TRAIN.ROI_BATCH_SIZE / num_images
     fg_rois_per_frame = int(round(cfg.TRAIN.FG_FRACTION * rois_per_frame))
     num_bbox_target_elem = num_bbox_elem
     # Sample rois with classification labels and bounding box regression

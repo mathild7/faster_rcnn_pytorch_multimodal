@@ -242,9 +242,9 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = False
+    cfg.DEBUG.EN = True
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = False
+    manual_mode = True
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -299,11 +299,11 @@ if __name__ == '__main__':
             cfg.PRELOAD_FULL = True
     if(args.en_fpn == 1):
         cfg.USE_FPN = True
-        cfg.TRAIN.BATCH_SIZE = 256
+        cfg.TRAIN.ROI_BATCH_SIZE = 256
         cfg.POOLING_MODE = 'multiscale'
         cfg.ENABLE_CUSTOM_TAIL = True
     else:
-        cfg.TRAIN.BATCH_SIZE = 256
+        cfg.TRAIN.ROI_BATCH_SIZE = 256
         cfg.POOLING_MODE = 'align'
     if(args.weights_file is None and cfg.ENABLE_FULL_NET):
         if(cfg.NET_TYPE == 'lidar'):
