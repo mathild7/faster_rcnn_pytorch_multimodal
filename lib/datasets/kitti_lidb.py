@@ -281,42 +281,6 @@ class kitti_lidb(db):
         bbox[2] = xyz[0][2]
         return bbox
 
-    #DEPRECATED
-    #def draw_and_save(self,mode,image_token=None):
-    #    datapath = os.path.join(cfg.DATA_DIR, self._name)
-    #    out_file = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(mode),'drawn')
-    #    print('deleting files in dir {}'.format(out_file))
-    #    if(os.path.isdir(datapath)):
-    #        shutil.rmtree(datapath)
-    #    os.makedirs(out_file)
-    #    if(mode == 'val'):
-    #        roidb = self.val_roidb
-    #    elif(mode == 'train'):
-    #        roidb = self.roidb
-    #    #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
-    #    for i, roi in enumerate(roidb):
-    #        if(i % 250 == 0):
-    #            if(roi['flipped']):
-    #                outfile = roi['filename'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
-    #            else:
-    #                outfile = roi['filename'].replace('/image_2','/drawn')
-    #            if(roi['boxes'].shape[0] != 0):
-    #                source_img = Image.open(roi['filename'])
-    #                if(roi['flipped'] is True):
-    #                    source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
-    #                    text = "Flipped"
-    #                else:
-    #                    text = "Normal"
-    #                draw = ImageDraw.Draw(source_img)
-    #                draw.text((0,0),text)
-    #                for roi_box,cat in zip(roi['boxes'],roi['cat']):
-    #                    draw.text((roi_box[0],roi_box[1]),cat)
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
-    #                for roi_box in roi['boxes_dc']:
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-    #                print('Saving drawn file at location {}'.format(outfile))
-    #                source_img.save(outfile,self._imtype)
-
     def _load_pc(self,filename):
         return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
 

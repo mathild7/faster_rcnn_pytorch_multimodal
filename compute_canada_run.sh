@@ -12,7 +12,7 @@
 SING_IMG=/home/$USER/projects/def-swasland-ab/$USER/mat_pytorch_5.sif
 NUM_ITERATIONS=0
 NET_TYPE=''
-DATASET=''
+DATASET='kitti'
 ITER=0
 SCALE=1
 FIXED_BLOCKS=0
@@ -23,7 +23,7 @@ EN_ALEATORIC=0
 EN_EPISTEMIC=0
 UC_SORT_TYPE=''
 DATA_DIR=/home/$USER/projects/def-swasland-ab/$USER
-CACHE_DIR=/home/$USER/projects/def-swasland-ab/$USER/cache
+CACHE_DIR=/home/$USER/projects/def-swasland-ab/$USER/$DATASET/cache
 WEIGHTS_DIR=/home/$USER/weights
 WEIGHTS_FILE=''
 EXTRA_TAG='default'
@@ -314,5 +314,5 @@ python /workspace/repo/tools/trainval_net.py
     --epochs $EPOCHS
     --extra_tag $EXTRA_TAG
 "
-SINGULARITYENV_CUDA_VISIBLE_DEVICES=0 singularity exec --nv -B $PROJ_DIR/faster_rcnn_pytorch_multimodal:/workspace/repo -B $WEIGHTS_DIR:/workspace/weights -B $SLURM_TMPDIR:/workspace/data $SING_IMG python /workspace/repo/tools/trainval_net.py --iters $NUM_ITERATIONS 
-    --net res101 --db $DATASET --net_type $NET_TYPE --iter $ITER --scale $SCALE --preload $PRELOAD --en_full_net $EN_FULL_NET --en_fpn $EN_FPN --fixed_blocks $FIXED_BLOCKS --en_aleatoric $EN_ALEATORIC --en_epistemic $EN_EPISTEMIC --uc_sort_type $UC_SORT_TYPE --data_dir /workspace/data  --weights_file /workspace/weights/$WEIGHTS_FILE
+SINGULARITYENV_CUDA_VISIBLE_DEVICES=0 singularity exec --nv -B $PROJ_DIR/faster_rcnn_pytorch_multimodal:/workspace/repo -B $WEIGHTS_DIR:/workspace/weights -B $CACHE_DIR:/workspace/cache -B $SLURM_TMPDIR:/workspace/data $SING_IMG python /workspace/repo/tools/trainval_net.py --iters $NUM_ITERATIONS 
+    --net res101 --db $DATASET --net_type $NET_TYPE --iter $ITER --scale $SCALE --preload $PRELOAD --en_full_net $EN_FULL_NET --en_fpn $EN_FPN --fixed_blocks $FIXED_BLOCKS --en_aleatoric $EN_ALEATORIC --en_epistemic $EN_EPISTEMIC --uc_sort_type $UC_SORT_TYPE --data_dir /workspace/data --cache_dir /workspace/cache --weights_file /workspace/weights/$WEIGHTS_FILE

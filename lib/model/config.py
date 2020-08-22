@@ -20,7 +20,7 @@ __C.DEBUG                    = edict()
 
 __C.DEBUG.EN                 = False
 
-__C.DEBUG.DRAW_MINIBATCH     = False
+__C.DEBUG.DRAW_MINIBATCH     = True
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
@@ -81,16 +81,16 @@ __C.TRAIN.GAMMA = 0.1
 
 # Step size for reducing the learning rate, currently only support one step
 #KITTI ~7,000 images in train set
-#__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
+__C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #NUSCENES ~50,000 images in train set
 #__C.TRAIN.STEPSIZE = [300000, 500000, 700000]
 #WAYMO ~15,000 images in train set
-__C.TRAIN.STEPSIZE = [18000,60000,70000,80000]
+#__C.TRAIN.STEPSIZE = [60000,70000,80000]
 
 __C.TRAIN.BATCH_SIZE = 16
 __C.TRAIN.VAL_BATCH_SIZE = 16
 
-__C.TRAIN.AUGMENT_EN = False
+__C.TRAIN.AUGMENT_EN = True
 __C.TRAIN.VAL_AUGMENT_EN = False
 # Iteration intervals for showing the loss during training, on command line interface
 __C.TRAIN.DISPLAY = 512
@@ -126,7 +126,7 @@ __C.TRAIN.ROI_BATCH_SIZE = 256
 __C.TRAIN.FG_FRACTION = 0.25
 
 # Overlap threshold for a ROI to be considered foreground (if >= FG_THRESH)
-__C.TRAIN.FG_THRESH = 0.5
+__C.TRAIN.FG_THRESH = 0.6
 __C.TRAIN.DC_THRESH = 0.5
 # Overlap threshold for a ROI to be considered background (class = 0 if
 # overlap in [LO, HI))
@@ -180,7 +180,7 @@ __C.TRAIN.RPN_NEGATIVE_OVERLAP = 0.3
 __C.TRAIN.RPN_CLOBBER_POSITIVES = False
 
 # Max number of foreground examples
-__C.TRAIN.RPN_FG_FRACTION = 0.5
+__C.TRAIN.RPN_FG_FRACTION = 0.3
 
 # Total number of examples
 __C.TRAIN.RPN_BATCHSIZE = 256
@@ -398,7 +398,7 @@ __C.LIDAR.Z_RANGE            = [-3,3]    #[-3,3]   #[-3,5]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12        #12        #16
-__C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
+__C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
@@ -421,6 +421,9 @@ __C.IMAGE.NUM_BBOX_ELEM = 4
 __C.KITTI = edict()
 __C.KITTI.MAX_FRAME = 10000
 __C.KITTI.IMG_SIZE = [375,1242]
+__C.CADC = edict()
+__C.CADC.MAX_FRAME = 10000
+__C.CADC.IMG_SIZE = [624,1280]
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.

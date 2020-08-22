@@ -162,6 +162,7 @@ class cadc_lidb(db):
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
+        gt_alpha   = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -176,6 +177,7 @@ class cadc_lidb(db):
             # Make pixel indexes 0-based
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
+            alpha = float(label_arr[3])
             drive = re.sub('[^0-9]','', label_arr[16])
             scene = label_arr[17]
             scene_idx = int(drive)*100 + int(scene)
@@ -233,6 +235,7 @@ class cadc_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_alpha[ix] = alpha
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -259,6 +262,7 @@ class cadc_lidb(db):
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
+            'alpha': gt_alpha[0:ix],
             'difficulty': gt_diff[0:ix],
             'ids': gt_ids[0:ix],
             'cat': cat,
@@ -269,51 +273,6 @@ class cadc_lidb(db):
             'flipped': False,
             'seg_areas': seg_areas[0:ix]
         }
-
-    #def _bbox3d(self, bbox, calib):
-    #    #box3d_pts_2d, box3d_pts_3d = cadc_utils.compute_box_3d(bbox, calib.P)
-    #    xyz = [[bbox[0],bbox[1],bbox[2]]]
-    #    xyz = calib.project_rect_to_velo(xyz)
-    #    bbox[0] = xyz[0][0]
-    #    bbox[1] = xyz[0][1]
-    #    bbox[2] = xyz[0][2]
-    #    return bbox
-
-    #DEPRECATED
-    #def draw_and_save(self,mode,image_token=None):
-    #    datapath = os.path.join(cfg.DATA_DIR, self._name)
-    #    out_file = os.path.join(cfg.DATA_DIR, self._name, self.mode_to_sub_folder(mode),'drawn')
-    #    print('deleting files in dir {}'.format(out_file))
-    #    if(os.path.isdir(datapath)):
-    #        shutil.rmtree(datapath)
-    #    os.makedirs(out_file)
-    #    if(mode == 'val'):
-    #        roidb = self.val_roidb
-    #    elif(mode == 'train'):
-    #        roidb = self.roidb
-    #    #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
-    #    for i, roi in enumerate(roidb):
-    #        if(i % 250 == 0):
-    #            if(roi['flipped']):
-    #                outfile = roi['filename'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
-    #            else:
-    #                outfile = roi['filename'].replace('/image_2','/drawn')
-    #            if(roi['boxes'].shape[0] != 0):
-    #                source_img = Image.open(roi['filename'])
-    #                if(roi['flipped'] is True):
-    #                    source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
-    #                    text = "Flipped"
-    #                else:
-    #                    text = "Normal"
-    #                draw = ImageDraw.Draw(source_img)
-    #                draw.text((0,0),text)
-    #                for roi_box,cat in zip(roi['boxes'],roi['cat']):
-    #                    draw.text((roi_box[0],roi_box[1]),cat)
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
-    #                for roi_box in roi['boxes_dc']:
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-    #                print('Saving drawn file at location {}'.format(outfile))
-    #                source_img.save(outfile,self._imtype)
 
     def _load_scene_meta(self, scene_desc_filepath):
         self._scene_meta = {}
@@ -355,26 +314,50 @@ class cadc_lidb(db):
                 scene_desc = 'extreme'
             self._scene_meta['scene_desc'].append(scene_desc)
 
-
-    def _load_pc(self,filename):
-        return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
-
     def _get_scene_desc(self, scene_idx):
         all_scene_idx = self._scene_meta['scene_idx']
         loc = all_scene_idx.index(scene_idx)
         all_scene_desc = self._scene_meta['scene_desc']
         return all_scene_desc[loc]
 
+    def _bbox3d(self, bbox, calib):
+        #box3d_pts_2d, box3d_pts_3d = kitti_utils.compute_box_3d(bbox, calib.P)
+        xyz = [[bbox[0],bbox[1],bbox[2]]]
+        xyz = calib.project_rect_to_velo(xyz)
+        bbox[0] = xyz[0][0]
+        bbox[1] = xyz[0][1]
+        bbox[2] = xyz[0][2]
+        return bbox
+
+    def _load_pc(self,filename):
+        return np.fromfile(filename, dtype=np.float32).reshape(-1, 4)
+
+    def _draw_bev_pseudo_img(self,voxel_grid):
+        voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+        voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
+        max_height = np.max(voxel_grid_rgb[:,:,0])
+        min_height = np.min(voxel_grid_rgb[:,:,0])
+        voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+        voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+        voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+        voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
+        draw_file = Image.fromarray(voxel_grid_rgb,'RGB')
+        return draw_file
+
     #TODO: Merge with waymo lidb draw and save eval, image specific
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        #out_file = filename.replace('/{}/'.format(self._frame_sub_dir),'/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
-        source_bin = self._load_pc(filename)
-        draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
-        draw = ImageDraw.Draw(draw_file)
-        self.draw_bev(source_bin,draw)
+        #out_file = filename.replace('/point_clouds/','/{}_drawn/iter_{}_'.format(mode,iter)).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
+        if(frame_arr is None):
+            source_bin = self._load_pc(filename)
+            draw_file  = Image.new('RGB', (self._draw_width,self._draw_height), (0,0,0))
+            draw = ImageDraw.Draw(draw_file)
+            self.draw_bev(source_bin,draw)
+        else:
+            draw_file = self._draw_bev_pseudo_img(frame_arr[0])
+            draw = ImageDraw.Draw(draw_file)
         #TODO: Magic numbers
         limiter = 10
         y_start = self._draw_height - 10*(limiter+2)

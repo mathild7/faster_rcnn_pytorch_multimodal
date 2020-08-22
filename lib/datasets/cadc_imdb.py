@@ -45,8 +45,10 @@ class cadc_imdb(db):
         self._train_dir = os.path.join(self._data_path, 'train', self._frame_sub_dir)
         self._val_dir   = os.path.join(self._data_path, 'val', self._frame_sub_dir)
         #self._test_dir   = os.path.join(self._data_path, 'testing', self._frame_sub_dir)
+        crop_top        = 150
+        crop_bottom     = 250
         self._imwidth = 1280
-        self._imheight = 1024
+        self._imheight = 1024 - crop_top - crop_bottom
         self._imtype = 'png'
         self._filetype = 'png'
         self.type = 'image'
@@ -155,6 +157,7 @@ class cadc_imdb(db):
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
+        gt_alpha   = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -173,6 +176,7 @@ class cadc_imdb(db):
             BBGT_height = y2 - y1
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
+            alpha = float(label_arr[3])
             drive = re.sub('[^0-9]','', label_arr[16])
             scene = label_arr[17]
             scene_idx = int(drive)*100 + int(scene)
@@ -193,16 +197,17 @@ class cadc_imdb(db):
                 label_arr[0] = 'dontcare'
             if('dontcare' not in label_arr[0].lower().strip()):
                 #print(label_arr)
-                cls = self._class_to_ind[label_arr[0].strip()]
+                cls_type = self._class_to_ind[label_arr[0].strip()]
                 cat.append(label_arr[0].strip())
                 boxes[ix, :] = [x1, y1, x2, y2]
-                gt_classes[ix] = cls
+                gt_classes[ix] = cls_type
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_alpha[ix] = alpha
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
-                overlaps[ix, cls] = 1.0
+                overlaps[ix, cls_type] = 1.0
                 seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
                 ix = ix + 1
             if('dontcare' in label_arr[0].lower().strip()):
@@ -226,6 +231,7 @@ class cadc_imdb(db):
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
             'difficulty': gt_diff[0:ix],
+            'alpha': gt_alpha[0:ix],
             'ids': gt_ids[0:ix],
             'cat': cat,
             'boxes': boxes[0:ix],
@@ -235,42 +241,6 @@ class cadc_imdb(db):
             'flipped': False,
             'seg_areas': seg_areas[0:ix]
         }
-
-    #DEPRECATED
-    #def draw_and_save(self,mode,image_token=None):
-    #    datapath = os.path.join(cfg.DATA_DIR, self._name)
-    #    out_file = os.path.join(cfg.DATA_DIR, self._name, mode,'drawn')
-    #    print('deleting files in dir {}'.format(out_file))
-    #    if(os.path.isdir(datapath)):
-    #        shutil.rmtree(datapath)
-    #    os.makedirs(out_file)
-    #    if(mode == 'val'):
-    #        roidb = self.val_roidb
-    #    elif(mode == 'train'):
-    #        roidb = self.roidb
-    #    #print('about to draw in {} mode with ROIDB size of {}'.format(mode,len(roidb)))
-    #    for i, roi in enumerate(roidb):
-    #        if(i % 250 == 0):
-    #            if(roi['flipped']):
-    #                outfile = roi['filename'].replace('/image_2','/drawn').replace('.{}'.format(self._imtype.lower()),'_flipped.{}'.format(self._imtype.lower()))
-    #            else:
-    #                outfile = roi['filename'].replace('/image_2','/drawn')
-    #            if(roi['boxes'].shape[0] != 0):
-    #                source_img = Image.open(roi['filename'])
-    #                if(roi['flipped'] is True):
-    #                    source_img = source_img.transpose(Image.FLIP_LEFT_RIGHT)
-    #                    text = "Flipped"
-    #                else:
-    #                    text = "Normal"
-    #                draw = ImageDraw.Draw(source_img)
-    #                draw.text((0,0),text)
-    #                for roi_box,cat in zip(roi['boxes'],roi['cat']):
-    #                    draw.text((roi_box[0],roi_box[1]),cat)
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(0,255,0))
-    #                for roi_box in roi['boxes_dc']:
-    #                    draw.rectangle([(roi_box[0],roi_box[1]),(roi_box[2],roi_box[3])],outline=(255,0,0))
-    #                print('Saving drawn file at location {}'.format(outfile))
-    #                source_img.save(outfile,self._imtype)
 
     def _load_scene_meta(self, scene_desc_filepath):
         self._scene_meta = {}
@@ -318,18 +288,22 @@ class cadc_imdb(db):
         all_scene_desc = self._scene_meta['scene_desc']
         return all_scene_desc[loc]
 
-
-
-
-    #TODO: Merge with waymo imdb draw and save eval, image specific
-    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None):
+    def draw_and_save_eval(self,filename,roi_dets,roi_det_labels,dets,uncertainties,iter,mode,draw_folder=None,frame_arr=None):
         out_dir = self._find_draw_folder(mode, draw_folder)
         if(iter != 0):
             out_file = 'iter_{}_'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         else:
             out_file = 'img-'.format(iter) + os.path.basename(filename).replace('.{}'.format(self._filetype.lower()),'.{}'.format(self._imtype.lower()))
         out_file = os.path.join(out_dir,out_file)
-        source_img = Image.open(filename)
+        if(frame_arr is None):
+            source_img = Image.open(filename)
+        else:
+            img_arr = frame_arr[0]
+            img_arr = img_arr*cfg.PIXEL_STDDEVS
+            img_arr += cfg.PIXEL_MEANS
+            img_arr = img_arr[:,:,cfg.PIXEL_ARRANGE_BGR]
+            img_arr = img_arr.astype(np.uint8)
+            source_img = Image.fromarray(img_arr)
         draw = ImageDraw.Draw(source_img)
         for class_dets in dets:
             #Set of detections, one for each class
@@ -340,9 +314,10 @@ class cadc_imdb(db):
                 color = (255,255,255)
             else:
                 color = (0,0,0)
-            draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)
+            if(label == 1):
+                draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=color)
         print('Saving file at location {}'.format(out_file))
-        source_img.save(out_file,self._imtype)    
+        source_img.save(out_file,self._imtype)
 
     def _do_python_eval(self, output_dir='output', mode='train'):
         frame_index = self._get_index_for_mode(mode)

@@ -127,6 +127,7 @@ def cadc_eval(detpath,
         #frame_tokens_sorted -> Needed to know which set of GT's are for the same frame as the det
         print('num dets {}'.format(len(sorted_ind)))
         for det_idx,token in zip(sorted_ind,frame_tokens_sorted):
+            det_confidence = confidence[det_idx]
             #R is a subset of detections for a specific class
             #print('doing det for frame {}'.format(frame_idx[d]))
             #Need to find associated GT frame ID alongside its detection id 'd'
@@ -173,34 +174,35 @@ def cadc_eval(detpath,
                 if not R['ignore'][jmax]:
                     if not R['hit'][jmax]:
                         if(R['difficulty'][jmax] <= 2 and tp.shape[1] >= 3):
-                            tp[det_idx,2] += 1
+                            tp[idx,2] += 1
                         if(R['difficulty'][jmax] <= 1 and tp.shape[1] >= 2):
-                            tp[det_idx,1] += 1
+                            tp[idx,1] += 1
                         if(R['difficulty'][jmax] <= 0):
-                            tp[det_idx,0] += 1
+                            tp[idx,0] += 1
                         #tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,bb,var,jmax))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2 and fp.shape[1] >= 3):
-                            fp[det_idx,2] += 1
+                            fp[idx,2] += 1
                         if(R['difficulty'][jmax] <= 1 and fp.shape[1] >= 2):
-                            fp[det_idx,1] += 1
+                            fp[idx,1] += 1
                         if(R['difficulty'][jmax] <= 0):
-                            fp[det_idx,0] += 1
+                            fp[idx,0] += 1
                         #fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,bb,var))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
-                fp[det_idx,0] += 1
+                fp[idx,0] += 1
                 if(fp.shape[1] >= 2):
-                    fp[det_idx,1] += 1
+                    fp[idx,1] += 1
                 if(fp.shape[1] >= 3):
-                    fp[det_idx,2] += 1
+                    fp[idx,2] += 1
                 #fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,bb,var))
+                det_results.append(write_det(R,det_confidence,ovmax,bb,var))
+            idx = idx + 1
     else:
         print('cadc eval, no GT boxes detected')
     #for i in np.arange(cfg.cadc.MAX_FRAME):
@@ -210,8 +212,8 @@ def cadc_eval(detpath,
     #        print(frame_uc)
     #    frame_uncertainties.append(frame_uc)
 
-    if(cfg.DEBUG.TEST_FRAME_PRINT):
-        eval_utils.display_frame_counts(tp_frame,fp_frame,npos_frame)
+    #if(cfg.DEBUG.TEST_FRAME_PRINT):
+    #    eval_utils.display_frame_counts(tp_frame,fp_frame,npos_frame)
     out_dir = get_output_dir(db,mode='test')
     out_file = '{}_detection_results.txt'.format(classname)
     eval_utils.save_detection_results(det_results, out_dir, out_file)
@@ -305,28 +307,54 @@ def load_recs(frameset, frame_path, db, mode, classname):
                 i + 1, len(frameset)))
     return class_recs
 
-def write_det(R,bb,var,jmax=None):
+def write_det(R,confidence,ovmax,bb,var,jmax=None):
     frame    = R['idx']
+    truncation     = -1
+    occlusion      = -1
+    distance       = -1
+    alpha          = -1
+    difficulty     = -1
+    iou            = ovmax
+    class_t        = -1
+    bbgt           = np.full((len(bb)),-1)
+    #pts            = -1
     out_str  = ''
-    out_str += 'frame_idx: {} scene_idx: {} '.format(frame,R['scene_idx'])
-    out_str += 'bbdet: '
+    out_str += 'frame_idx: {} '.format(frame)
+    out_str += 'confidence: {} '.format(confidence)
+    if(len(bb) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbdet3d: '
+    else:
+        out_str += 'bbdet: '
     for bbox_elem in bb:
-        out_str += '{:4.3f} '.format(bbox_elem)
+        out_str += '{:.5f} '.format(bbox_elem)
     for key,val in var.items():
         out_str += '{}: '.format(key)
         for var_elem in val:
-            out_str += '{:4.3f} '.format(var_elem)
+            out_str += '{:.10f} '.format(var_elem)
     if(jmax is not None):
         #pts        = R['pts'][jmax]
         difficulty = R['difficulty'][jmax]
         #track_id   = R['ids'][jmax]
         class_t    = R['gt_classes'][jmax]
         bbgt       = R['boxes'][jmax]
-        #out_str   += 'track_idx: {} '.format(track_id)
-        out_str   += 'difficulty: {} '.format(difficulty)
-        #out_str   += 'pts: {} '.format(pts)
-        out_str   += 'cls: {} '.format(class_t)
-        out_str   += 'bbgt: '
-        for bbox_elem in bbgt:
-            out_str += '{:4.3f} '.format(bbox_elem)
-    return out_str
+        truncation = R['trunc'][jmax]
+        alpha      = R['alpha'][jmax]
+        occlusion  = R['occ'][jmax]
+        distance   = R['distance'][jmax]
+    #out_str   += 'track_idx: {} difficulty: {} pts: {} cls: {} '.format(track_id,
+    #                                                                    difficulty,
+    #                                                                    pts,
+    #                                                                    class_t)
+    out_str   += 'difficulty: {} cls: {} '.format(difficulty,
+                                                  class_t)
+    if(len(bbgt) > cfg.IMAGE.NUM_BBOX_ELEM):
+        out_str += 'bbgt3d: '
+    else:
+        out_str += 'bbgt: '
+    for i in range(len(bbgt)):
+        out_str += '{:.3f} '.format(bbgt[i])
+    out_str += 'alpha: {:.5f} occlusion: {:.5f} truncation: {:.3f}  distance: {:.3f} iou: {:.3f}'.format(alpha,
+                                                                                                         occlusion,
+                                                                                                         truncation,
+                                                                                                         distance,
+                                                                                                         iou)

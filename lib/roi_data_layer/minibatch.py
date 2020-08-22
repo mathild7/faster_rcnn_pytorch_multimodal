@@ -28,6 +28,7 @@ import shutil
 import re
 from datasets.waymo_lidb import waymo_lidb
 from utils.kitti_utils import Calibration as kitti_calib
+import utils.CADC_utils as CADC_utils
 import utils.kitti_utils as kitti_utils
 
 def draw_and_save_image_minibatch(blobs,cnt):
@@ -245,14 +246,18 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             filen = roidb[i]['filename']
         if('.bin' in filen):
             points = np.fromfile(filen, dtype=np.float32).reshape(-1, 4)
-            if(cfg.DB_NAME == 'kitti'):
+            if(cfg.DB_NAME == 'cadc'):
+                calib_file = filen.replace('point_clouds','calib').replace('.bin','.txt')
+                pts_rect   = CADC_utils.project_pts(calib_file,points[:, 0:3])
+                #pts_rect = calib.project_velo_to_rect(points[:, 0:3])
+                fov_flag = get_fov_flag(pts_rect, cfg.CADC.IMG_SIZE)
+                pts_fov = points[fov_flag]
+            elif(cfg.DB_NAME == 'kitti'):
                 calib_file = filen.replace('velodyne','calib').replace('.bin','.txt')
                 calib = kitti_calib(calib_file)
                 pts_rect = calib.project_velo_to_rect(points[:, 0:3])
                 fov_flag = get_fov_flag(pts_rect, cfg.KITTI.IMG_SIZE, calib)
-                pts_fov = points
                 pts_fov = points[fov_flag]
-            #TODO: Do this for CADC and waymo too
             else:
                 pts_fov = points
             #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
@@ -349,7 +354,10 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
 
         if(cfg.LIDAR.NUM_META_CHANNEL >= 3):
             #Scatter elongation into bev_map
-            voxel_elongation = np.sum(voxels[:,:,4], axis=1)/num_points_per_voxel
+            if(cfg.DB_NAME == 'waymo'):
+                voxel_elongation = np.sum(voxels[:,:,4], axis=1)/num_points_per_voxel
+            else:
+                voxel_elongation = np.zeros((voxels.shape[0]))
             elongation_loc = np.full((xy_coords.shape[0],1),cfg.LIDAR.NUM_SLICES+2)
             elongation_coords = np.hstack((xy_coords,elongation_loc))
             elongation_tuple = tuple(zip(*elongation_coords))
@@ -520,14 +528,17 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
 
     return im_infos, blob, local_roidb
 
-def get_fov_flag(pts_rect, img_shape, calib):
+def get_fov_flag(pts_rect, img_shape, calib=None):
     '''
     Valid point should be in the image (and in the PC_AREA_SCOPE)
     :param pts_rect:
     :param img_shape:
     :return:
     '''
-    pts_img = calib.project_rect_to_image(pts_rect)
+    if(calib is not None):
+        pts_img = calib.project_rect_to_image(pts_rect)
+    else:
+        pts_img = pts_rect
     val_flag_1 = np.logical_and(pts_img[:, 0] >= 0, pts_img[:, 0] < img_shape[1])
     val_flag_2 = np.logical_and(pts_img[:, 1] >= 0, pts_img[:, 1] < img_shape[0])
     val_flag_merge = np.logical_and(val_flag_1, val_flag_2)

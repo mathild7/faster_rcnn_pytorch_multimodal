@@ -20,8 +20,38 @@ import math
 
 base_dir        = '/home/mat/thesis/data/cadc/cadcd'
 drive_dir       = ['2018_03_06','2018_03_07','2019_02_27']
+#2018_03_06
+# Seq | Snow  | Road Cover | Lens Cover
+#   1 | None  |     N      |     N
+#   5 | Med   |     N      |     Y
+#   6 | Heavy |     N      |     Y
+#   9 | Light |     N      |     Y
+#  18 | Light |     N      |     N
+
+#2018_03_07
+# Seq | Snow  | Road Cover | Lens Cover
+#   1 | Heavy |     N      |     Y
+#   4 | Light |     N      |     N
+#   5 | Light |     N      |     Y
+
+#2019_02_27
+# Seq | Snow  | Road Cover | Lens Cover
+#   5 | Light |     Y      |     N
+#   6 | Heavy |     Y      |     N
+#  15 | Med   |     Y      |     N
+#  28 | Light |     Y      |     N
+#  37 | Extr  |     Y      |     N
+#  46 | Extr  |     Y      |     N
+#  59 | Med   |     Y      |     N
+#  73 | Light |     Y      |     N
+#  75 | Med   |     Y      |     N
+#  80 | Heavy |     Y      |     N
+
+val_seq_sel     = [[1,5,6,18],[1,4,5],[5,6,15,28,37,46,59,73,75,80]]
 train_ratio     = 0.80
 MIN_NUM_POINTS  = 5
+crop_top        = 150
+crop_bottom     = 250
 def load_calibration(calib_path):
   calib = {}
 
@@ -119,7 +149,7 @@ def create_output_directory(camera):
                 print("Directory ", target_path,  " already exists")
     return home_dir
 
-def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
+def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq,drive_and_seq):
     cam = str(cam)
     DISTORTED = False
 
@@ -172,13 +202,14 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
     #T_IMG_LIDAR = np.matmul(T_IMG_CAM, T_CAM_LIDAR); # go from lidar to image
 
     img = cv2.imread(img_path)
-    img_h, img_w = img.shape[:2] #get the image height and width
-
+    img_h, img_w = img.shape[:2]  #get the image height and width
+    img = img[crop_top:,:,:]
+    img = img[:-crop_bottom,:,:]
 
     #Add each cuboid to image
     #the coordinates in the tracklet json are lidar coords
 
-    drive_and_seq = int(seq)*1000 + drive_dir.index(drive)*100000
+    #drive_and_seq = int(seq)*1000 + drive_dir.index(drive)*100000
     #if cam =='0':
     #    cam_id   = 0
     #elif cam =='1':
@@ -195,11 +226,11 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
     #    cam_id = 6*10000000
     #else:
     #    cam_id = 7*10000000
-    frame_id     =   frame + drive_and_seq
-    img_file     = os.path.join(out_dir,mode,'image_0{:01d}'.format(int(cam)),'{:010d}.png'.format(frame_id))
-    target_lidar = os.path.join(out_dir,mode,'point_clouds','{:010d}.bin'.format(frame_id))
-    annotation_target_path = os.path.join(out_dir,mode,'annotation_0{:01d}'.format(int(cam)),'{:010d}.txt'.format(frame_id))
-    calib_target_path      = os.path.join(out_dir,mode,'calib','{:010d}.txt'.format(frame_id))
+    frame_id     = frame + drive_and_seq
+    img_file     = os.path.join(out_dir,mode,'image_0{:01d}'.format(int(cam)),'{:07d}.png'.format(frame_id))
+    target_lidar = os.path.join(out_dir,mode,'point_clouds','{:07d}.bin'.format(frame_id))
+    annotation_target_path = os.path.join(out_dir,mode,'annotation_0{:01d}'.format(int(cam)),'{:07d}.txt'.format(frame_id))
+    calib_target_path      = os.path.join(out_dir,mode,'calib','{:07d}.txt'.format(frame_id))
     f = open(annotation_target_path, "w+")
     if(not os.path.isfile(calib_target_path)):
         make_calib_file(calib, calib_target_path)
@@ -237,14 +268,13 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
         bbox_transform_matrix = get_box_transformation_matrix(bbox_3d)
         bbox_img = np.matmul(np.linalg.inv(cam_extrinsic),bbox_transform_matrix)
         bbox_img_yaw = -cuboid['yaw'] + np.pi/2.0
-        if bbox_img_yaw < -np.pi:
-            rotation_y = bbox_img_yaw + 2*np.pi
+        #if bbox_img_yaw < -np.pi:
+        #    rotation_y = bbox_img_yaw + 2*np.pi
+        #elif bbox_img_yaw  > np.pi:
+        #    rotation_y = bbox_img_yaw - 2 * np.pi
 
-        elif bbox_img_yaw  > np.pi:
-            rotation_y = bbox_img_yaw - 2 * np.pi
-
-        else:
-            rotation_y = bbox_img_yaw
+        #else:
+        rotation_y = bbox_img_yaw
         bbox_3d_cam = [bbox_img[0][3],bbox_img[1][3],bbox_img[2][3],length,width,height,rotation_y]
         #note that in the lidar frame, up is z, forwards is x, side is y
         if(cuboid['position']['x'] - length/2.0 <= 0):
@@ -261,7 +291,6 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
         # 0: front , 1: front right, 2: right front, 3: back right, 4: back, 5: left back, 6: left front, 7: front left
 
         if num_lidar_points > filter: #if we filter such that the annotations should have at least 20 lidar
-
             lidar_to_image = get_image_transform(cam_intrinsic, cam_extrinsic)  # magic array 4,4 to multiply and get image domain
             #bbox_transform_matrix = transform_axes(bbox_transform_matrix)
             box_to_image = np.matmul(lidar_to_image, bbox_transform_matrix)
@@ -312,14 +341,14 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
 
             alpha_tmp = rotation_y - viewing_angle
 
-            if alpha_tmp < -np.pi:
-                alpha = alpha_tmp + 2*np.pi
+            #if alpha_tmp < -np.pi:
+            #    alpha = alpha_tmp + 2*np.pi
 
-            elif alpha_tmp > np.pi:
-                alpha = alpha_tmp - 2*np.pi
+            #elif alpha_tmp > np.pi:
+            #    alpha = alpha_tmp - 2*np.pi
 
-            else:
-                alpha = alpha_tmp
+            #else:
+            alpha = alpha_tmp
 
             #print("This is alpha")
             #print(alpha/np.pi*180)
@@ -327,29 +356,30 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
             #print("***************************")
 
 
-            if (x1 < 0 and x2 > img_w): #get rid of any weird huge bb, where x min and x max span over the whole image
-                continue
-
-            if (y1 < 0 and y2 > img_h): #get rid of any huge bb where y min and y max span over the whole image
-                continue
 
             #truncation calculation
 
-            x_min_set = min(img_w,max(0,x1))
-            y_min_set = min(img_h,max(0,y1))
-            x_max_set = min(img_w,max(0,x2))
-            y_max_set = min(img_h,max(0,y2))
+            x_min_set = min(img_w-1,max(0,x1))
+            y_min_set = min(img_h-1,max(0,y1)) - crop_top
+            x_max_set = min(img_w-1,max(0,x2))
+            y_max_set = min(img_h-1,max(0,y2)) - crop_top
 
 
             area_actual = (y1 - x1) * (y2 - y1)
-            area_set = (x_max_set - x_min_set)* (y_max_set - y_min_set)
+            area_set = (x_max_set - x_min_set) * (y_max_set - y_min_set)
 
+            if (x_min_set < 0 and x_max_set > img_w):  #get rid of any weird huge bb, where x min and x max span over the whole image
+                continue
 
+            if (y_min_set < 0 and y_max_set > img_h):  #get rid of any huge bb where y min and y max span over the whole image
+                continue
 
             if area_set == 0:  #tracklet is outside of the image
                 continue
-
-            ratio_of_area = area_set/area_actual
+            if(area_actual <= 0):
+                ratio_of_area = 0
+            else:
+                ratio_of_area = area_set/area_actual
 
             if ratio_of_area == 1:
                 truncation = 0
@@ -361,25 +391,63 @@ def write_txt_annotation(frame,cam,out_dir,mode,image_dir,drive,seq):
             '''
             example of a cuboid statement: {'uuid': '33babea4-958b-49a1-ac65-86174faa111a', 'attributes': {'state': 'Moving'}, 'dimensions': {'y': 4.276, 'x': 1.766, 'z': 1.503}, 'label': 'Car', 'position': {'y': 5.739311373648604, 'x': 57.374972338211876, 'z': -1.5275162154592332}, 'camera_used': None, 'yaw': -3.1134003618947323, 'stationary': False}
                 '''
-            cv2.rectangle(img, (x_min_set, y_min_set), (x_max_set,y_max_set), (0,255,0),2)
+            #cv2.rectangle(img, (x_min_set, y_min_set), (x_max_set,y_max_set), (0,255,0),2)
             f.write(cuboid['label'])
-            f.write(' %s '%(round(truncation,2))) #trucation
-            f.write('0 ') #occlusion
+            f.write(' %s '%(round(truncation,2)))  #trucation
+            f.write('0 ')  #occlusion
             f.write('%s ' %(round(alpha,2)))
             f.write('{:.1f} {:.1f} {:.1f} {:.1f} '.format(x_min_set, y_min_set, x_max_set, y_max_set)) #pixel
             f.write('{:.3f} {:.3f} {:.3f} '.format(bbox_3d[3],bbox_3d[4],bbox_3d[5]))
             f.write('{:.3f} {:.3f} {:.3f} '.format(bbox_3d[0],bbox_3d[1],bbox_3d[2]))
-            f.write('{:.3f} '.format(bbox_3d[6]))
+            f.write('{:.5f} '.format(bbox_3d[6]))
             f.write('{:d} '.format(num_lidar_points))
             f.write('{:s} '.format(drive))
             f.write('{:s} '.format(seq))
             f.write('\n')
     f.close()
-    cv2.imwrite(img_file, img)
     copyfile(lidar_path,target_lidar)
+    #pts = project_pts()
+    #for point in pts:
+    #    cv2.point(point)
+    cv2.imwrite(img_file, img)
     #cv2.imshow('image',img)
     #cv2.waitKey(10000)
     #cv2.imwrite("image1.jpg")
+
+def get_image_transform(intrinsic, extrinsic):
+    """ For a given camera calibration, compute the transformation matrix
+        from the vehicle reference frame to the image space.
+    """
+    # Camera model:
+    # | fx  0 cx 0 |
+    # |  0 fy cy 0 |
+    # |  0  0  1 0 |
+
+    # Swap the axes around
+    # Compute the projection matrix from the vehicle space to image space.
+    lidar_to_img = np.matmul(intrinsic, np.linalg.inv(extrinsic))
+    return lidar_to_img
+    #return np.linalg.inv(extrinsic)
+
+def project_pts(calib_file,points):
+    fd = open(calib_file,'r').read().splitlines()
+    cam_intrinsic = np.eye(4)  #identity matrix
+    for line in fd:
+        matrix = line.rstrip().split(' ')
+        if(matrix[0] == 'T_LIDAR_CAM00:'):
+            cam_extrinsic = np.array(matrix[1:]).astype(np.float32)[np.newaxis,:].reshape(4,4)
+        if(matrix[0] == 'CAM00_matrix:'):
+            cam_intrinsic[0:3,0:3] = np.array(matrix[1:]).astype(np.float32).reshape(3, 3)  #K_xx camera projection matrix (3x3)
+    transform_matrix = get_image_transform(cam_intrinsic, cam_extrinsic)  # magic array 4,4 to multiply and get image domain
+    points_exp = np.ones((points.shape[0],4))
+    points_exp[:,0:3] = points
+    points_exp = points_exp[:,:]
+    #batch_transform_matrix = np.repeat(transform_matrix[np.newaxis,:,:],points_exp.shape[0],axis=0)
+    projected_points = np.zeros((points_exp.shape[0],3))
+    for i, point in enumerate(points_exp):
+        projected_points[i] = np.matmul(transform_matrix,point)[0:3]
+    #projected_pts = np.einsum("bij, bjk -> bik", batch_transform_matrix, points_exp)[:,:,0]
+    return projected_points
 
 def compute_2d_bounding_box(img,points):
     """Compute the 2D bounding box for a set of 2D points.
@@ -445,25 +513,30 @@ def transform_axes(bbox_transform_matrix):
 def write_all_annotations(cam):
     cam = str(cam)
     out_dir = create_output_directory(cam)
-    for ddir in drive_dir:
+    for i,ddir in enumerate(drive_dir):
         data_dir = os.path.join(base_dir,ddir)
         sub_folders = sorted(os.listdir(data_dir))
         calib_idx = sub_folders.index('calib')
         del sub_folders[calib_idx]
         seq_count = len(sub_folders)
 
-        for i, sequence in enumerate(sub_folders):
+        for j, sequence in enumerate(sub_folders):
+            drive_and_sequence = int(sequence)*100 + drive_dir.index(ddir)*10000
             if(sequence == 'calib'):
                 print('something very wrong has happened')
-            if(i > train_ratio*seq_count):
+            #if(i > train_ratio*seq_count):
+            #    mode = 'val'
+            #else:
+            #    mode = 'train'
+            if(j in val_seq_sel[i]):
                 mode = 'val'
             else:
                 mode = 'train'
-            image_dir = os.path.join(data_dir,sequence, 'labeled','image_0'+cam ,"data")
+            image_dir = os.path.join(data_dir,sequence, 'labeled','image_0' + cam, "data")
             seq_dir   = os.path.join(data_dir,sequence)
             file_names = sorted(os.listdir(image_dir))
             for frame in range(len(file_names)):
-                write_txt_annotation(frame,cam,out_dir,mode,image_dir,ddir,sequence)
+                write_txt_annotation(frame,cam,out_dir,mode,image_dir,ddir,sequence,drive_and_sequence)
 
 if __name__ == '__main__':
     args = sys.argv
