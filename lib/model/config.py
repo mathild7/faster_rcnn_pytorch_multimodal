@@ -88,7 +88,7 @@ __C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #__C.TRAIN.STEPSIZE = [60000,70000,80000]
 
 __C.TRAIN.BATCH_SIZE = 16
-__C.TRAIN.VAL_BATCH_SIZE = 16
+__C.TRAIN.VAL_BATCH_SIZE = 64
 
 __C.TRAIN.AUGMENT_EN = True
 __C.TRAIN.VAL_AUGMENT_EN = False
@@ -141,7 +141,7 @@ __C.TRAIN.BBOX_REG = True
 
 # Overlap required between a ROI and ground-truth box in order for that ROI to
 # be used as a bounding-box regression training example
-__C.TRAIN.BBOX_THRESH = 0.5
+#__C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
 __C.TRAIN.SNAPSHOT_ITERS = 5000
@@ -180,7 +180,7 @@ __C.TRAIN.RPN_NEGATIVE_OVERLAP = 0.3
 __C.TRAIN.RPN_CLOBBER_POSITIVES = False
 
 # Max number of foreground examples
-__C.TRAIN.RPN_FG_FRACTION = 0.3
+__C.TRAIN.RPN_FG_FRACTION = 0.5
 
 # Total number of examples
 __C.TRAIN.RPN_BATCHSIZE = 256
@@ -211,7 +211,7 @@ __C.TRAIN.IGNORE_DC = False
 
 __C.TRAIN.ITER = 1
 
-__C.TRAIN.DRAW_VAL_DETECTIONS = True
+__C.TRAIN.DRAW_VAL_DETECTIONS = False
 
 __C.TRAIN.LIDAR = edict()
 
@@ -398,7 +398,7 @@ __C.LIDAR.Z_RANGE            = [-3,3]    #[-3,3]   #[-3,5]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12        #12        #16
-__C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
+__C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000

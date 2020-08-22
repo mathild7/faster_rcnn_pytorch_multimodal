@@ -260,9 +260,9 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = True
+    cfg.DEBUG.EN = False
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):

@@ -159,9 +159,9 @@ if __name__ == '__main__':
         #args.weights_file  = 'lidar_a_e_uc_195k.pth'
         #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
         #args.weights_file  = 'aug06/image_diag_area_a_e_uc_95k.pth'
-        args.weights_file  = 'aug21/lidar_60k.pth'
+        args.weights_file  = 'aug21/lidar_130k.pth'
         args.iter          = 0
-        args.num_frames    = 100
+        args.num_frames    = 500
         args.scale         = 1.0
         args.en_fpn        = 0
         args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
@@ -233,7 +233,7 @@ if __name__ == '__main__':
         if(args.db_name == 'kitti'):
             db = kitti_lidb(mode='eval',limiter=args.num_frames, shuffle_en=True)
         elif(args.db_name == 'waymo'):
-            db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=False)
+            db = waymo_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
         elif(args.db_name == 'cadc'):
             db = cadc_lidb(mode='val',limiter=args.num_frames, shuffle_en=True)
         else:
@@ -285,4 +285,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.77,draw_det=True,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.01,draw_det=False,eval_det=True)
