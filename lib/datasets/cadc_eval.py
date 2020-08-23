@@ -101,9 +101,9 @@ def cadc_eval(detpath,
     #Repeated for X detections along every frame presented
     idx = len(frame_idx)
     #DEPRECATED ---- 3 types, easy medium hard
-    tp         = np.zeros((idx,d_levels))
-    fp         = np.zeros((idx,d_levels))
-    fn         = np.zeros((idx))
+    tp         = np.zeros((BB.shape[0],d_levels))
+    fp         = np.zeros((BB.shape[0],d_levels))
+    fn         = np.zeros((BB.shape[0]))
     #tp_frame   = np.zeros(cfg.CADC.MAX_FRAME)
     #fp_frame   = np.zeros(cfg.CADC.MAX_FRAME)
     #npos_frame = np.zeros(cfg.CADC.MAX_FRAME)
@@ -125,6 +125,7 @@ def cadc_eval(detpath,
         #Zip together sorted_ind with frame tokens sorted. 
         #sorted_ind -> Needed to know which detection we are selecting next
         #frame_tokens_sorted -> Needed to know which set of GT's are for the same frame as the det
+        idx = 0
         print('num dets {}'.format(len(sorted_ind)))
         for det_idx,token in zip(sorted_ind,frame_tokens_sorted):
             det_confidence = confidence[det_idx]

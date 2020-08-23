@@ -263,6 +263,7 @@ class cadc_lidb(db):
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
             'alpha': gt_alpha[0:ix],
+            'distance':boxes[0:ix,2],
             'difficulty': gt_diff[0:ix],
             'ids': gt_ids[0:ix],
             'cat': cat,

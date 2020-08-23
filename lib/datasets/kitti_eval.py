@@ -101,9 +101,9 @@ def kitti_eval(detpath,
     #Repeated for X detections along every frame presented
     idx = len(frame_idx)
     #DEPRECATED ---- 3 types, easy medium hard
-    tp         = np.zeros((idx,d_levels))
-    fp         = np.zeros((idx,d_levels))
-    fn         = np.zeros((idx))
+    tp         = np.zeros((BB.shape[0],d_levels))
+    fp         = np.zeros((BB.shape[0],d_levels))
+    fn         = np.zeros((BB.shape[0]))
     tp_frame   = np.zeros(cfg.KITTI.MAX_FRAME)
     fp_frame   = np.zeros(cfg.KITTI.MAX_FRAME)
     npos_frame = np.zeros(cfg.KITTI.MAX_FRAME)

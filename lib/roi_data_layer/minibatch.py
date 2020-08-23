@@ -279,7 +279,8 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         if(mode != 'test' and local_roidb[i]['flipped'] is True):
             print('something wrong has happened')
         np.random.seed(int.from_bytes(os.urandom(4), sys.byteorder))
-        flip_frame    = False
+        flip_frame_y  = False
+        flip_frame_x  = False
         rain_sim      = False
         gauss_distort = False
         rand_dropout  = False
@@ -288,11 +289,12 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
 
         if(augment_en):
             local_roidb[i]['flipped'] = False
-            flip_frame    = np.random.choice([True,False],p=[0.5,0.5])
+            flip_frame_y  = np.random.choice([True,False],p=[0.5,0.5])
+            flip_frame_x  = np.random.choice([True,False],p=[0.5,0.5])
             gauss_distort = np.random.choice([True,False],p=[0.3,0.7])
             rand_dropout  = np.random.choice([True,False],p=[0.3,0.7])
 
-        if(flip_frame):
+        if(flip_frame_y):
             #print('performing flip')
             #Flip source binary across Y plane
             source_bin[:,1]       = -source_bin[:,1]
@@ -301,6 +303,17 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             old_ry = local_roidb[i]['boxes'][:, 6].copy()
             y_mean = (cfg.LIDAR.Y_RANGE[0]+cfg.LIDAR.Y_RANGE[1])/2
             local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
+            local_roidb[i]['boxes'][:, 6] = -old_ry
+
+        if(flip_frame_x):
+            #print('performing flip')
+            #Flip source binary across Y plane
+            source_bin[:,0] = -source_bin[:,0]
+            local_roidb[i]['flipped'] = True
+            oldx_c = local_roidb[i]['boxes'][:, 1].copy()
+            old_ry = local_roidb[i]['boxes'][:, 6].copy()
+            x_mean = (cfg.LIDAR.X_RANGE[0]+cfg.LIDAR.X_RANGE[1])/2
+            local_roidb[i]['boxes'][:, 1] = -(oldx_c-x_mean) + x_mean
             local_roidb[i]['boxes'][:, 6] = -old_ry
 
         if(gauss_distort):

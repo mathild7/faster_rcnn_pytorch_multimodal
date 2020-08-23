@@ -408,7 +408,7 @@ __C.LIDAR.SHUFFLE_PC         = False
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
 #__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
-__C.LIDAR.ANCHORS       = np.array([[3.9, 1.6, 1.56]])  #KITTI: [[3.9, 1.6, 1.56]]  #WAYMO: [[4.73,2.08,1.77]]
+__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])  #KITTI: [[3.9, 1.6, 1.56]]  #WAYMO: [[4.73,2.08,1.77]]
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 #__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])

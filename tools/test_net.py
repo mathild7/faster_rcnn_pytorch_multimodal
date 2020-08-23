@@ -154,14 +154,14 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'kitti'
+        args.db_name       = 'cadc'
         args.net_type      = 'lidar'
         #args.weights_file  = 'lidar_a_e_uc_195k.pth'
         #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
         #args.weights_file  = 'aug06/image_diag_area_a_e_uc_95k.pth'
-        args.weights_file  = 'aug22/lidar_kitti_6_25k.pth'
+        args.weights_file  = '/home/mat/gcp_tensorboard/output/res101/cadc/lidar_train_all_5/lidar_res101_faster_rcnn_iter_40000.pth'
         args.iter          = 0
-        args.num_frames    = 500
+        args.num_frames    = 0
         args.scale         = 1.0
         args.en_fpn        = 0
         args.data_dir      = os.path.join('/home/mat','thesis', 'data')
@@ -277,8 +277,8 @@ if __name__ == '__main__':
     net.eval()
 
     print(('Loading initial weights from {:s}').format(args.weights_file))
-    file_dir = os.path.join(cfg.DATA_DIR,args.db_name,'weights',args.weights_file)
-    params = torch.load(file_dir, map_location=lambda storage, loc: storage)
+    #file_dir = os.path.join(cfg.DATA_DIR,args.db_name,'weights',args.weights_file)
+    params = torch.load(args.weights_file, map_location=lambda storage, loc: storage)
     net.load_state_dict(params)
     print('Loaded.')
     if not torch.cuda.is_available():
