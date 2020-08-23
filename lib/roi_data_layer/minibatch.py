@@ -20,6 +20,7 @@ from utils.blob import prep_im_for_blob, im_list_to_blob, prep_bev_map_for_blob,
 import matplotlib.pyplot as plt
 from PIL import Image,ImageDraw, ImageEnhance
 import os
+import sys
 from pyntcloud import PyntCloud
 from scipy.ndimage.filters import gaussian_filter
 import spconv
@@ -264,28 +265,94 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             source_bin = filter_points(pts_fov)
         elif('.npy' in filen):
             source_bin = np.load(filen)
+            source_bin = filter_points(source_bin)
+            #print(np.max(source_bin[:,2]))
         else:
             print('Cannot handle this type of binary file')
         local_roidb = deepcopy(roidb)
         #np.random.shuffle(source_bin)
+        #print('augmenting image {}'.format(roidb[i]['filename']))
+        #shape 0 -> height
+        #shape 1 -> width
+        #TODO: Needs to be a real randomly seeded number
+        #Determine params
+        if(mode != 'test' and local_roidb[i]['flipped'] is True):
+            print('something wrong has happened')
+        np.random.seed(int.from_bytes(os.urandom(4), sys.byteorder))
+        flip_frame    = False
+        rain_sim      = False
+        gauss_distort = False
+        rand_dropout  = False
+        if(cfg.LIDAR.SHUFFLE_PC):
+            source_bin = np.random.shuffle(source_bin)
+
         if(augment_en):
-            #print('augmenting image {}'.format(roidb[i]['filename']))
-            #shape 0 -> height
-            #shape 1 -> width
-            flip_num = np.random.normal(1.0, 2.0)
-            if(local_roidb[i]['flipped'] is True):
-                print('something wrong has happened')
-            if(flip_num > 1.0):
-                #Flip source binary across Y plane
-                source_bin[:,1]       = -source_bin[:,1]
-                local_roidb[i]['flipped'] = True
-                oldy_c = local_roidb[i]['boxes'][:, 1].copy()
-                old_ry = local_roidb[i]['boxes'][:, 6].copy()
-                y_mean = (cfg.LIDAR.Y_RANGE[0]+cfg.LIDAR.Y_RANGE[1])/2
-                local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
-                local_roidb[i]['boxes'][:, 6] = -old_ry
-            else:
-                local_roidb[i]['flipped'] = False
+            local_roidb[i]['flipped'] = False
+            flip_frame    = np.random.choice([True,False],p=[0.5,0.5])
+            gauss_distort = np.random.choice([True,False],p=[0.3,0.7])
+            rand_dropout  = np.random.choice([True,False],p=[0.3,0.7])
+
+        if(flip_frame):
+            #print('performing flip')
+            #Flip source binary across Y plane
+            source_bin[:,1]       = -source_bin[:,1]
+            local_roidb[i]['flipped'] = True
+            oldy_c = local_roidb[i]['boxes'][:, 1].copy()
+            old_ry = local_roidb[i]['boxes'][:, 6].copy()
+            y_mean = (cfg.LIDAR.Y_RANGE[0]+cfg.LIDAR.Y_RANGE[1])/2
+            local_roidb[i]['boxes'][:, 1] = -(oldy_c-y_mean) + y_mean
+            local_roidb[i]['boxes'][:, 6] = -old_ry
+
+        if(gauss_distort):
+            sigma_x = np.random.uniform(0.0,0.07)
+            sigma_y = np.random.uniform(0.0,0.07)
+            sigma_z = np.random.uniform(0.0,0.05)
+            #print('performing gauss distort sigma {} {} {}'.format(sigma_x,sigma_y,sigma_z))
+            x_shift = np.random.normal(0,sigma_x,size=(source_bin.shape[0]))
+            y_shift = np.random.normal(0,sigma_y,size=(source_bin.shape[0]))
+            z_shift = np.random.normal(0,sigma_z,size=(source_bin.shape[0]))
+            source_bin[:,0] += x_shift
+            source_bin[:,1] += y_shift
+            source_bin[:,2] += z_shift
+
+        if(rand_dropout):
+            pKeep = np.random.uniform(0.8,1.0)
+            #print('performing random dropout {}'.format(pKeep))
+            keep = pKeep > np.random.rand(source_bin.shape[0])
+            source_bin = source_bin[keep]
+            #source_bin = np.random.shuffle(source_bin)
+            #max_ind    = source_bin.shape[0]*(1-0.9)
+            #source_bin = source_bin[:max_ind]
+
+        if(mode == 'test' and cfg.TEST.RAIN_SIM_EN):
+            z = np.sqrt(np.sum(np.power(source_bin[:,0:3],2),axis=1))
+            z_max = cfg[cfg.DB_NAME.upper()].LIDAR_MAX_RANGE
+            #DEFINE CONSTANTS
+            rho = 0.9/np.pi
+            R = np.power(cfg.TEST.RAIN_RATE,0.6)
+            p_min = rho/(np.pi*z_max*z_max)
+            #ranges from 0% to 2% 
+            sigma = 0.02*z*np.power((1-np.exp(-cfg.TEST.RAIN_RATE)),2)
+            mu    = np.zeros(sigma.shape[0],)
+            #p_n(z) = rho/(z^2)*exp(-0.02R^(0.6)z)
+            #shift z according to:
+            #z_s = z + Normal(0,sigma)
+            rand_shift = np.random.normal(mu,sigma)
+            z = z + rand_shift
+            #Update z in original array
+            source_bin[:,0:3] += np.repeat(rand_shift[:,np.newaxis],3,axis=1)/3.0
+            #alpha = 0.01, beta = 0.6
+            delta = np.exp(-2*0.01*R*z)
+            p_n = (rho/(z*z + np.finfo(np.float64).eps))*delta
+            #Attenuate intensity return value (P0*exp(-2*alpha*R^(beta)*z))
+            source_bin[:,3] = source_bin[:,3]*delta
+            #Remove all pts that have attenuated away
+            keep_inds = np.where(p_n >= p_min)
+            source_bin = source_bin[keep_inds]
+        if(mode == 'test' and cfg.TEST.DROPOUT_EN):
+            pKeep = 0.8
+            keep = pKeep > np.random.rand(source_bin.shape[0])
+            source_bin = source_bin[keep]
         #print(roidb[i]['filename'])
         #print('min z value: {}'.format(np.amin(source_bin[:,2])))
         voxel_len = cfg.LIDAR.VOXEL_LEN/scale

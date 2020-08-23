@@ -260,23 +260,23 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = False
+    cfg.DEBUG.EN = True
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = False
+    manual_mode = True
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
         args.net = 'res101'
-        args.db_name = 'cadc'
+        args.db_name = 'kitti'
         #args.out_dir = 'output/'
         args.net_type       = 'lidar'
-        args.preload        = 2
-        args.iter           = 0
+        args.preload        = 0
+        args.iter           = 20
         args.scale          = 1.0
-        args.en_full_net    = True
+        args.en_full_net    = False
         args.en_fpn         = False
         args.fixed_blocks   = -1
-        args.batch_size     = 16
+        args.batch_size     = 4
         args.val_batch_size = 32
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
@@ -287,7 +287,7 @@ if __name__ == '__main__':
         #args.db_root_dir = '/home/mat/thesis/data/{}/'.format(args.db_name)
         #LIDAR
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/waymo/', 'weights', 'lidar_rpn_75k.pth')
-        args.weights_file  = os.path.join('/home/mat/thesis/data/cadc/', 'weights', 'aug21' ,'lidar_rpn_20k.pth')
+        #args.weights_file  = os.path.join('/home/mat/thesis/data/cadc/', 'weights', 'aug21' ,'lidar_rpn_20k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights','aug06','image_diag_area_145k.pth')
         #args.weights_file  = os.path.join('/home/mat/thesis/data2/', args.db_name, 'weights', 'image_base_65k.pth')
         #IMAGE

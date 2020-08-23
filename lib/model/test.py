@@ -39,7 +39,7 @@ def _get_blobs(filename):
     elif(cfg.NET_TYPE == 'lidar'):
         scale = cfg.TEST.SCALES[0]
         area_extents = [cfg.LIDAR.X_RANGE[0],cfg.LIDAR.Y_RANGE[0],cfg.LIDAR.Z_RANGE[0],cfg.LIDAR.X_RANGE[1],cfg.LIDAR.Y_RANGE[1],cfg.LIDAR.Z_RANGE[1]]
-        infos, blobs['data'], _ = minibatch._get_lidar_blob(filename,area_extents,scale,augment_en=cfg.TEST.AUGMENT_EN,mode='test')
+        infos, blobs['data'], _ = minibatch._get_lidar_blob(filename,area_extents,scale,augment_en=False,mode='test')
         blobs['info'] = infos[0]
     return blobs
 

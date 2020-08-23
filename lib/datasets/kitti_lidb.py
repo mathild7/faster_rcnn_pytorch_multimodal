@@ -194,9 +194,9 @@ class kitti_lidb(db):
             y_c = float(label_arr[12])
             z_c = float(label_arr[13])
             heading = float(label_arr[14].replace('\n',''))
-            #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
             heading = -heading + pi2
+            #Lock headings to be [pi/2, -pi/2)
             #if(heading > pi2):
             #    heading = heading - np.pi
             #if(heading <= -pi2):

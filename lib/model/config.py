@@ -20,7 +20,7 @@ __C.DEBUG                    = edict()
 
 __C.DEBUG.EN                 = False
 
-__C.DEBUG.DRAW_MINIBATCH     = True
+__C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
@@ -88,7 +88,7 @@ __C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #__C.TRAIN.STEPSIZE = [60000,70000,80000]
 
 __C.TRAIN.BATCH_SIZE = 16
-__C.TRAIN.VAL_BATCH_SIZE = 64
+__C.TRAIN.VAL_BATCH_SIZE = 16
 
 __C.TRAIN.AUGMENT_EN = True
 __C.TRAIN.VAL_AUGMENT_EN = False
@@ -211,7 +211,7 @@ __C.TRAIN.IGNORE_DC = False
 
 __C.TRAIN.ITER = 1
 
-__C.TRAIN.DRAW_VAL_DETECTIONS = False
+__C.TRAIN.DRAW_VAL_DETECTIONS = True
 
 __C.TRAIN.LIDAR = edict()
 
@@ -398,17 +398,17 @@ __C.LIDAR.Z_RANGE            = [-3,3]    #[-3,3]   #[-3,5]
 __C.LIDAR.VOXEL_LEN          = 0.1       # 0.05    # 0.1
 __C.LIDAR.VOXEL_HEIGHT       = 0.5
 __C.LIDAR.NUM_SLICES         = 12        #12        #16
-__C.LIDAR.NUM_META_CHANNEL   = 3         #2        #3
+__C.LIDAR.NUM_META_CHANNEL   = 2         #2        #3
 __C.LIDAR.NUM_CHANNEL        = __C.LIDAR.NUM_SLICES + __C.LIDAR.NUM_META_CHANNEL
 __C.LIDAR.MAX_PTS_PER_VOXEL  = 32
 __C.LIDAR.MAX_NUM_VOXEL      = 25000
-
+__C.LIDAR.SHUFFLE_PC         = False
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])
 #__C.LIDAR.STDDEVS       = np.array([[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]])
 #(l,w,h) corresponding to (x,y,z)
-__C.LIDAR.ANCHORS       = np.array([[4.73,2.08,1.77]])  #KITTI: [[1.6, 3.9, 1.56]]  #WAYMO: [[4.73,2.08,1.77]]
+__C.LIDAR.ANCHORS       = np.array([[3.9, 1.6, 1.56]])  #KITTI: [[3.9, 1.6, 1.56]]  #WAYMO: [[4.73,2.08,1.77]]
 __C.LIDAR.ANCHOR_SCALES = np.array([[1]])
 __C.LIDAR.ANCHOR_ANGLES = np.array([0,np.pi/2])
 #__C.LIDAR.ANCHOR_STRIDE = np.array([2,2,0.5])
@@ -418,12 +418,29 @@ __C.LIDAR.EN_RY_SIN = True
 __C.IMAGE = edict()
 __C.IMAGE.NUM_BBOX_ELEM = 4
 
+__C.WAYMO = edict()
+#Unused
+#__C.WAYMO.MAX_FRAME = 0
+#Unused
+#__C.WAYMO.IMG_SIZE = [0,0]
+#Proprietary, unknown
+__C.WAYMO.LIDAR_MAX_RANGE = 200  #m
+
+
 __C.KITTI = edict()
 __C.KITTI.MAX_FRAME = 10000
 __C.KITTI.IMG_SIZE = [375,1242]
+#Velodyne HDL-64E
+__C.KITTI.LIDAR_MAX_RANGE = 120  #m 
 __C.CADC = edict()
 __C.CADC.MAX_FRAME = 10000
 __C.CADC.IMG_SIZE = [624,1280]
+#Velodyne VLP-32C
+__C.CADC.LIDAR_MAX_RANGE = 200  #m
+#Used for LiDAR rain simulation
+__C.TEST.RAIN_SIM_EN = False
+__C.TEST.DROPOUT_EN  = False
+__C.TEST.RAIN_RATE = 15  #mm/h
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.

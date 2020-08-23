@@ -353,7 +353,7 @@ class waymo_lidb(db):
             diff       = pc_labels['difficulty'][i]
             anno_cat   = pc_labels['class'][i]
             track_id   = pc_labels['id'][i]
-            pts        = pc_labels['meta'][i]['pts']
+            pts        = float(pc_labels['meta'][i]['pts'])
             if(class_enum(anno_cat) == class_enum.SIGN):
                 anno_cat = class_enum.UNKNOWN.value
             elif(class_enum(anno_cat) == class_enum.CYCLIST):
@@ -378,18 +378,27 @@ class waymo_lidb(db):
             #heading = np.where(heading <= -pi2, heading + np.pi, heading)
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
             #Collect additional features from GT label
+            avg_intensity = float(pc_labels['meta'][i]['avg_intensity'])
+            avg_elongation = float(pc_labels['meta'][i]['avg_elongation'])
+            return_ratio   = float(pc_labels['meta'][i]['return_ratio'])
             if(en_aux_features):
-                avg_intensity = float(pc_labels['meta'][i]['avg_intensity'])
-                avg_elongation = float(pc_labels['meta'][i]['avg_elongation'])
                 truncation     = float(pc_labels['meta'][i]['trunc'])
-                return_ratio   = float(pc_labels['meta'][i]['return_ratio'])
                 distance       = float(pc_labels['box'][i]['xc'])
             else:
-                avg_intensity  = 0
-                avg_elongation = 0
+                #avg_intensity  = 0
+                #avg_elongation = 0
                 truncation     = 0
-                return_ratio   = 0
+                #return_ratio   = 0
                 distance       = 0
+            if(x_c < cfg.LIDAR.X_RANGE[0] or x_c > cfg.LIDAR.X_RANGE[1]):
+                #print('object not infront of car')
+                continue
+            if(y_c < cfg.LIDAR.Y_RANGE[0] or y_c > cfg.LIDAR.Y_RANGE[1]):
+                #print('object too far to left/right side')
+                continue
+            if(z_c < cfg.LIDAR.Z_RANGE[0] or z_c > cfg.LIDAR.Z_RANGE[1]):
+                #print('object either too high or below car')
+                continue
             #Clip bboxes eror checking
             #Pointcloud to be cropped at x=[-40,40] y=[0,70] z=[0,10]
             #if(x1 < cfg.LIDAR.X_RANGE[0] or x2 > cfg.LIDAR.X_RANGE[1]):
@@ -405,7 +414,7 @@ class waymo_lidb(db):
                 #Stop little clips from happening for cars
                 boxes[ix, :]   = bbox
                 difficulty[ix] = diff
-                num_pts[ix]    = pts
+                num_pts[ix]    = int(pts)
                 ids.append(track_id)
                 avg_intensities[ix] = avg_intensity
                 avg_elongations[ix] = avg_elongation

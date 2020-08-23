@@ -154,17 +154,17 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'waymo'
+        args.db_name       = 'kitti'
         args.net_type      = 'lidar'
         #args.weights_file  = 'lidar_a_e_uc_195k.pth'
         #args.weights_file  = 'aug02/lidar_a_e_uc_200k.pth'
         #args.weights_file  = 'aug06/image_diag_area_a_e_uc_95k.pth'
-        args.weights_file  = 'aug21/lidar_130k.pth'
+        args.weights_file  = 'aug22/lidar_kitti_6_25k.pth'
         args.iter          = 0
         args.num_frames    = 500
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_bbox_var'
