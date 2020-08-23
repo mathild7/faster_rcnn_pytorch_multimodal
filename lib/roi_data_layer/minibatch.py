@@ -308,12 +308,12 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         if(flip_frame_x):
             #print('performing flip')
             #Flip source binary across Y plane
-            source_bin[:,0] = -source_bin[:,0]
+            source_bin[:,0] = -source_bin[:,0] + cfg.LIDAR.X_RANGE[1]
             local_roidb[i]['flipped'] = True
-            oldx_c = local_roidb[i]['boxes'][:, 1].copy()
+            oldx_c = local_roidb[i]['boxes'][:, 0].copy()
             old_ry = local_roidb[i]['boxes'][:, 6].copy()
             x_mean = (cfg.LIDAR.X_RANGE[0]+cfg.LIDAR.X_RANGE[1])/2
-            local_roidb[i]['boxes'][:, 1] = -(oldx_c-x_mean) + x_mean
+            local_roidb[i]['boxes'][:, 0] = -(oldx_c-x_mean) + x_mean
             local_roidb[i]['boxes'][:, 6] = -old_ry
 
         if(gauss_distort):

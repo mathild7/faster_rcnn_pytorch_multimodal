@@ -271,7 +271,7 @@ if __name__ == '__main__':
         #args.out_dir = 'output/'
         args.net_type       = 'lidar'
         args.preload        = 0
-        args.iter           = 20
+        args.iter           = 21
         args.scale          = 1.0
         args.en_full_net    = False
         args.en_fpn         = False
