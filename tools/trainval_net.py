@@ -260,9 +260,9 @@ def combined_imdb_roidb(mode,dataset,draw_and_save=False,imdb=None,limiter=0):
 
 
 if __name__ == '__main__':
-    cfg.DEBUG.EN = True
+    cfg.DEBUG.EN = False
     #manual_mode = cfg.DEBUG.EN
-    manual_mode = True
+    manual_mode = False
     args = parse_args(manual_mode)
     #TODO: Config new image size
     if(manual_mode):
@@ -271,12 +271,12 @@ if __name__ == '__main__':
         #args.out_dir = 'output/'
         args.net_type       = 'lidar'
         args.preload        = 0
-        args.iter           = 21
+        args.iter           = 6
         args.scale          = 1.0
         args.en_full_net    = False
         args.en_fpn         = False
         args.fixed_blocks   = -1
-        args.batch_size     = 4
+        args.batch_size     = 16
         args.val_batch_size = 32
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
@@ -355,7 +355,6 @@ if __name__ == '__main__':
         cfg_from_file(args.cfg_file)
     if args.set_cfgs is not None:
         cfg_from_list(args.set_cfgs)
-
     print('Using config:')
     pprint.pprint(cfg)
 

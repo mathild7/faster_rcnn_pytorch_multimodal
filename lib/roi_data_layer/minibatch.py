@@ -135,10 +135,14 @@ def get_lidar_minibatch(roidb, num_classes, augment_en, scale, cnt):
 
     # Get the input lidar blob
     infos, pc_blob, local_roidb = _get_lidar_blob(roidb, area_extents, scale, augment_en)
+    #Goto next minibatch
+    if(pc_blob is None):
+        return None
     info = infos[0]
     roi_entry = local_roidb[0]
     #Create numpy array storage for bounding boxes (enforce type)
-    gt_len  = roi_entry['boxes'].shape[0]
+    gt_inds = np.where(roi_entry['ignore'] == 0)[0]
+    gt_len  = roi_entry['boxes'][gt_inds,:].shape[0]
     dc_len  = roi_entry['boxes_dc'].shape[0]
     gt_boxes = np.empty((gt_len, gt_box_size), dtype=np.float32)
     gt_boxes_dc = np.empty((dc_len, gt_box_size), dtype=np.float32)
@@ -150,7 +154,6 @@ def get_lidar_minibatch(roidb, num_classes, augment_en, scale, cnt):
     assert len(local_roidb) == 1, "Single batch only"
 
     # gt boxes: (xc, yc, zc, xd, yd, zd, theta, cls)
-    gt_inds = np.where(roi_entry['ignore'] == 0)[0]
     blobs['filename'] = roi_entry['filename']
     #print(blobs['filename'])
     #TODO: Ground plane estimation and subtraction
@@ -262,13 +265,13 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             else:
                 pts_fov = points
             #source_bin = kitti_utils.project_velo_to_rect(source_bin,calib)
-            source_bin = filter_points(pts_fov)
+            source_bin = pts_fov
         elif('.npy' in filen):
             source_bin = np.load(filen)
-            source_bin = filter_points(source_bin)
             #print(np.max(source_bin[:,2]))
         else:
             print('Cannot handle this type of binary file')
+        source_bin = filter_points(source_bin)
         local_roidb = deepcopy(roidb)
         #np.random.shuffle(source_bin)
         #print('augmenting image {}'.format(roidb[i]['filename']))
@@ -284,15 +287,90 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
         rain_sim      = False
         gauss_distort = False
         rand_dropout  = False
+        rand_rotate   = False
+        swap_x_y      = False
         if(cfg.LIDAR.SHUFFLE_PC):
             source_bin = np.random.shuffle(source_bin)
 
         if(augment_en):
             local_roidb[i]['flipped'] = False
-            flip_frame_y  = np.random.choice([True,False],p=[0.5,0.5])
-            flip_frame_x  = np.random.choice([True,False],p=[0.5,0.5])
-            gauss_distort = np.random.choice([True,False],p=[0.3,0.7])
-            rand_dropout  = np.random.choice([True,False],p=[0.3,0.7])
+            if(cfg.LIDAR.EN_AUG_FLIPS):
+                flip_frame_y  = np.random.choice([True,False],p=[0.5,0.5])
+                flip_frame_x  = np.random.choice([True,False],p=[0.5,0.5])
+            if(cfg.LIDAR.EN_AUG_GAUSS_DISTORT):
+                gauss_distort = np.random.choice([True,False],p=[0.3,0.7])
+            if(cfg.LIDAR.EN_AUG_DROPOUT):
+                rand_dropout  = np.random.choice([True,False],p=[0.3,0.7])
+            if(cfg.LIDAR.EN_AUG_ROTATE):
+                rand_rotate   = np.random.choice([True,False],p=[0.3,0.7])
+            if(cfg.LIDAR.EN_AUG_SWAP_X_Y):
+                swap_x_y      = np.random.choice([True,False],p=[0.3,0.7])
+
+        if(gauss_distort):
+            sigma_x = np.random.uniform(0.0,0.07)
+            sigma_y = np.random.uniform(0.0,0.07)
+            sigma_z = np.random.uniform(0.0,0.05)
+            #print('performing gauss distort sigma {} {} {}'.format(sigma_x,sigma_y,sigma_z))
+            x_shift = np.random.normal(0,sigma_x,size=(source_bin.shape[0]))
+            y_shift = np.random.normal(0,sigma_y,size=(source_bin.shape[0]))
+            z_shift = np.random.normal(0,sigma_z,size=(source_bin.shape[0]))
+            source_bin[:,0] += x_shift
+            source_bin[:,1] += y_shift
+            source_bin[:,2] += z_shift
+
+        if(rand_dropout):
+            pKeep = np.random.uniform(0.8,1.0)
+            #print('performing random dropout {}'.format(pKeep))
+            keep = pKeep > np.random.rand(source_bin.shape[0])
+            source_bin = source_bin[keep]
+            #source_bin = np.random.shuffle(source_bin)
+            #max_ind    = source_bin.shape[0]*(1-0.9)
+            #source_bin = source_bin[:max_ind]
+            
+        if(rand_rotate):
+            """
+            Args:
+                gt_boxes: (N, 7 + C), [x, y, z, dx, dy, dz, heading, [vx], [vy]]
+                points: (M, 3 + C),
+                rot_range: [min, max]
+            Returns:
+            """
+            gt_boxes = local_roidb[i]['boxes']
+            noise_rotation = np.random.uniform(-np.pi/2, np.pi/2)  #np.random.choice([-np.pi/2,np.pi/2],p=[0.5,0.5])  #np.random.uniform(-np.pi/2, np.pi/2)
+            points = rotate_points_along_z(source_bin[np.newaxis, :, :], np.array([noise_rotation]))[0]
+            gt_boxes[:, 0:3] = rotate_points_along_z(gt_boxes[np.newaxis, :, 0:3], np.array([noise_rotation]))[0]
+            gt_boxes[:, 6] += noise_rotation
+            for k, gt_box in enumerate(gt_boxes):
+                local_roidb[i]['ignore'][k] = True
+                if((gt_box[0] >= cfg.LIDAR.X_RANGE[0]) & (gt_box[1] >= cfg.LIDAR.Y_RANGE[0]) & (gt_box[2] >= cfg.LIDAR.Z_RANGE[0])):
+                    if((gt_box[0] < cfg.LIDAR.X_RANGE[1]) & (gt_box[1] < cfg.LIDAR.Y_RANGE[1]) & (gt_box[2] < cfg.LIDAR.Z_RANGE[1])):
+                        local_roidb[i]['ignore'][k] = False
+            local_roidb[i]['boxes']
+            source_bin = points
+
+        if(swap_x_y):
+            gt_boxes = local_roidb[i]['boxes']
+            x_range_mean = (cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])/2.0
+            y_range_mean = (cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])/2.0
+            gt_boxes_x = np.copy(gt_boxes[:,0])
+            gt_boxes_y = np.copy(gt_boxes[:,1])
+            gt_boxes_l = np.copy(gt_boxes[:,3])
+            gt_boxes_w = np.copy(gt_boxes[:,4])
+            gt_boxes[:,0] = gt_boxes_y - cfg.LIDAR.Y_RANGE[0]
+            gt_boxes[:,1] = gt_boxes_x - x_range_mean
+            #gt_boxes[:,3] = gt_boxes_w
+            #gt_boxes[:,4] = gt_boxes_l
+            gt_boxes[:,6] = -gt_boxes[:,6] + np.pi/2.0
+            for k, gt_box in enumerate(gt_boxes):
+                local_roidb[i]['ignore'][k] = True
+                if((gt_box[0] >= cfg.LIDAR.X_RANGE[0]) & (gt_box[1] >= cfg.LIDAR.Y_RANGE[0]) & (gt_box[2] >= cfg.LIDAR.Z_RANGE[0])):
+                    if((gt_box[0] < cfg.LIDAR.X_RANGE[1]) & (gt_box[1] < cfg.LIDAR.Y_RANGE[1]) & (gt_box[2] < cfg.LIDAR.Z_RANGE[1])):
+                        local_roidb[i]['ignore'][k] = False
+            new_x = np.copy(source_bin[:,1]) - cfg.LIDAR.Y_RANGE[0]
+            new_y = np.copy(source_bin[:,0]) - x_range_mean
+            source_bin[:,0] = new_x
+            source_bin[:,1] = new_y
+            local_roidb[i]['boxes'] = gt_boxes
 
         if(flip_frame_y):
             #print('performing flip')
@@ -315,27 +393,6 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             x_mean = (cfg.LIDAR.X_RANGE[0]+cfg.LIDAR.X_RANGE[1])/2
             local_roidb[i]['boxes'][:, 0] = -(oldx_c-x_mean) + x_mean
             local_roidb[i]['boxes'][:, 6] = -old_ry
-
-        if(gauss_distort):
-            sigma_x = np.random.uniform(0.0,0.07)
-            sigma_y = np.random.uniform(0.0,0.07)
-            sigma_z = np.random.uniform(0.0,0.05)
-            #print('performing gauss distort sigma {} {} {}'.format(sigma_x,sigma_y,sigma_z))
-            x_shift = np.random.normal(0,sigma_x,size=(source_bin.shape[0]))
-            y_shift = np.random.normal(0,sigma_y,size=(source_bin.shape[0]))
-            z_shift = np.random.normal(0,sigma_z,size=(source_bin.shape[0]))
-            source_bin[:,0] += x_shift
-            source_bin[:,1] += y_shift
-            source_bin[:,2] += z_shift
-
-        if(rand_dropout):
-            pKeep = np.random.uniform(0.8,1.0)
-            #print('performing random dropout {}'.format(pKeep))
-            keep = pKeep > np.random.rand(source_bin.shape[0])
-            source_bin = source_bin[keep]
-            #source_bin = np.random.shuffle(source_bin)
-            #max_ind    = source_bin.shape[0]*(1-0.9)
-            #source_bin = source_bin[:max_ind]
 
         if(mode == 'test' and cfg.TEST.RAIN_SIM_EN):
             z = np.sqrt(np.sum(np.power(source_bin[:,0:3],2),axis=1))
@@ -368,6 +425,12 @@ def _get_lidar_blob(roidb, pc_extents, scale, augment_en=False,mode='train'):
             source_bin = source_bin[keep]
         #print(roidb[i]['filename'])
         #print('min z value: {}'.format(np.amin(source_bin[:,2])))
+        source_bin = filter_points(source_bin)
+        #Goto next minibatch
+        if(source_bin.shape[0] <= 0):
+            print('No PC points in frame {} FLIP_X: {} FLIP_Y: {} ROT: {} SWAP_X_Y: {}'.format(filen,flip_frame_x,flip_frame_y,rand_rotate,swap_x_y))
+            return infos, None, local_roidb
+
         voxel_len = cfg.LIDAR.VOXEL_LEN/scale
         num_x_voxel = int((cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.X_RANGE[0])*(1/voxel_len))
         num_y_voxel = int((cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.Y_RANGE[0])*(1/voxel_len))
@@ -624,3 +687,24 @@ def get_fov_flag(pts_rect, img_shape, calib=None):
     val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
 
     return val_flag_merge
+
+def rotate_points_along_z(points, angle):
+    """
+    Args:
+        points: (B, N, 3 + C)
+        angle: (B), angle along z-axis, angle increases x ==> y
+    Returns:
+    """
+
+    cosa = np.cos(angle)
+    sina = np.sin(angle)
+    zeros = np.zeros((points.shape[0]),)
+    ones = np.ones((points.shape[0]),)
+    rot_matrix = np.stack((
+        cosa,  sina, zeros,
+        -sina, cosa, zeros,
+        zeros, zeros, ones
+    ), axis=1).reshape(-1,3,3)
+    points_rot = np.matmul(points[:, :, 0:3], rot_matrix)
+    points_rot = np.concatenate((points_rot, points[:, :, 3:]), axis=-1)
+    return points_rot

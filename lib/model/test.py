@@ -195,6 +195,11 @@ def test_net(net, db, out_dir, max_dets=100, thresh=0.1, mode='test',draw_det=Fa
         #frame = [frame]
         _t['preload'].tic()
         blobs = _get_blobs([filename])
+        if(blobs['data'] is None):
+            print('skipping testing of frame {}'.format(filename))
+            for j in range(1, db.num_classes):
+                all_boxes[j][i] = np.empty(0)
+            continue
         _t['preload'].toc()
         #assert len(blobs) == 1, "Only single-image batch implemented"
         _t['frame_detect'].tic()

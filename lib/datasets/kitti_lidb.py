@@ -215,6 +215,8 @@ class kitti_lidb(db):
             else:
                 diff = 3
             #If car doesn't fit inside 2 voxels minimum
+            if(trunc > 0.95):
+                continue
             if(bbox[1] - bbox[4]/2 >= cfg.LIDAR.Y_RANGE[1] - cfg.LIDAR.VOXEL_LEN*2):
                 continue
             if(bbox[0] - bbox[3]/2 >= cfg.LIDAR.X_RANGE[1] - cfg.LIDAR.VOXEL_LEN*2):

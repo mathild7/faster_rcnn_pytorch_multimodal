@@ -1,0 +1,1253 @@
+Called with args:
+Namespace(cache_dir=None, cfg_file=None, data_dir='/home/mat/thesis/data2', db_name='waymo', dbval_name='voc_2007_test', en_aleatoric=0, en_epistemic=0, en_fpn=0, en_full_net=1, fixed_blocks=-1, iter=22, max_iters=400000, net='res101', net_type='lidar', preload=2, scale=1.0, set_cfgs=None, tag=None, train_batch_size=None, trainval_batch_size=None, uc_sort_type=None, weights_file='/home/mat/thesis/data2/waymo/weights/aug24/lidar_rpn_90k.pth')
+Using config:
+{'ANCHOR_RATIOS': [0.5, 1, 2],
+ 'ANCHOR_SCALES': [8, 16, 32],
+ 'CACHE_DIR': '',
+ 'CADC': {'IMG_SIZE': [624, 1280], 'LIDAR_MAX_RANGE': 200, 'MAX_FRAME': 10000},
+ 'DATA_DIR': '/home/mat/thesis/data2',
+ 'DB_NAME': 'waymo',
+ 'DEBUG': {'DRAW_ANCHORS': False,
+           'DRAW_ANCHOR_T': False,
+           'DRAW_MINIBATCH': False,
+           'DRAW_PROPOSAL_T': False,
+           'EN': False,
+           'EN_TEST_MSG': True,
+           'FREEZE_DB': False,
+           'FREEZE_DB_INDS': 3,
+           'PRINT_SCENE_RESULT': False,
+           'TEST_FRAME_PRINT': False},
+ 'ENABLE_CUSTOM_TAIL': False,
+ 'ENABLE_FULL_NET': True,
+ 'EXP_DIR': 'res101',
+ 'GRAD_MAX_CLIP': 20,
+ 'IMAGE': {'NUM_BBOX_ELEM': 4},
+ 'KITTI': {'IMG_SIZE': [375, 1242], 'LIDAR_MAX_RANGE': 120, 'MAX_FRAME': 10000},
+ 'LIDAR': {'ANCHORS': array([[4.73, 2.08, 1.77]]),
+           'ANCHOR_ANGLES': array([0.        , 1.57079633]),
+           'ANCHOR_SCALES': array([[1]]),
+           'EN_RY_SIN': True,
+           'MAX_NUM_VOXEL': 25000,
+           'MAX_PTS_PER_VOXEL': 32,
+           'NUM_BBOX_ELEM': 7,
+           'NUM_CHANNEL': 14,
+           'NUM_META_CHANNEL': 2,
+           'NUM_SLICES': 12,
+           'REG_LOSS_WEIGHT': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+           'SHUFFLE_PC': False,
+           'VOXEL_HEIGHT': 0.5,
+           'VOXEL_LEN': 0.1,
+           'X_RANGE': [0, 70],
+           'Y_RANGE': [-40, 40],
+           'Z_RANGE': [-3, 3]},
+ 'MATLAB': 'matlab',
+ 'MAX_IMG_PER_SCENE': 1000,
+ 'MOBILENET': {'DEPTH_MULTIPLIER': 1.0,
+               'FIXED_LAYERS': 5,
+               'REGU_DEPTH': False,
+               'WEIGHT_DECAY': 4e-05},
+ 'NET_TYPE': 'lidar',
+ 'NUM_SCENES': 210,
+ 'PIXEL_ARRANGE': [0, 1, 2],
+ 'PIXEL_ARRANGE_BGR': [2, 1, 0],
+ 'PIXEL_MEANS': array([[[96.866, 98.76 , 93.85 ]]]),
+ 'PIXEL_STDDEVS': array([[[1, 1, 1]]]),
+ 'POOLING_MODE': 'align',
+ 'POOLING_SIZE': 7,
+ 'PRELOAD': False,
+ 'PRELOAD_FULL': True,
+ 'RESNET': {'FIXED_BLOCKS': -1, 'MAX_POOL': False},
+ 'RNG_SEED': 3,
+ 'ROOT_DIR': '/home/mat/thesis/faster_rcnn_pytorch_multimodal',
+ 'RPN_CHANNELS': 512,
+ 'SCALE_LOC': 6,
+ 'TEST': {'AUGMENT_EN': False,
+          'BBOX_REG': True,
+          'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+          'DROPOUT_EN': False,
+          'EN_AUX_FEATURES': False,
+          'HAS_RPN': True,
+          'IGNORE_DC': False,
+          'ITER': 1,
+          'MODE': 'nms',
+          'NMS_THRESH': 0.3,
+          'PROPOSAL_METHOD': 'gt',
+          'RAIN_RATE': 15,
+          'RAIN_SIM_EN': False,
+          'RPN_NMS_THRESH': 0.7,
+          'RPN_POST_NMS_TOP_N': 300,
+          'RPN_PRE_NMS_TOP_N': 6000,
+          'RPN_TOP_N': 5000,
+          'SCALES': [1.0],
+          'SVM': False,
+          'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk']},
+ 'TRAIN': {'AUGMENT_EN': True,
+           'BATCH_SIZE': 16,
+           'BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'BBOX_NORMALIZE_TARGETS': True,
+           'BBOX_NORMALIZE_TARGETS_PRECOMPUTED': True,
+           'BBOX_REG': True,
+           'BG_THRESH_HI': 0.5,
+           'BG_THRESH_LO': 0.0,
+           'BIAS_DECAY': False,
+           'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+           'DC_THRESH': 0.5,
+           'DISPLAY': 512,
+           'DOUBLE_BIAS': False,
+           'DRAW_ROIDB_GEN': False,
+           'DRAW_VAL_DETECTIONS': True,
+           'FG_FRACTION': 0.25,
+           'FG_THRESH': 0.6,
+           'FRAMES_PER_BATCH': 1,
+           'GAMMA': 0.1,
+           'HAS_RPN': True,
+           'IGNORE_DC': False,
+           'IMAGE': {'BBOX_NORMALIZE_MEANS': [0.0, 0.0, 0.0, 0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1, 0.1, 0.2, 0.2]},
+           'ITER': 22,
+           'LEARNING_RATE': 0.02,
+           'LIDAR': {'BBOX_NORMALIZE_MEANS': [0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1,
+                                             0.1,
+                                             0.1,
+                                             0.2,
+                                             0.2,
+                                             0.2,
+                                             1.0]},
+           'MOMENTUM': 0.5,
+           'PROPOSAL_METHOD': 'gt',
+           'ROI_BATCH_SIZE': 256,
+           'RPN_BATCHSIZE': 256,
+           'RPN_BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'RPN_CLOBBER_POSITIVES': False,
+           'RPN_FG_FRACTION': 0.5,
+           'RPN_NEGATIVE_OVERLAP': 0.3,
+           'RPN_NMS_THRESH': 0.7,
+           'RPN_POSITIVE_OVERLAP': 0.7,
+           'RPN_POSITIVE_WEIGHT': -1.0,
+           'RPN_POST_NMS_TOP_N': 2000,
+           'RPN_PRE_NMS_TOP_N': 12000,
+           'SCALES': [1.0],
+           'SNAPSHOT_ITERS': 5000,
+           'SNAPSHOT_KEPT': 30,
+           'SNAPSHOT_PREFIX': 'res101_faster_rcnn',
+           'STEPSIZE': [70000, 140000, 210000],
+           'SUMMARY_INTERVAL': 15,
+           'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk'],
+           'TRUNCATED': False,
+           'USE_ALL_GT': False,
+           'USE_FLIPPED': True,
+           'USE_GT': False,
+           'VAL_AUGMENT_EN': False,
+           'VAL_BATCH_SIZE': 16,
+           'WEIGHT_DECAY': 0.0001},
+ 'UC': {'A_NUM_BBOX_SAMPLE': 200,
+        'A_NUM_CE_SAMPLE': 200,
+        'EN_BBOX_ALEATORIC': False,
+        'EN_BBOX_EPISTEMIC': False,
+        'EN_BBOX_EPISTEMIC_INV_TRANSFORM': False,
+        'EN_CLS_ALEATORIC': False,
+        'EN_CLS_EPISTEMIC': False,
+        'EN_RPN_BBOX_ALEATORIC': False,
+        'EN_RPN_BBOX_EPISTEMIC': False,
+        'EN_RPN_CLS_ALEATORIC': False,
+        'EN_RPN_CLS_EPISTEMIC': False,
+        'E_NUM_SAMPLE': 1,
+        'SORT_TYPE': ''},
+ 'USE_FPN': False,
+ 'USE_GPU_NMS': True,
+ 'USE_LIDAR_FPN': False,
+ 'WAYMO': {'LIDAR_MAX_RANGE': 200}}
+db mode: train
+Loaded dataset `waymo` for training
+Set proposal method: gt
+getting ROIDB Ready for mode train
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_train_lidar_gt_roidb.pkl
+getting ROIDB Ready for mode val
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_val_lidar_gt_roidb.pkl
+75654 roidb entries
+37471 val roidb entries
+Output will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22`
+TensorFlow summaries will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/tensorboard/res101/waymo/lidar_train_all_22`
+db: waymo
+Solving...
+Loading initial full model weights /home/mat/thesis/data2/waymo/weights/aug24/lidar_rpn_90k.pth
+Loaded.
+data generator starting up
+data generator starting up
+performing summary at iteration: 256
+performing summary at iteration: 512
+speed: 0.544s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 768
+performing summary at iteration: 1024
+speed: 0.558s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 1280
+performing summary at iteration: 1536
+speed: 0.558s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 1792
+performing summary at iteration: 2048
+speed: 0.562s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 2304
+performing summary at iteration: 2560
+speed: 0.557s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 2816
+performing summary at iteration: 3072
+speed: 0.549s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 3328
+performing summary at iteration: 3584
+speed: 0.545s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 3840
+performing summary at iteration: 4096
+speed: 0.542s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 4352
+performing summary at iteration: 4608
+speed: 0.539s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 4864
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5000_0082068.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5001_0107044.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5002_0058179.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5003_0154153.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5004_0012105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5005_0127041.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5006_0062148.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5007_0085131.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5008_0003113.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5009_0090193.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5010_0064038.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5011_0003039.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5012_0192021.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5013_0006110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5014_0154105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_5015_0064085.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_5000.pth
+saving at 16 [15533 19970 11417 ... 19605  8400  9873]
+saving at 5000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 5120
+speed: 0.538s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 5376
+performing summary at iteration: 5632
+speed: 0.536s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 5888
+performing summary at iteration: 6144
+speed: 0.538s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 6400
+performing summary at iteration: 6656
+speed: 0.537s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 6912
+performing summary at iteration: 7168
+speed: 0.535s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 7424
+performing summary at iteration: 7680
+speed: 0.533s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 7936
+performing summary at iteration: 8192
+speed: 0.533s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 8448
+performing summary at iteration: 8704
+speed: 0.531s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 8960
+performing summary at iteration: 9216
+speed: 0.534s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 9472
+performing summary at iteration: 9728
+speed: 0.533s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 9984
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10000_0116071.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10001_0138051.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10002_0067085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10003_0018161.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10004_0108130.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0070120.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10005_0070120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10006_0086129.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10007_0092144.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10008_0166032.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10009_0030183.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0060050.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10010_0060050.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10011_0009073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10012_0075107.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10013_0156067.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0068193.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10014_0068193.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_10015_0079093.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_10000.pth
+saving at 32 [15533 19970 11417 ... 19605  8400  9873]
+saving at 10000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 10240
+speed: 0.536s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 10496
+performing summary at iteration: 10752
+speed: 0.538s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 11008
+performing summary at iteration: 11264
+speed: 0.540s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 11520
+performing summary at iteration: 11776
+speed: 0.541s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 12032
+performing summary at iteration: 12288
+speed: 0.540s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 12544
+performing summary at iteration: 12800
+speed: 0.540s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 13056
+performing summary at iteration: 13312
+speed: 0.539s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 13568
+performing summary at iteration: 13824
+speed: 0.538s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 14080
+performing summary at iteration: 14336
+speed: 0.538s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 14592
+performing summary at iteration: 14848
+speed: 0.537s / iter
+data_gen timer: 0.051s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15000_0035128.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15001_0058162.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15002_0093072.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15003_0107087.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15004_0127122.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15005_0081155.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15006_0050143.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15007_0083168.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15008_0093169.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15009_0156023.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0009195.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15010_0009195.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15011_0091047.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15012_0023056.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15013_0083070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15014_0163112.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_15015_0005003.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_15000.pth
+saving at 48 [15533 19970 11417 ... 19605  8400  9873]
+saving at 15000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 15104
+performing summary at iteration: 15360
+speed: 0.538s / iter
+data_gen timer: 0.051s / iter
+performing summary at iteration: 15616
+performing summary at iteration: 15872
+speed: 0.537s / iter
+data_gen timer: 0.051s / iter
+performing summary at iteration: 16128
+performing summary at iteration: 16384
+speed: 0.537s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 16640
+performing summary at iteration: 16896
+speed: 0.536s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 17152
+performing summary at iteration: 17408
+speed: 0.536s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 17664
+performing summary at iteration: 17920
+speed: 0.535s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 18176
+performing summary at iteration: 18432
+speed: 0.535s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 18688
+performing summary at iteration: 18944
+speed: 0.535s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 19200
+performing summary at iteration: 19456
+speed: 0.534s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 19712
+performing summary at iteration: 19968
+speed: 0.534s / iter
+data_gen timer: 0.049s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20000_0029065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20001_0193096.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20002_0087024.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20003_0098192.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20004_0066121.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20005_0010100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20006_0093127.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20007_0084073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20008_0061073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20009_0189103.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20010_0122183.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20011_0093159.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20012_0087102.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20013_0142068.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20014_0142048.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_20015_0147044.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_20000.pth
+saving at 64 [15533 19970 11417 ... 19605  8400  9873]
+saving at 20000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 20224
+performing summary at iteration: 20480
+speed: 0.534s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 20736
+performing summary at iteration: 20992
+speed: 0.534s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 21248
+performing summary at iteration: 21504
+speed: 0.534s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 21760
+performing summary at iteration: 22016
+speed: 0.533s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 22272
+performing summary at iteration: 22528
+speed: 0.533s / iter
+data_gen timer: 0.050s / iter
+performing summary at iteration: 22784
+performing summary at iteration: 23040
+speed: 0.533s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 23296
+performing summary at iteration: 23552
+speed: 0.532s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 23808
+performing summary at iteration: 24064
+speed: 0.532s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 24320
+performing summary at iteration: 24576
+speed: 0.532s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 24832
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25000_0197032.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0151174.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25001_0151174.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25002_0031120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25003_0021021.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25004_0009066.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25005_0126020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25006_0180099.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25007_0083106.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25008_0181046.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25009_0022102.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25010_0139108.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25011_0186103.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25012_0011112.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25013_0144028.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25014_0148179.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_25015_0076116.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_25000.pth
+saving at 80 [15533 19970 11417 ... 19605  8400  9873]
+saving at 25000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 25088
+speed: 0.533s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 25344
+performing summary at iteration: 25600
+speed: 0.532s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 25856
+performing summary at iteration: 26112
+speed: 0.531s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 26368
+performing summary at iteration: 26624
+speed: 0.531s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 26880
+performing summary at iteration: 27136
+speed: 0.531s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 27392
+performing summary at iteration: 27648
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 27904
+performing summary at iteration: 28160
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 28416
+performing summary at iteration: 28672
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 28928
+performing summary at iteration: 29184
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 29440
+performing summary at iteration: 29696
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 29952
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30000_0020043.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30001_0053080.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30002_0096131.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30003_0011061.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30004_0173083.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30005_0121064.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30006_0043079.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30007_0091133.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30008_0043134.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30009_0126164.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30010_0088156.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30011_0010050.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30012_0092007.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30013_0048108.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30014_0171142.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_30015_0199082.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_30000.pth
+saving at 96 [15533 19970 11417 ... 19605  8400  9873]
+saving at 30000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 30208
+speed: 0.530s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 30464
+performing summary at iteration: 30720
+speed: 0.529s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 30976
+performing summary at iteration: 31232
+speed: 0.529s / iter
+data_gen timer: 0.049s / iter
+performing summary at iteration: 31488
+performing summary at iteration: 31744
+speed: 0.529s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 32000
+performing summary at iteration: 32256
+speed: 0.529s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 32512
+performing summary at iteration: 32768
+speed: 0.529s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 33024
+performing summary at iteration: 33280
+speed: 0.529s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 33536
+performing summary at iteration: 33792
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 34048
+performing summary at iteration: 34304
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 34560
+performing summary at iteration: 34816
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35000_0090000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35001_0090155.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35002_0118169.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35003_0174038.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35004_0091057.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35005_0112044.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35006_0079071.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35007_0139087.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35008_0001108.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35009_0016112.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35010_0005008.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35011_0038073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35012_0055011.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35013_0150016.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35014_0095032.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0047074.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_35015_0047074.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_35000.pth
+saving at 112 [15533 19970 11417 ... 19605  8400  9873]
+saving at 35000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 35072
+performing summary at iteration: 35328
+speed: 0.529s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 35584
+performing summary at iteration: 35840
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 36096
+performing summary at iteration: 36352
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 36608
+performing summary at iteration: 36864
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 37120
+performing summary at iteration: 37376
+speed: 0.528s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 37632
+performing summary at iteration: 37888
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 38144
+performing summary at iteration: 38400
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 38656
+performing summary at iteration: 38912
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 39168
+performing summary at iteration: 39424
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 39680
+performing summary at iteration: 39936
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40000_0056132.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40001_0184112.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40002_0084113.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40003_0146188.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40004_0112091.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40005_0157140.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0110075.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40006_0110075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40007_0148135.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40008_0048152.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40009_0192136.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0199100.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40010_0199100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40011_0183073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40012_0188100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40013_0154149.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40014_0035053.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_40015_0107057.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_40000.pth
+saving at 128 [15533 19970 11417 ... 19605  8400  9873]
+saving at 40000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 40192
+performing summary at iteration: 40448
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 40704
+performing summary at iteration: 40960
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 41216
+performing summary at iteration: 41472
+speed: 0.527s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 41728
+performing summary at iteration: 41984
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 42240
+performing summary at iteration: 42496
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 42752
+performing summary at iteration: 43008
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 43264
+performing summary at iteration: 43520
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 43776
+performing summary at iteration: 44032
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 44288
+performing summary at iteration: 44544
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 44800
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45000_0034114.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45001_0172052.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45002_0171161.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45003_0056114.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45004_0059163.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45005_0041037.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45006_0188015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45007_0013110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45008_0180031.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45009_0153033.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45010_0141049.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45011_0045181.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45012_0029025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45013_0096162.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45014_0178139.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_45015_0147124.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_45000.pth
+saving at 144 [15533 19970 11417 ... 19605  8400  9873]
+saving at 45000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 45056
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 45312
+performing summary at iteration: 45568
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 45824
+performing summary at iteration: 46080
+speed: 0.526s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 46336
+performing summary at iteration: 46592
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 46848
+performing summary at iteration: 47104
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 47360
+performing summary at iteration: 47616
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 47872
+performing summary at iteration: 48128
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 48384
+performing summary at iteration: 48640
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 48896
+performing summary at iteration: 49152
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 49408
+performing summary at iteration: 49664
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 49920
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50000_0201155.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50001_0029190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50002_0045176.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50003_0008175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50004_0189027.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50005_0080163.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50006_0046066.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50007_0135107.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50008_0153183.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50009_0037093.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50010_0022069.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50011_0140013.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50012_0061102.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50013_0030074.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50014_0192195.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_50015_0182061.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_50000.pth
+saving at 160 [15533 19970 11417 ... 19605  8400  9873]
+saving at 50000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 50176
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 50432
+performing summary at iteration: 50688
+speed: 0.525s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 50944
+performing summary at iteration: 51200
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 51456
+performing summary at iteration: 51712
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 51968
+performing summary at iteration: 52224
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 52480
+performing summary at iteration: 52736
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 52992
+performing summary at iteration: 53248
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 53504
+performing summary at iteration: 53760
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 54016
+performing summary at iteration: 54272
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 54528
+performing summary at iteration: 54784
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55000_0062172.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55001_0085122.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55002_0170108.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55003_0006010.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55004_0125113.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55005_0090102.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55006_0036132.png
+no detections for image over threshold 0.4
+draw and save: No detections for pc /home/mat/thesis/data2/waymo/val/point_clouds/0008032.npy, class: 1
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55007_0008032.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55008_0018043.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55009_0113048.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55010_0118006.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55011_0066086.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55012_0082174.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55013_0027172.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55014_0199073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_55015_0001025.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_55000.pth
+saving at 176 [15533 19970 11417 ... 19605  8400  9873]
+saving at 55000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 55040
+performing summary at iteration: 55296
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 55552
+performing summary at iteration: 55808
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 56064
+performing summary at iteration: 56320
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 56576
+performing summary at iteration: 56832
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 57088
+performing summary at iteration: 57344
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 57600
+performing summary at iteration: 57856
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 58112
+performing summary at iteration: 58368
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 58624
+performing summary at iteration: 58880
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 59136
+performing summary at iteration: 59392
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 59648
+performing summary at iteration: 59904
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60000_0167186.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60001_0018137.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60002_0131008.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60003_0014136.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60004_0077024.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60005_0018006.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60006_0013025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60007_0127182.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60008_0034030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60009_0091016.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60010_0061061.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60011_0090141.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60012_0083103.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60013_0054065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60014_0177031.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_60015_0098076.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_60000.pth
+saving at 192 [15533 19970 11417 ... 19605  8400  9873]
+saving at 60000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 60160
+performing summary at iteration: 60416
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 60672
+performing summary at iteration: 60928
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 61184
+performing summary at iteration: 61440
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 61696
+performing summary at iteration: 61952
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 62208
+performing summary at iteration: 62464
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 62720
+performing summary at iteration: 62976
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 63232
+performing summary at iteration: 63488
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 63744
+performing summary at iteration: 64000
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 64256
+performing summary at iteration: 64512
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 64768
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65000_0083175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65001_0023114.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65002_0126133.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65003_0011073.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65004_0177156.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65005_0076004.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65006_0012071.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65007_0158062.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65008_0177139.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65009_0054172.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65010_0030189.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65011_0006049.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65012_0011141.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65013_0004014.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65014_0108048.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_65015_0078048.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_65000.pth
+saving at 208 [15533 19970 11417 ... 19605  8400  9873]
+saving at 65000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 65024
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 65280
+performing summary at iteration: 65536
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 65792
+performing summary at iteration: 66048
+speed: 0.524s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 66304
+performing summary at iteration: 66560
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 66816
+performing summary at iteration: 67072
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 67328
+performing summary at iteration: 67584
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 67840
+performing summary at iteration: 68096
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 68352
+performing summary at iteration: 68608
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 68864
+performing summary at iteration: 69120
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 69376
+performing summary at iteration: 69632
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 69888
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70000_0082138.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70001_0027046.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70002_0155085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70003_0084151.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70004_0069076.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70005_0013089.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70006_0110003.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70007_0122099.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70008_0038128.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70009_0083110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70010_0049041.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70011_0123021.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70012_0176041.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70013_0078017.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70014_0066130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_70015_0134097.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_70000.pth
+saving at 224 [15533 19970 11417 ... 19605  8400  9873]
+saving at 70000 [73183 58044 61944 ... 59011 67224 71530]
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_70001.pth
+saving at 224 [15533 19970 11417 ... 19605  8400  9873]
+saving at 70000 [73183 58044 61944 ... 59011 67224 71530]
+Reducing learning rate
+performing summary at iteration: 70144
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 70400
+performing summary at iteration: 70656
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 70912
+performing summary at iteration: 71168
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 71424
+performing summary at iteration: 71680
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 71936
+performing summary at iteration: 72192
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 72448
+performing summary at iteration: 72704
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 72960
+performing summary at iteration: 73216
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 73472
+performing summary at iteration: 73728
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 73984
+performing summary at iteration: 74240
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 74496
+performing summary at iteration: 74752
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75000_0177105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75001_0091022.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75002_0081069.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75003_0102016.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75004_0114040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75005_0116193.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75006_0137040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75007_0008031.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75008_0007061.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75009_0054084.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75010_0117009.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75011_0018192.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75012_0091163.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75013_0136100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75014_0005176.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_75015_0155009.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_75000.pth
+saving at 240 [15533 19970 11417 ... 19605  8400  9873]
+saving at 75000 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 75008
+performing summary at iteration: 75264
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 75520
+----------------------------------------------------
+epoch average loss: 0.198127
+----------------------------------------------------
+performing summary at iteration: 75776
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 76032
+performing summary at iteration: 76288
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 76544
+performing summary at iteration: 76800
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 77056
+performing summary at iteration: 77312
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 77568
+performing summary at iteration: 77824
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 78080
+performing summary at iteration: 78336
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 78592
+performing summary at iteration: 78848
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 79104
+performing summary at iteration: 79360
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 79616
+performing summary at iteration: 79872
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80000_0098046.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80001_0128057.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80002_0086058.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80003_0178038.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80004_0001181.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80005_0181123.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80006_0085071.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80007_0002093.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80008_0026107.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80009_0087087.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80010_0025108.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80011_0194029.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80012_0053055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80013_0181027.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80014_0131056.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_80015_0038178.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_80000.pth
+saving at 256 [15533 19970 11417 ... 19605  8400  9873]
+saving at 4347 [70452 16977 53906 ... 41508 41660 29943]
+performing summary at iteration: 80128
+performing summary at iteration: 80384
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 80640
+performing summary at iteration: 80896
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 81152
+performing summary at iteration: 81408
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 81664
+performing summary at iteration: 81920
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 82176
+performing summary at iteration: 82432
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 82688
+performing summary at iteration: 82944
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 83200
+performing summary at iteration: 83456
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 83712
+performing summary at iteration: 83968
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 84224
+performing summary at iteration: 84480
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 84736
+performing summary at iteration: 84992
+speed: 0.522s / iter
+data_gen timer: 0.047s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85000_0127003.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85001_0133194.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85002_0080008.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85003_0039120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85004_0171005.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85005_0114020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85006_0140062.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85007_0188086.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85008_0073044.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85009_0079147.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85010_0022038.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85011_0043072.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85012_0054060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85013_0189096.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85014_0001189.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_85015_0100116.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_85000.pth
+saving at 272 [15533 19970 11417 ... 19605  8400  9873]
+saving at 9347 [70452 16977 53906 ... 41508 41660 29943]
+performing summary at iteration: 85248
+performing summary at iteration: 85504
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 85760
+performing summary at iteration: 86016
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 86272
+performing summary at iteration: 86528
+speed: 0.523s / iter
+data_gen timer: 0.047s / iter
+performing summary at iteration: 86784
+performing summary at iteration: 87040
+speed: 0.523s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 87296
+performing summary at iteration: 87552
+speed: 0.522s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 87808
+performing summary at iteration: 88064
+speed: 0.522s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 88320
+performing summary at iteration: 88576
+speed: 0.522s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 88832
+performing summary at iteration: 89088
+speed: 0.522s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 89344
+performing summary at iteration: 89600
+speed: 0.522s / iter
+data_gen timer: 0.048s / iter
+performing summary at iteration: 89856
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90000_0116161.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90001_0055065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90002_0132141.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90003_0024104.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90004_0039139.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90005_0109189.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90006_0034174.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90007_0180109.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90008_0137107.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90009_0034193.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90010_0200094.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90011_0171017.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90012_0065018.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90013_0044063.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90014_0014133.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/trainval_drawn/iter_90015_0040180.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_train_all_22/lidar_res101_faster_rcnn_iter_90000.pth
+saving at 288 [15533 19970 11417 ... 19605  8400  9873]
+saving at 14347 [70452 16977 53906 ... 41508 41660 29943]
+performing summary at iteration: 90112
+speed: 0.523s / iter
