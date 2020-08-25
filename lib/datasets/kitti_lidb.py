@@ -406,7 +406,7 @@ class kitti_lidb(db):
                 cachedir,
                 mode,
                 ovthresh=ovt,
-                eval_type='bev',
+                eval_type=cfg.LIDAR.EVAL_TYPE,
                 d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP

@@ -154,19 +154,19 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'waymo'
+        args.db_name       = 'cadc'
         args.net_type      = 'lidar'
-        args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/lidar_a_bbox_a_cls_e_bbox_e_cls_train_all_24/lidar_res101_faster_rcnn_iter_90000.pth'
-        #args.weights_file  = '/home/mat/cc_tmp/output/res101/'+args.db_name+'/lidar_train_all_4/lidar_res101_faster_rcnn_iter_60000.pth'
+        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/lidar_train_all_20/lidar_res101_faster_rcnn_iter_130000.pth'
+        args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/lidar_train_all_10/lidar_res101_faster_rcnn_iter_105000.pth'
         #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_a_e_uc/lidar_res101_faster_rcnn_iter_50000.pth'
         args.iter          = 0
-        args.num_frames    = 0
+        args.num_frames    = 500
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
-        args.en_epistemic = 1
-        args.en_aleatoric = 1
-        args.uc_sort_type = 'a_bbox_var'
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
+        #args.en_epistemic = 1
+        #args.en_aleatoric = 1
+        #args.uc_sort_type = 'a_bbox_var'
         #args.out_dir      = 'output/'
         #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')

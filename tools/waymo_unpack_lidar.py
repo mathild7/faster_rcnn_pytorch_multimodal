@@ -26,7 +26,7 @@ class laser_enum(Enum):
     SIDE_RIGHT  = 4
     REAR        = 5
 def main():
-    mypath = '/home/mat/thesis/data2/waymo/train'
+    mypath = '/home/mat/thesis/data2/waymo/val'
     tfrecord_path = mypath + '/compressed_tfrecords'
     savepath = os.path.join(mypath,'point_clouds_new')
     if not os.path.isdir(savepath):
@@ -53,7 +53,7 @@ def main():
                     dataset_list.append(elem)
                 dataset_len = len(dataset_list)
                 for j in range(0,dataset_len):
-                    if(j%2 == 0):
+                    if(j%5 == 0):
                         frame = open_dataset.Frame()
                         frame.ParseFromString(bytearray(dataset_list[j].numpy()))
                         proc_data = (i,j,frame,mypath)

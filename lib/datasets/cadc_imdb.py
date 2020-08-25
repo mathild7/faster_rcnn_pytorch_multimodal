@@ -157,7 +157,9 @@ class cadc_imdb(db):
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
+        gt_pts     = np.zeros((num_objs), dtype=np.int16)
         gt_alpha   = np.zeros((num_objs), dtype=np.float32)
+        gt_dist    = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -177,6 +179,15 @@ class cadc_imdb(db):
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
             alpha = float(label_arr[3])
+            BBGT_height = y2 - y1
+            l_x = float(label_arr[8])
+            w_y = float(label_arr[9])
+            h_z = float(label_arr[10])
+            x_c = float(label_arr[11])
+            y_c = float(label_arr[12])
+            z_c = float(label_arr[13])
+            heading = float(label_arr[14].replace('\n',''))
+            pts = int(label_arr[15])
             drive = re.sub('[^0-9]','', label_arr[16])
             scene = label_arr[17]
             scene_idx = int(drive)*100 + int(scene)
@@ -184,6 +195,12 @@ class cadc_imdb(db):
             if(scene_desc not in self._tod_filter_list):
                 continue
             diff = 0
+            if(BBGT_height < 10):
+                label_arr[0] = 'dontcare'
+            if(x_c > 60):
+                continue
+            if(pts < 10):
+                continue
             #if(occ <= 0 and trunc <= 0.15 and (BBGT_height) >= 40):
             #    diff = 0
             #elif(occ <= 1 and trunc <= 0.3 and (BBGT_height) >= 25):
@@ -204,6 +221,8 @@ class cadc_imdb(db):
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
                 gt_alpha[ix] = alpha
+                gt_pts[ix] = pts
+                gt_dist[ix] = x_c
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
@@ -230,6 +249,8 @@ class cadc_imdb(db):
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
+            'pts': gt_pts[0:ix],
+            'distance':gt_dist[0:ix],
             'difficulty': gt_diff[0:ix],
             'alpha': gt_alpha[0:ix],
             'ids': gt_ids[0:ix],

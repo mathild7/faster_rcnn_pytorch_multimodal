@@ -20,7 +20,7 @@ __C.DEBUG                    = edict()
 
 __C.DEBUG.EN                 = False
 
-__C.DEBUG.DRAW_MINIBATCH     = True
+__C.DEBUG.DRAW_MINIBATCH     = False
 __C.DEBUG.DRAW_ANCHORS       = False
 __C.DEBUG.DRAW_ANCHOR_T      = False
 __C.DEBUG.DRAW_PROPOSAL_T    = False
@@ -66,7 +66,7 @@ __C.TRAIN = edict()
 #WAYMO
 #__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
-__C.TRAIN.LEARNING_RATE = 0.01
+__C.TRAIN.LEARNING_RATE = 0.02
 # Momentum
 #WAYMO
 # __C.TRAIN.MOMENTUM = 0.5
@@ -88,7 +88,7 @@ __C.TRAIN.STEPSIZE = [70000, 140000, 210000]
 #__C.TRAIN.STEPSIZE = [60000,70000,80000]
 
 __C.TRAIN.BATCH_SIZE = 16
-__C.TRAIN.VAL_BATCH_SIZE = 16
+__C.TRAIN.VAL_BATCH_SIZE = 32
 
 __C.TRAIN.AUGMENT_EN = True
 __C.TRAIN.VAL_AUGMENT_EN = False
@@ -407,8 +407,10 @@ __C.LIDAR.SHUFFLE_PC         = False
 __C.LIDAR.EN_AUG_FLIPS         = True
 __C.LIDAR.EN_AUG_GAUSS_DISTORT = True
 __C.LIDAR.EN_AUG_DROPOUT       = True
-__C.LIDAR.EN_AUG_ROTATE        = True
+__C.LIDAR.EN_AUG_ROTATE        = False
 __C.LIDAR.EN_AUG_SWAP_X_Y      = True
+
+__C.LIDAR.EVAL_TYPE        = 'bev'
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])

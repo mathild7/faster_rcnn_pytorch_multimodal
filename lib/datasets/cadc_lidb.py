@@ -162,6 +162,7 @@ class cadc_lidb(db):
         gt_trunc   = np.zeros((num_objs), dtype=np.float32)
         gt_occ     = np.zeros((num_objs), dtype=np.int16)
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
+        gt_pts     = np.zeros((num_objs), dtype=np.int16)
         gt_alpha   = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
@@ -196,14 +197,19 @@ class cadc_lidb(db):
             y_c = float(label_arr[12])
             z_c = float(label_arr[13])
             heading = float(label_arr[14].replace('\n',''))
+            pts = int(label_arr[15])
             #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
             #heading = -heading + pi2
-            if(heading > pi2):
-                heading = heading - np.pi
-            if(heading <= -pi2):
-                heading = heading + np.pi
+            #if(heading > pi2):
+            #    heading = heading - np.pi
+            #if(heading <= -pi2):
+            #    heading = heading + np.pi
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
+            if(x_c > 60):
+                continue
+            if(pts < 10):
+                continue
             #bbox = self._bbox3d(bbox, calib)
             #Translate to PC reference frame
             diff = 0
@@ -235,6 +241,7 @@ class cadc_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
+                gt_pts[ix]   = pts
                 gt_alpha[ix] = alpha
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
@@ -262,6 +269,7 @@ class cadc_lidb(db):
             'hit': ignore[0:ix].copy(),
             'trunc': gt_trunc[0:ix],
             'occ': gt_occ[0:ix],
+            'pts': gt_pts[0:ix],
             'alpha': gt_alpha[0:ix],
             'distance':boxes[0:ix,2],
             'difficulty': gt_diff[0:ix],
@@ -452,7 +460,7 @@ class cadc_lidb(db):
                 self._get_cache_dir(),
                 mode,
                 ovthresh=ovt,
-                eval_type='bev',
+                eval_type=cfg.LIDAR.EVAL_TYPE,
                 d_levels=num_d_levels)
             aps[i-1,:] = ap
             #Tell user of AP

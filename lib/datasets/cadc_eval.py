@@ -359,3 +359,4 @@ def write_det(R,confidence,ovmax,bb,var,jmax=None):
                                                                                                          truncation,
                                                                                                          distance,
                                                                                                          iou)
+    return out_str
