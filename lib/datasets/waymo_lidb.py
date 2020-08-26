@@ -381,15 +381,11 @@ class waymo_lidb(db):
             avg_intensity = float(pc_labels['meta'][i]['avg_intensity'])
             avg_elongation = float(pc_labels['meta'][i]['avg_elongation'])
             return_ratio   = float(pc_labels['meta'][i]['return_ratio'])
+            distance       = np.sqrt(np.power(x_c,2)+np.power(y_c,2)+np.power(z_c,2))
             if(en_aux_features):
                 truncation     = float(pc_labels['meta'][i]['trunc'])
-                distance       = float(pc_labels['box'][i]['xc'])
             else:
-                #avg_intensity  = 0
-                #avg_elongation = 0
                 truncation     = 0
-                #return_ratio   = 0
-                distance       = 0
             if(x_c < cfg.LIDAR.X_RANGE[0] or x_c > cfg.LIDAR.X_RANGE[1]):
                 #print('object not infront of car')
                 continue

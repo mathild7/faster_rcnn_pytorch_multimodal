@@ -310,7 +310,7 @@ class waymo_imdb(db):
                 avg_elongation = float(img_labels['meta'][i]['avg_elongation'])
                 truncation     = float(img_labels['meta'][i]['trunc'])
                 return_ratio   = float(img_labels['meta'][i]['return_ratio'])
-                distance       = float(img_labels['box'][i]['xc'])
+                distance       = np.sqrt(np.power(float(img_labels['box'][i]['xc']),2) + np.power(float(img_labels['box'][i]['yc']),2) + np.power(float(img_labels['box'][i]['zc']),2))
             else:
                 avg_intensity  = 0
                 avg_elongation = 0

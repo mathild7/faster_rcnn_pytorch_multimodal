@@ -520,7 +520,7 @@ def write_all_annotations(cam):
         del sub_folders[calib_idx]
         seq_count = len(sub_folders)
 
-        for j, sequence in enumerate(sub_folders):
+        for sequence in sub_folders:
             drive_and_sequence = int(sequence)*100 + drive_dir.index(ddir)*10000
             if(sequence == 'calib'):
                 print('something very wrong has happened')
@@ -528,9 +528,11 @@ def write_all_annotations(cam):
             #    mode = 'val'
             #else:
             #    mode = 'train'
-            if(j in val_seq_sel[i]):
+            if(int(sequence) in val_seq_sel[i]):
                 mode = 'val'
+                print('val')
             else:
+                print('train')
                 mode = 'train'
             image_dir = os.path.join(data_dir,sequence, 'labeled','image_0' + cam, "data")
             seq_dir   = os.path.join(data_dir,sequence)

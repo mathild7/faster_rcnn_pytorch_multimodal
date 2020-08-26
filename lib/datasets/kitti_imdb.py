@@ -181,6 +181,9 @@ class kitti_imdb(db):
             y1 = float(label_arr[5])
             x2 = float(label_arr[6])
             y2 = float(label_arr[7])
+            x_c = float(label_arr[11])
+            y_c = float(label_arr[12])
+            z_c = float(label_arr[13])
             BBGT_height = y2 - y1
             trunc = float(label_arr[1])
             occ   = int(label_arr[2])
@@ -206,7 +209,7 @@ class kitti_imdb(db):
                 gt_occ[ix]   = occ
                 gt_ids[ix]   = int(index)*100 + ix
                 gt_diff[ix]  = diff
-                gt_dist[ix]  = float(label_arr[11])
+                gt_dist[ix]  = np.sqrt(np.power(x_c,2)+np.power(y_c,2)+np.power(z_c,2))
                 #if(diff == -1):
                 #    ignore[ix] = True
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes

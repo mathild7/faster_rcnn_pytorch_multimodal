@@ -164,6 +164,7 @@ class cadc_lidb(db):
         gt_ids     = np.zeros((num_objs), dtype=np.int16)
         gt_pts     = np.zeros((num_objs), dtype=np.int16)
         gt_alpha   = np.zeros((num_objs), dtype=np.float32)
+        gt_dist    = np.zeros((num_objs), dtype=np.float32)
         cat = []
         overlaps   = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
@@ -197,6 +198,7 @@ class cadc_lidb(db):
             y_c = float(label_arr[12])
             z_c = float(label_arr[13])
             heading = float(label_arr[14].replace('\n',''))
+            dist = np.sqrt(np.power(x_c,2) + np.power(y_c,2) + np.power(z_c,2))
             pts = int(label_arr[15])
             #Lock headings to be [pi/2, -pi/2)
             pi2 = float(np.pi/2.0)
@@ -206,7 +208,7 @@ class cadc_lidb(db):
             #if(heading <= -pi2):
             #    heading = heading + np.pi
             bbox = [x_c, y_c, z_c, l_x, w_y, h_z, heading]
-            if(x_c > 60):
+            if(dist > 60):
                 continue
             if(pts < 10):
                 continue
@@ -245,6 +247,7 @@ class cadc_lidb(db):
                 gt_alpha[ix] = alpha
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
+                gt_dist[ix]  = dist
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes
                 overlaps[ix, cls] = 1.0
                 seg_areas[ix] = 0
@@ -271,7 +274,7 @@ class cadc_lidb(db):
             'occ': gt_occ[0:ix],
             'pts': gt_pts[0:ix],
             'alpha': gt_alpha[0:ix],
-            'distance':boxes[0:ix,2],
+            'distance':gt_dist[0:ix],
             'difficulty': gt_diff[0:ix],
             'ids': gt_ids[0:ix],
             'cat': cat,

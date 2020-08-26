@@ -236,7 +236,7 @@ class kitti_lidb(db):
                 gt_classes[ix] = cls
                 gt_trunc[ix] = trunc
                 gt_occ[ix]   = occ
-                gt_dist[ix]  = x_c
+                gt_dist[ix]  = np.sqrt(np.power(x_c,2)+np.power(y_c,2)+np.power(z_c,2))
                 gt_diff[ix]  = diff
                 gt_ids[ix]   = int(index)*100 + ix
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes

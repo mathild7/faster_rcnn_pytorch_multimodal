@@ -1,0 +1,1154 @@
+Called with args:
+Namespace(cache_dir=None, cfg_file=None, data_dir='/home/mat/thesis/data2', db_name='waymo', dbval_name='voc_2007_test', en_aleatoric=0, en_epistemic=0, en_fpn=0, en_full_net=0, fixed_blocks=-1, iter=40, max_iters=400000, net='res101', net_type='lidar', preload=0, scale=1.0, set_cfgs=None, tag=None, train_batch_size=None, trainval_batch_size=None, uc_sort_type=None, weights_file=None)
+Using config:
+{'ANCHOR_RATIOS': [0.5, 1, 2],
+ 'ANCHOR_SCALES': [8, 16, 32],
+ 'CACHE_DIR': '',
+ 'CADC': {'IMG_SIZE': [624, 1280], 'LIDAR_MAX_RANGE': 200, 'MAX_FRAME': 10000},
+ 'DATA_DIR': '/home/mat/thesis/data2',
+ 'DB_NAME': 'waymo',
+ 'DEBUG': {'DRAW_ANCHORS': False,
+           'DRAW_ANCHOR_T': False,
+           'DRAW_MINIBATCH': False,
+           'DRAW_PROPOSAL_T': False,
+           'EN': False,
+           'EN_TEST_MSG': True,
+           'FREEZE_DB': False,
+           'FREEZE_DB_INDS': 3,
+           'PRINT_SCENE_RESULT': False,
+           'TEST_FRAME_PRINT': False},
+ 'ENABLE_CUSTOM_TAIL': False,
+ 'ENABLE_FULL_NET': False,
+ 'EXP_DIR': 'res101',
+ 'GRAD_MAX_CLIP': 20,
+ 'IMAGE': {'NUM_BBOX_ELEM': 4},
+ 'KITTI': {'IMG_SIZE': [375, 1242], 'LIDAR_MAX_RANGE': 120, 'MAX_FRAME': 10000},
+ 'LIDAR': {'ANCHORS': array([[4.73, 2.08, 1.77]]),
+           'ANCHOR_ANGLES': array([0.        , 1.57079633]),
+           'ANCHOR_SCALES': array([[1]]),
+           'EN_AUG_DROPOUT': True,
+           'EN_AUG_FLIPS': True,
+           'EN_AUG_GAUSS_DISTORT': True,
+           'EN_AUG_ROTATE': False,
+           'EN_AUG_SWAP_X_Y': True,
+           'EN_RY_SIN': True,
+           'EVAL_TYPE': 'bev',
+           'MAX_NUM_VOXEL': 25000,
+           'MAX_PTS_PER_VOXEL': 32,
+           'NUM_BBOX_ELEM': 7,
+           'NUM_CHANNEL': 15,
+           'NUM_META_CHANNEL': 3,
+           'NUM_SLICES': 12,
+           'REG_LOSS_WEIGHT': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+           'SHUFFLE_PC': False,
+           'VOXEL_HEIGHT': 0.5,
+           'VOXEL_LEN': 0.1,
+           'X_RANGE': [0, 70],
+           'Y_RANGE': [-40, 40],
+           'Z_RANGE': [-3, 3]},
+ 'MATLAB': 'matlab',
+ 'MAX_IMG_PER_SCENE': 1000,
+ 'MOBILENET': {'DEPTH_MULTIPLIER': 1.0,
+               'FIXED_LAYERS': 5,
+               'REGU_DEPTH': False,
+               'WEIGHT_DECAY': 4e-05},
+ 'NET_TYPE': 'lidar',
+ 'NUM_SCENES': 210,
+ 'PIXEL_ARRANGE': [0, 1, 2],
+ 'PIXEL_ARRANGE_BGR': [2, 1, 0],
+ 'PIXEL_MEANS': array([[[96.866, 98.76 , 93.85 ]]]),
+ 'PIXEL_STDDEVS': array([[[1, 1, 1]]]),
+ 'POOLING_MODE': 'align',
+ 'POOLING_SIZE': 7,
+ 'PRELOAD': False,
+ 'PRELOAD_FULL': False,
+ 'RESNET': {'FIXED_BLOCKS': -1, 'MAX_POOL': False},
+ 'RNG_SEED': 3,
+ 'ROOT_DIR': '/home/mat/thesis/faster_rcnn_pytorch_multimodal',
+ 'RPN_CHANNELS': 512,
+ 'SCALE_LOC': 6,
+ 'TEST': {'AUGMENT_EN': False,
+          'BBOX_REG': True,
+          'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+          'DROPOUT_EN': False,
+          'EN_AUX_FEATURES': False,
+          'HAS_RPN': True,
+          'IGNORE_DC': False,
+          'ITER': 1,
+          'MODE': 'nms',
+          'NMS_THRESH': 0.1,
+          'PROPOSAL_METHOD': 'gt',
+          'RAIN_RATE': 15,
+          'RAIN_SIM_EN': False,
+          'RPN_NMS_THRESH': 0.7,
+          'RPN_POST_NMS_TOP_N': 300,
+          'RPN_PRE_NMS_TOP_N': 6000,
+          'RPN_TOP_N': 5000,
+          'SCALES': [1.0],
+          'SVM': False,
+          'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk']},
+ 'TRAIN': {'AUGMENT_EN': True,
+           'BATCH_SIZE': 16,
+           'BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'BBOX_NORMALIZE_TARGETS': True,
+           'BBOX_NORMALIZE_TARGETS_PRECOMPUTED': True,
+           'BBOX_REG': True,
+           'BG_THRESH_HI': 0.5,
+           'BG_THRESH_LO': 0.0,
+           'BIAS_DECAY': False,
+           'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+           'DC_THRESH': 0.5,
+           'DISPLAY': 512,
+           'DOUBLE_BIAS': False,
+           'DRAW_ROIDB_GEN': False,
+           'DRAW_VAL_DETECTIONS': True,
+           'FG_FRACTION': 0.25,
+           'FG_THRESH': 0.6,
+           'FRAMES_PER_BATCH': 1,
+           'GAMMA': 0.1,
+           'HAS_RPN': True,
+           'IGNORE_DC': False,
+           'IMAGE': {'BBOX_NORMALIZE_MEANS': [0.0, 0.0, 0.0, 0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1, 0.1, 0.2, 0.2]},
+           'ITER': 40,
+           'LEARNING_RATE': 0.02,
+           'LIDAR': {'BBOX_NORMALIZE_MEANS': [0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1,
+                                             0.1,
+                                             0.1,
+                                             0.2,
+                                             0.2,
+                                             0.2,
+                                             1.0]},
+           'MOMENTUM': 0.5,
+           'PROPOSAL_METHOD': 'gt',
+           'ROI_BATCH_SIZE': 256,
+           'RPN_BATCHSIZE': 256,
+           'RPN_BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'RPN_CLOBBER_POSITIVES': False,
+           'RPN_FG_FRACTION': 0.5,
+           'RPN_NEGATIVE_OVERLAP': 0.3,
+           'RPN_NMS_THRESH': 0.7,
+           'RPN_POSITIVE_OVERLAP': 0.7,
+           'RPN_POSITIVE_WEIGHT': -1.0,
+           'RPN_POST_NMS_TOP_N': 2000,
+           'RPN_PRE_NMS_TOP_N': 12000,
+           'SCALES': [1.0],
+           'SNAPSHOT_ITERS': 5000,
+           'SNAPSHOT_KEPT': 30,
+           'SNAPSHOT_PREFIX': 'res101_faster_rcnn',
+           'STEPSIZE': [70000, 140000, 210000],
+           'SUMMARY_INTERVAL': 15,
+           'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk'],
+           'TRUNCATED': False,
+           'USE_ALL_GT': False,
+           'USE_FLIPPED': True,
+           'USE_GT': False,
+           'VAL_AUGMENT_EN': False,
+           'VAL_BATCH_SIZE': 32,
+           'WEIGHT_DECAY': 0.0001},
+ 'UC': {'A_NUM_BBOX_SAMPLE': 200,
+        'A_NUM_CE_SAMPLE': 200,
+        'EN_BBOX_ALEATORIC': False,
+        'EN_BBOX_EPISTEMIC': False,
+        'EN_BBOX_EPISTEMIC_INV_TRANSFORM': False,
+        'EN_CLS_ALEATORIC': False,
+        'EN_CLS_EPISTEMIC': False,
+        'EN_RPN_BBOX_ALEATORIC': False,
+        'EN_RPN_BBOX_EPISTEMIC': False,
+        'EN_RPN_CLS_ALEATORIC': False,
+        'EN_RPN_CLS_EPISTEMIC': False,
+        'E_NUM_SAMPLE': 100,
+        'SORT_TYPE': ''},
+ 'USE_FPN': False,
+ 'USE_GPU_NMS': True,
+ 'USE_LIDAR_FPN': False,
+ 'WAYMO': {'LIDAR_MAX_RANGE': 200}}
+db mode: train
+Loaded dataset `waymo` for training
+Set proposal method: gt
+getting ROIDB Ready for mode train
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_train_lidar_gt_roidb.pkl
+getting ROIDB Ready for mode val
+removing pc 0007150 with no GT boxes specified
+removing pc 0007155 with no GT boxes specified
+removing pc 0007160 with no GT boxes specified
+removing pc 0007165 with no GT boxes specified
+removing pc 0007170 with no GT boxes specified
+removing pc 0007175 with no GT boxes specified
+removing pc 0007180 with no GT boxes specified
+removing pc 0007185 with no GT boxes specified
+removing pc 0007190 with no GT boxes specified
+removing pc 0007195 with no GT boxes specified
+removing pc 0008000 with no GT boxes specified
+removing pc 0008005 with no GT boxes specified
+removing pc 0008010 with no GT boxes specified
+removing pc 0008015 with no GT boxes specified
+removing pc 0008020 with no GT boxes specified
+removing pc 0008025 with no GT boxes specified
+removing pc 0008185 with no GT boxes specified
+removing pc 0008190 with no GT boxes specified
+removing pc 0008195 with no GT boxes specified
+removing pc 0009000 with no GT boxes specified
+removing pc 0009005 with no GT boxes specified
+removing pc 0009010 with no GT boxes specified
+removing pc 0009030 with no GT boxes specified
+removing pc 0009035 with no GT boxes specified
+removing pc 0009040 with no GT boxes specified
+removing pc 0009175 with no GT boxes specified
+removing pc 0009180 with no GT boxes specified
+removing pc 0009185 with no GT boxes specified
+removing pc 0019000 with no GT boxes specified
+removing pc 0019005 with no GT boxes specified
+removing pc 0038010 with no GT boxes specified
+removing pc 0038015 with no GT boxes specified
+removing pc 0038020 with no GT boxes specified
+removing pc 0038025 with no GT boxes specified
+removing pc 0038030 with no GT boxes specified
+removing pc 0038035 with no GT boxes specified
+removing pc 0038040 with no GT boxes specified
+removing pc 0038045 with no GT boxes specified
+removing pc 0038050 with no GT boxes specified
+removing pc 0040060 with no GT boxes specified
+removing pc 0040065 with no GT boxes specified
+removing pc 0040070 with no GT boxes specified
+removing pc 0040075 with no GT boxes specified
+removing pc 0046170 with no GT boxes specified
+removing pc 0047000 with no GT boxes specified
+removing pc 0062000 with no GT boxes specified
+removing pc 0062005 with no GT boxes specified
+removing pc 0062010 with no GT boxes specified
+removing pc 0062015 with no GT boxes specified
+removing pc 0062020 with no GT boxes specified
+removing pc 0062025 with no GT boxes specified
+removing pc 0062030 with no GT boxes specified
+removing pc 0062035 with no GT boxes specified
+removing pc 0062040 with no GT boxes specified
+removing pc 0062045 with no GT boxes specified
+removing pc 0062050 with no GT boxes specified
+removing pc 0062055 with no GT boxes specified
+removing pc 0062060 with no GT boxes specified
+removing pc 0062065 with no GT boxes specified
+removing pc 0062070 with no GT boxes specified
+removing pc 0062075 with no GT boxes specified
+removing pc 0063115 with no GT boxes specified
+removing pc 0063120 with no GT boxes specified
+removing pc 0063125 with no GT boxes specified
+removing pc 0063130 with no GT boxes specified
+removing pc 0063135 with no GT boxes specified
+removing pc 0063140 with no GT boxes specified
+removing pc 0063145 with no GT boxes specified
+removing pc 0063150 with no GT boxes specified
+removing pc 0063155 with no GT boxes specified
+removing pc 0063165 with no GT boxes specified
+removing pc 0063170 with no GT boxes specified
+removing pc 0063175 with no GT boxes specified
+removing pc 0063180 with no GT boxes specified
+removing pc 0068160 with no GT boxes specified
+removing pc 0068165 with no GT boxes specified
+removing pc 0068170 with no GT boxes specified
+removing pc 0068175 with no GT boxes specified
+removing pc 0068180 with no GT boxes specified
+removing pc 0068185 with no GT boxes specified
+removing pc 0070000 with no GT boxes specified
+removing pc 0070005 with no GT boxes specified
+removing pc 0070010 with no GT boxes specified
+removing pc 0070015 with no GT boxes specified
+removing pc 0070055 with no GT boxes specified
+removing pc 0070075 with no GT boxes specified
+removing pc 0070080 with no GT boxes specified
+removing pc 0070085 with no GT boxes specified
+removing pc 0070090 with no GT boxes specified
+removing pc 0070115 with no GT boxes specified
+removing pc 0071015 with no GT boxes specified
+removing pc 0071020 with no GT boxes specified
+removing pc 0071025 with no GT boxes specified
+removing pc 0071030 with no GT boxes specified
+removing pc 0071035 with no GT boxes specified
+removing pc 0071040 with no GT boxes specified
+removing pc 0071045 with no GT boxes specified
+removing pc 0071050 with no GT boxes specified
+removing pc 0071055 with no GT boxes specified
+removing pc 0071060 with no GT boxes specified
+removing pc 0071065 with no GT boxes specified
+removing pc 0071070 with no GT boxes specified
+removing pc 0071075 with no GT boxes specified
+removing pc 0071080 with no GT boxes specified
+removing pc 0071085 with no GT boxes specified
+removing pc 0071090 with no GT boxes specified
+removing pc 0071095 with no GT boxes specified
+removing pc 0071100 with no GT boxes specified
+removing pc 0071105 with no GT boxes specified
+removing pc 0071110 with no GT boxes specified
+removing pc 0071115 with no GT boxes specified
+removing pc 0072000 with no GT boxes specified
+removing pc 0072005 with no GT boxes specified
+removing pc 0072010 with no GT boxes specified
+removing pc 0072015 with no GT boxes specified
+removing pc 0072070 with no GT boxes specified
+removing pc 0072075 with no GT boxes specified
+removing pc 0072080 with no GT boxes specified
+removing pc 0072085 with no GT boxes specified
+removing pc 0072090 with no GT boxes specified
+removing pc 0072095 with no GT boxes specified
+removing pc 0072100 with no GT boxes specified
+removing pc 0072105 with no GT boxes specified
+removing pc 0072110 with no GT boxes specified
+removing pc 0072115 with no GT boxes specified
+removing pc 0074070 with no GT boxes specified
+removing pc 0074075 with no GT boxes specified
+removing pc 0074080 with no GT boxes specified
+removing pc 0074085 with no GT boxes specified
+removing pc 0074090 with no GT boxes specified
+removing pc 0074095 with no GT boxes specified
+removing pc 0074100 with no GT boxes specified
+removing pc 0074105 with no GT boxes specified
+removing pc 0074110 with no GT boxes specified
+removing pc 0074115 with no GT boxes specified
+removing pc 0074120 with no GT boxes specified
+removing pc 0074125 with no GT boxes specified
+removing pc 0074130 with no GT boxes specified
+removing pc 0074135 with no GT boxes specified
+removing pc 0074140 with no GT boxes specified
+removing pc 0074145 with no GT boxes specified
+removing pc 0074150 with no GT boxes specified
+removing pc 0074155 with no GT boxes specified
+removing pc 0074160 with no GT boxes specified
+removing pc 0074165 with no GT boxes specified
+removing pc 0074195 with no GT boxes specified
+removing pc 0081165 with no GT boxes specified
+removing pc 0081185 with no GT boxes specified
+removing pc 0081190 with no GT boxes specified
+removing pc 0081195 with no GT boxes specified
+removing pc 0084000 with no GT boxes specified
+removing pc 0084005 with no GT boxes specified
+removing pc 0084010 with no GT boxes specified
+removing pc 0084015 with no GT boxes specified
+removing pc 0084020 with no GT boxes specified
+removing pc 0084025 with no GT boxes specified
+removing pc 0084030 with no GT boxes specified
+removing pc 0084035 with no GT boxes specified
+removing pc 0084040 with no GT boxes specified
+removing pc 0084045 with no GT boxes specified
+removing pc 0084050 with no GT boxes specified
+removing pc 0084055 with no GT boxes specified
+removing pc 0084060 with no GT boxes specified
+removing pc 0084065 with no GT boxes specified
+removing pc 0094025 with no GT boxes specified
+removing pc 0094030 with no GT boxes specified
+removing pc 0094035 with no GT boxes specified
+removing pc 0094040 with no GT boxes specified
+removing pc 0094045 with no GT boxes specified
+removing pc 0094050 with no GT boxes specified
+removing pc 0094055 with no GT boxes specified
+removing pc 0094060 with no GT boxes specified
+removing pc 0094065 with no GT boxes specified
+removing pc 0094070 with no GT boxes specified
+removing pc 0094075 with no GT boxes specified
+removing pc 0094080 with no GT boxes specified
+removing pc 0094085 with no GT boxes specified
+removing pc 0094090 with no GT boxes specified
+removing pc 0094095 with no GT boxes specified
+removing pc 0094100 with no GT boxes specified
+removing pc 0094105 with no GT boxes specified
+removing pc 0094110 with no GT boxes specified
+removing pc 0094115 with no GT boxes specified
+removing pc 0094120 with no GT boxes specified
+removing pc 0094125 with no GT boxes specified
+removing pc 0094130 with no GT boxes specified
+removing pc 0094135 with no GT boxes specified
+removing pc 0094140 with no GT boxes specified
+removing pc 0094145 with no GT boxes specified
+removing pc 0094150 with no GT boxes specified
+removing pc 0094155 with no GT boxes specified
+removing pc 0094160 with no GT boxes specified
+removing pc 0094165 with no GT boxes specified
+removing pc 0094170 with no GT boxes specified
+removing pc 0094175 with no GT boxes specified
+removing pc 0094180 with no GT boxes specified
+removing pc 0094185 with no GT boxes specified
+removing pc 0094190 with no GT boxes specified
+removing pc 0094195 with no GT boxes specified
+removing pc 0097000 with no GT boxes specified
+removing pc 0097100 with no GT boxes specified
+removing pc 0097105 with no GT boxes specified
+removing pc 0101025 with no GT boxes specified
+removing pc 0101030 with no GT boxes specified
+removing pc 0101035 with no GT boxes specified
+removing pc 0101040 with no GT boxes specified
+removing pc 0101045 with no GT boxes specified
+removing pc 0101050 with no GT boxes specified
+removing pc 0101055 with no GT boxes specified
+removing pc 0101060 with no GT boxes specified
+removing pc 0101065 with no GT boxes specified
+removing pc 0101070 with no GT boxes specified
+removing pc 0101075 with no GT boxes specified
+removing pc 0101080 with no GT boxes specified
+removing pc 0101100 with no GT boxes specified
+removing pc 0101120 with no GT boxes specified
+removing pc 0101125 with no GT boxes specified
+removing pc 0101130 with no GT boxes specified
+removing pc 0101135 with no GT boxes specified
+removing pc 0101140 with no GT boxes specified
+removing pc 0103000 with no GT boxes specified
+removing pc 0103005 with no GT boxes specified
+removing pc 0103010 with no GT boxes specified
+removing pc 0103015 with no GT boxes specified
+removing pc 0103020 with no GT boxes specified
+removing pc 0103025 with no GT boxes specified
+removing pc 0103030 with no GT boxes specified
+removing pc 0103035 with no GT boxes specified
+removing pc 0103060 with no GT boxes specified
+removing pc 0103065 with no GT boxes specified
+removing pc 0103070 with no GT boxes specified
+removing pc 0103075 with no GT boxes specified
+removing pc 0103080 with no GT boxes specified
+removing pc 0103085 with no GT boxes specified
+removing pc 0103090 with no GT boxes specified
+removing pc 0103095 with no GT boxes specified
+removing pc 0103100 with no GT boxes specified
+removing pc 0103105 with no GT boxes specified
+removing pc 0103110 with no GT boxes specified
+removing pc 0103115 with no GT boxes specified
+removing pc 0103120 with no GT boxes specified
+removing pc 0103125 with no GT boxes specified
+removing pc 0103130 with no GT boxes specified
+removing pc 0103185 with no GT boxes specified
+removing pc 0103190 with no GT boxes specified
+removing pc 0103195 with no GT boxes specified
+removing pc 0105005 with no GT boxes specified
+removing pc 0105010 with no GT boxes specified
+removing pc 0105015 with no GT boxes specified
+removing pc 0109190 with no GT boxes specified
+removing pc 0109195 with no GT boxes specified
+removing pc 0110020 with no GT boxes specified
+removing pc 0110025 with no GT boxes specified
+removing pc 0110030 with no GT boxes specified
+removing pc 0110035 with no GT boxes specified
+removing pc 0110040 with no GT boxes specified
+removing pc 0110045 with no GT boxes specified
+removing pc 0110050 with no GT boxes specified
+removing pc 0112155 with no GT boxes specified
+removing pc 0112160 with no GT boxes specified
+removing pc 0112165 with no GT boxes specified
+removing pc 0112170 with no GT boxes specified
+removing pc 0117095 with no GT boxes specified
+removing pc 0117150 with no GT boxes specified
+removing pc 0117155 with no GT boxes specified
+removing pc 0117160 with no GT boxes specified
+removing pc 0117165 with no GT boxes specified
+removing pc 0117170 with no GT boxes specified
+removing pc 0117175 with no GT boxes specified
+removing pc 0117180 with no GT boxes specified
+removing pc 0117185 with no GT boxes specified
+removing pc 0117190 with no GT boxes specified
+removing pc 0117195 with no GT boxes specified
+removing pc 0118045 with no GT boxes specified
+removing pc 0118050 with no GT boxes specified
+removing pc 0118105 with no GT boxes specified
+removing pc 0118110 with no GT boxes specified
+removing pc 0118115 with no GT boxes specified
+removing pc 0118120 with no GT boxes specified
+removing pc 0118125 with no GT boxes specified
+removing pc 0118130 with no GT boxes specified
+removing pc 0118135 with no GT boxes specified
+removing pc 0118140 with no GT boxes specified
+removing pc 0118145 with no GT boxes specified
+removing pc 0118150 with no GT boxes specified
+removing pc 0118155 with no GT boxes specified
+removing pc 0119045 with no GT boxes specified
+removing pc 0119080 with no GT boxes specified
+removing pc 0119085 with no GT boxes specified
+removing pc 0119090 with no GT boxes specified
+removing pc 0119095 with no GT boxes specified
+removing pc 0119100 with no GT boxes specified
+removing pc 0119105 with no GT boxes specified
+removing pc 0119110 with no GT boxes specified
+removing pc 0119115 with no GT boxes specified
+removing pc 0119120 with no GT boxes specified
+removing pc 0119125 with no GT boxes specified
+removing pc 0119130 with no GT boxes specified
+removing pc 0119135 with no GT boxes specified
+removing pc 0119140 with no GT boxes specified
+removing pc 0119195 with no GT boxes specified
+removing pc 0122000 with no GT boxes specified
+removing pc 0122005 with no GT boxes specified
+removing pc 0122010 with no GT boxes specified
+removing pc 0122015 with no GT boxes specified
+removing pc 0122020 with no GT boxes specified
+removing pc 0122025 with no GT boxes specified
+removing pc 0125005 with no GT boxes specified
+removing pc 0125010 with no GT boxes specified
+removing pc 0125185 with no GT boxes specified
+removing pc 0125190 with no GT boxes specified
+removing pc 0125195 with no GT boxes specified
+removing pc 0129000 with no GT boxes specified
+removing pc 0129005 with no GT boxes specified
+removing pc 0129010 with no GT boxes specified
+removing pc 0129015 with no GT boxes specified
+removing pc 0129020 with no GT boxes specified
+removing pc 0129025 with no GT boxes specified
+removing pc 0129030 with no GT boxes specified
+removing pc 0129035 with no GT boxes specified
+removing pc 0129040 with no GT boxes specified
+removing pc 0129045 with no GT boxes specified
+removing pc 0129050 with no GT boxes specified
+removing pc 0129055 with no GT boxes specified
+removing pc 0129060 with no GT boxes specified
+removing pc 0129065 with no GT boxes specified
+removing pc 0129095 with no GT boxes specified
+removing pc 0129100 with no GT boxes specified
+removing pc 0129130 with no GT boxes specified
+removing pc 0129135 with no GT boxes specified
+removing pc 0129140 with no GT boxes specified
+removing pc 0129145 with no GT boxes specified
+removing pc 0129175 with no GT boxes specified
+removing pc 0129180 with no GT boxes specified
+removing pc 0129185 with no GT boxes specified
+removing pc 0129190 with no GT boxes specified
+removing pc 0129195 with no GT boxes specified
+removing pc 0133165 with no GT boxes specified
+removing pc 0133170 with no GT boxes specified
+removing pc 0133175 with no GT boxes specified
+removing pc 0135000 with no GT boxes specified
+removing pc 0139000 with no GT boxes specified
+removing pc 0139005 with no GT boxes specified
+removing pc 0139010 with no GT boxes specified
+removing pc 0139015 with no GT boxes specified
+removing pc 0139020 with no GT boxes specified
+removing pc 0139025 with no GT boxes specified
+removing pc 0139030 with no GT boxes specified
+removing pc 0139035 with no GT boxes specified
+removing pc 0139040 with no GT boxes specified
+removing pc 0145090 with no GT boxes specified
+removing pc 0145095 with no GT boxes specified
+removing pc 0145100 with no GT boxes specified
+removing pc 0145105 with no GT boxes specified
+removing pc 0145110 with no GT boxes specified
+removing pc 0145115 with no GT boxes specified
+removing pc 0145120 with no GT boxes specified
+removing pc 0145125 with no GT boxes specified
+removing pc 0145130 with no GT boxes specified
+removing pc 0145135 with no GT boxes specified
+removing pc 0145140 with no GT boxes specified
+removing pc 0145145 with no GT boxes specified
+removing pc 0145150 with no GT boxes specified
+removing pc 0145155 with no GT boxes specified
+removing pc 0145160 with no GT boxes specified
+removing pc 0145165 with no GT boxes specified
+removing pc 0145170 with no GT boxes specified
+removing pc 0145175 with no GT boxes specified
+removing pc 0145180 with no GT boxes specified
+removing pc 0145185 with no GT boxes specified
+removing pc 0145190 with no GT boxes specified
+removing pc 0145195 with no GT boxes specified
+removing pc 0151065 with no GT boxes specified
+removing pc 0151070 with no GT boxes specified
+removing pc 0151075 with no GT boxes specified
+removing pc 0151080 with no GT boxes specified
+removing pc 0151090 with no GT boxes specified
+removing pc 0151095 with no GT boxes specified
+removing pc 0151100 with no GT boxes specified
+removing pc 0151135 with no GT boxes specified
+removing pc 0151140 with no GT boxes specified
+removing pc 0151145 with no GT boxes specified
+removing pc 0151180 with no GT boxes specified
+removing pc 0151185 with no GT boxes specified
+removing pc 0151190 with no GT boxes specified
+removing pc 0151195 with no GT boxes specified
+removing pc 0159085 with no GT boxes specified
+removing pc 0159090 with no GT boxes specified
+removing pc 0159095 with no GT boxes specified
+removing pc 0159100 with no GT boxes specified
+removing pc 0159105 with no GT boxes specified
+removing pc 0168020 with no GT boxes specified
+removing pc 0168025 with no GT boxes specified
+removing pc 0168030 with no GT boxes specified
+removing pc 0168155 with no GT boxes specified
+removing pc 0168160 with no GT boxes specified
+removing pc 0168165 with no GT boxes specified
+removing pc 0168170 with no GT boxes specified
+removing pc 0168175 with no GT boxes specified
+removing pc 0168180 with no GT boxes specified
+removing pc 0172000 with no GT boxes specified
+removing pc 0172005 with no GT boxes specified
+removing pc 0180190 with no GT boxes specified
+removing pc 0180195 with no GT boxes specified
+removing pc 0185055 with no GT boxes specified
+removing pc 0185060 with no GT boxes specified
+removing pc 0185065 with no GT boxes specified
+removing pc 0185105 with no GT boxes specified
+removing pc 0185155 with no GT boxes specified
+removing pc 0185160 with no GT boxes specified
+removing pc 0185165 with no GT boxes specified
+removing pc 0185170 with no GT boxes specified
+removing pc 0185175 with no GT boxes specified
+removing pc 0185180 with no GT boxes specified
+removing pc 0185185 with no GT boxes specified
+removing pc 0185190 with no GT boxes specified
+removing pc 0185195 with no GT boxes specified
+removing pc 0191000 with no GT boxes specified
+removing pc 0191005 with no GT boxes specified
+removing pc 0191010 with no GT boxes specified
+removing pc 0191015 with no GT boxes specified
+removing pc 0191020 with no GT boxes specified
+removing pc 0191025 with no GT boxes specified
+removing pc 0191030 with no GT boxes specified
+removing pc 0191035 with no GT boxes specified
+removing pc 0191040 with no GT boxes specified
+removing pc 0191045 with no GT boxes specified
+removing pc 0191050 with no GT boxes specified
+removing pc 0191055 with no GT boxes specified
+removing pc 0191060 with no GT boxes specified
+removing pc 0191065 with no GT boxes specified
+removing pc 0191070 with no GT boxes specified
+removing pc 0191075 with no GT boxes specified
+removing pc 0191080 with no GT boxes specified
+removing pc 0191085 with no GT boxes specified
+removing pc 0191135 with no GT boxes specified
+removing pc 0191140 with no GT boxes specified
+removing pc 0191145 with no GT boxes specified
+removing pc 0193045 with no GT boxes specified
+removing pc 0193050 with no GT boxes specified
+removing pc 0193055 with no GT boxes specified
+removing pc 0193060 with no GT boxes specified
+removing pc 0193065 with no GT boxes specified
+removing pc 0193070 with no GT boxes specified
+removing pc 0193075 with no GT boxes specified
+removing pc 0193080 with no GT boxes specified
+removing pc 0193130 with no GT boxes specified
+removing pc 0193135 with no GT boxes specified
+removing pc 0193140 with no GT boxes specified
+removing pc 0193180 with no GT boxes specified
+removing pc 0193185 with no GT boxes specified
+removing pc 0193190 with no GT boxes specified
+removing pc 0193195 with no GT boxes specified
+removing pc 0196000 with no GT boxes specified
+removing pc 0196005 with no GT boxes specified
+removing pc 0196010 with no GT boxes specified
+removing pc 0196015 with no GT boxes specified
+removing pc 0196020 with no GT boxes specified
+removing pc 0198000 with no GT boxes specified
+removing pc 0198005 with no GT boxes specified
+removing pc 0198010 with no GT boxes specified
+removing pc 0198015 with no GT boxes specified
+removing pc 0198020 with no GT boxes specified
+removing pc 0198025 with no GT boxes specified
+removing pc 0198030 with no GT boxes specified
+removing pc 0198035 with no GT boxes specified
+removing pc 0198040 with no GT boxes specified
+removing pc 0198045 with no GT boxes specified
+removing pc 0198050 with no GT boxes specified
+removing pc 0198055 with no GT boxes specified
+removing pc 0198060 with no GT boxes specified
+removing pc 0198065 with no GT boxes specified
+removing pc 0198070 with no GT boxes specified
+removing pc 0198075 with no GT boxes specified
+removing pc 0198080 with no GT boxes specified
+removing pc 0198085 with no GT boxes specified
+removing pc 0198090 with no GT boxes specified
+removing pc 0198095 with no GT boxes specified
+removing pc 0198100 with no GT boxes specified
+removing pc 0198105 with no GT boxes specified
+removing pc 0198110 with no GT boxes specified
+removing pc 0198115 with no GT boxes specified
+removing pc 0198120 with no GT boxes specified
+removing pc 0198125 with no GT boxes specified
+removing pc 0198130 with no GT boxes specified
+removing pc 0198135 with no GT boxes specified
+removing pc 0198140 with no GT boxes specified
+removing pc 0198145 with no GT boxes specified
+removing pc 0198150 with no GT boxes specified
+removing pc 0198155 with no GT boxes specified
+removing pc 0198160 with no GT boxes specified
+removing pc 0198165 with no GT boxes specified
+removing pc 0198170 with no GT boxes specified
+removing pc 0198175 with no GT boxes specified
+removing pc 0198180 with no GT boxes specified
+removing pc 0198185 with no GT boxes specified
+removing pc 0198190 with no GT boxes specified
+removing pc 0198195 with no GT boxes specified
+removing pc 0201000 with no GT boxes specified
+removing pc 0201005 with no GT boxes specified
+removing pc 0201010 with no GT boxes specified
+removing pc 0201015 with no GT boxes specified
+removing pc 0201020 with no GT boxes specified
+removing pc 0201025 with no GT boxes specified
+removing pc 0201030 with no GT boxes specified
+removing pc 0201075 with no GT boxes specified
+removing pc 0201080 with no GT boxes specified
+removing pc 0201145 with no GT boxes specified
+removing pc 0201150 with no GT boxes specified
+wrote gt roidb to /home/mat/thesis/data2/waymo/cache/waymo_val_lidar_gt_roidb.pkl
+75654 roidb entries
+7560 val roidb entries
+Output will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40`
+TensorFlow summaries will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/tensorboard/res101/waymo/lidar_rpn_only_train_all_40`
+db: waymo
+Solving...
+initializing model from scratch
+Loaded.
+data generator starting up
+data generator starting up
+performing summary at iteration: 256
+performing summary at iteration: 512
+speed: 0.365s / iter
+data_gen timer: 0.261s / iter
+performing summary at iteration: 768
+performing summary at iteration: 1024
+speed: 0.380s / iter
+data_gen timer: 0.205s / iter
+performing summary at iteration: 1280
+performing summary at iteration: 1536
+speed: 0.390s / iter
+data_gen timer: 0.169s / iter
+performing summary at iteration: 1792
+performing summary at iteration: 2048
+speed: 0.394s / iter
+data_gen timer: 0.152s / iter
+performing summary at iteration: 2304
+performing summary at iteration: 2560
+speed: 0.396s / iter
+data_gen timer: 0.144s / iter
+performing summary at iteration: 2816
+performing summary at iteration: 3072
+speed: 0.398s / iter
+data_gen timer: 0.138s / iter
+performing summary at iteration: 3328
+performing summary at iteration: 3584
+speed: 0.399s / iter
+data_gen timer: 0.133s / iter
+performing summary at iteration: 3840
+performing summary at iteration: 4096
+speed: 0.401s / iter
+data_gen timer: 0.131s / iter
+performing summary at iteration: 4352
+performing summary at iteration: 4608
+speed: 0.401s / iter
+data_gen timer: 0.130s / iter
+performing summary at iteration: 4864
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5000_0050090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5001_0149115.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5002_0036140.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5003_0046085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5004_0183085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5005_0031085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5006_0042155.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5007_0059030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5008_0003000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5009_0009080.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5010_0132070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5011_0109070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5012_0019030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5013_0030140.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5014_0134120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5015_0193040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5016_0179070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5017_0012035.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5018_0082125.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5019_0060065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5020_0034020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5021_0152055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5022_0188110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5023_0184180.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5024_0174085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5025_0069085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5026_0156160.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5027_0147090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5028_0114040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5029_0165040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5030_0086120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_5031_0033100.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_5000.pth
+saving at 32 [1967 5600 1434 ... 1790 1927  522]
+saving at 5007 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 5120
+speed: 0.412s / iter
+data_gen timer: 0.127s / iter
+performing summary at iteration: 5376
+performing summary at iteration: 5632
+speed: 0.411s / iter
+data_gen timer: 0.124s / iter
+performing summary at iteration: 5888
+performing summary at iteration: 6144
+speed: 0.410s / iter
+data_gen timer: 0.125s / iter
+performing summary at iteration: 6400
+performing summary at iteration: 6656
+speed: 0.410s / iter
+data_gen timer: 0.122s / iter
+performing summary at iteration: 6912
+performing summary at iteration: 7168
+speed: 0.409s / iter
+data_gen timer: 0.125s / iter
+performing summary at iteration: 7424
+performing summary at iteration: 7680
+speed: 0.409s / iter
+data_gen timer: 0.125s / iter
+performing summary at iteration: 7936
+performing summary at iteration: 8192
+speed: 0.409s / iter
+data_gen timer: 0.123s / iter
+performing summary at iteration: 8448
+performing summary at iteration: 8704
+speed: 0.409s / iter
+data_gen timer: 0.124s / iter
+performing summary at iteration: 8960
+performing summary at iteration: 9216
+speed: 0.409s / iter
+data_gen timer: 0.126s / iter
+performing summary at iteration: 9472
+performing summary at iteration: 9728
+speed: 0.408s / iter
+data_gen timer: 0.126s / iter
+performing summary at iteration: 9984
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10000_0054180.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10001_0001030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10002_0114105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10003_0066145.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10004_0112015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10005_0010040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10006_0051090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10007_0023070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10008_0035175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10009_0099075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10010_0151015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10011_0023050.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10012_0003130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10013_0045075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10014_0090060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10015_0001015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10016_0028035.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10017_0050075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10018_0049140.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10019_0131070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10020_0034140.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10021_0088060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10022_0121130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10023_0188045.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10024_0134125.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10025_0116090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10026_0152075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10027_0019025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10028_0048040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10029_0076040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10030_0082045.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_10031_0056080.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_10000.pth
+saving at 64 [1967 5600 1434 ... 1790 1927  522]
+saving at 10011 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 10240
+speed: 0.413s / iter
+data_gen timer: 0.127s / iter
+performing summary at iteration: 10496
+performing summary at iteration: 10752
+speed: 0.412s / iter
+data_gen timer: 0.128s / iter
+performing summary at iteration: 11008
+performing summary at iteration: 11264
+speed: 0.412s / iter
+data_gen timer: 0.128s / iter
+performing summary at iteration: 11520
+performing summary at iteration: 11776
+speed: 0.411s / iter
+data_gen timer: 0.129s / iter
+performing summary at iteration: 12032
+performing summary at iteration: 12288
+speed: 0.411s / iter
+data_gen timer: 0.129s / iter
+performing summary at iteration: 12544
+performing summary at iteration: 12800
+speed: 0.410s / iter
+data_gen timer: 0.131s / iter
+performing summary at iteration: 13056
+performing summary at iteration: 13312
+speed: 0.409s / iter
+data_gen timer: 0.132s / iter
+performing summary at iteration: 13568
+performing summary at iteration: 13824
+speed: 0.409s / iter
+data_gen timer: 0.132s / iter
+performing summary at iteration: 14080
+performing summary at iteration: 14336
+speed: 0.409s / iter
+data_gen timer: 0.132s / iter
+performing summary at iteration: 14592
+performing summary at iteration: 14848
+speed: 0.410s / iter
+data_gen timer: 0.129s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15000_0128075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15001_0085070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15002_0002020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15003_0061175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15004_0028100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15005_0005130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15006_0015055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15007_0163075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15008_0006015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15009_0019060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15010_0158025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15011_0079055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15012_0078190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15013_0137080.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15014_0056005.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15015_0191165.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15016_0049040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15017_0056075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15018_0056190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15019_0059105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15020_0009015.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15021_0062115.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15022_0190000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15023_0044190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15024_0055025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15025_0135005.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15026_0067050.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15027_0051040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15028_0017125.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15029_0090105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15030_0117000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_15031_0170110.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_15000.pth
+saving at 96 [1967 5600 1434 ... 1790 1927  522]
+saving at 15018 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 15104
+performing summary at iteration: 15360
+speed: 0.414s / iter
+data_gen timer: 0.126s / iter
+performing summary at iteration: 15616
+performing summary at iteration: 15872
+speed: 0.415s / iter
+data_gen timer: 0.124s / iter
+performing summary at iteration: 16128
+performing summary at iteration: 16384
+speed: 0.416s / iter
+data_gen timer: 0.122s / iter
+performing summary at iteration: 16640
+performing summary at iteration: 16896
+speed: 0.417s / iter
+data_gen timer: 0.120s / iter
+performing summary at iteration: 17152
+performing summary at iteration: 17408
+speed: 0.419s / iter
+data_gen timer: 0.118s / iter
+performing summary at iteration: 17664
+performing summary at iteration: 17920
+speed: 0.420s / iter
+data_gen timer: 0.117s / iter
+performing summary at iteration: 18176
+performing summary at iteration: 18432
+speed: 0.421s / iter
+data_gen timer: 0.115s / iter
+performing summary at iteration: 18688
+performing summary at iteration: 18944
+speed: 0.421s / iter
+data_gen timer: 0.114s / iter
+performing summary at iteration: 19200
+performing summary at iteration: 19456
+speed: 0.422s / iter
+data_gen timer: 0.112s / iter
+performing summary at iteration: 19712
+performing summary at iteration: 19968
+speed: 0.422s / iter
+data_gen timer: 0.112s / iter
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20000_0104030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20001_0087000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20002_0035110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20003_0115095.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20004_0009025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20005_0155085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20006_0182070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20007_0183130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20008_0038150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20009_0069020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20010_0075190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20011_0072145.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20012_0116115.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20013_0010045.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20014_0128035.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20015_0149060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20016_0114190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20017_0150170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20018_0004135.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20019_0146005.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20020_0145075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20021_0124030.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20022_0053105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20023_0166040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20024_0035115.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20025_0197065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20026_0053090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20027_0132085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20028_0142180.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20029_0107090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20030_0031010.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_20031_0033090.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_20000.pth
+saving at 128 [1967 5600 1434 ... 1790 1927  522]
+saving at 20024 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 20224
+performing summary at iteration: 20480
+speed: 0.426s / iter
+data_gen timer: 0.111s / iter
+performing summary at iteration: 20736
+performing summary at iteration: 20992
+speed: 0.426s / iter
+data_gen timer: 0.109s / iter
+performing summary at iteration: 21248
+performing summary at iteration: 21504
+speed: 0.427s / iter
+data_gen timer: 0.108s / iter
+performing summary at iteration: 21760
+performing summary at iteration: 22016
+speed: 0.427s / iter
+data_gen timer: 0.107s / iter
+performing summary at iteration: 22272
+performing summary at iteration: 22528
+speed: 0.427s / iter
+data_gen timer: 0.106s / iter
+performing summary at iteration: 22784
+performing summary at iteration: 23040
+speed: 0.428s / iter
+data_gen timer: 0.105s / iter
+performing summary at iteration: 23296
+performing summary at iteration: 23552
+speed: 0.429s / iter
+data_gen timer: 0.104s / iter
+performing summary at iteration: 23808
+performing summary at iteration: 24064
+speed: 0.429s / iter
+data_gen timer: 0.103s / iter
+performing summary at iteration: 24320
+performing summary at iteration: 24576
+speed: 0.429s / iter
+data_gen timer: 0.102s / iter
+performing summary at iteration: 24832
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25000_0073055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25001_0051020.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25002_0059035.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25003_0151150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25004_0076075.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25005_0046045.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25006_0199105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25007_0097025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25008_0006110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25009_0189010.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25010_0015060.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25011_0108010.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25012_0022130.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25013_0004150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25014_0137170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25015_0153040.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25016_0017150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25017_0001135.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25018_0188170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25019_0098005.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25020_0098170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25021_0195110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25022_0095165.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25023_0116170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25024_0021110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25025_0080150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25026_0197050.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25027_0020170.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25028_0077090.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25029_0156175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25030_0084150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_25031_0168060.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_25000.pth
+saving at 160 [1967 5600 1434 ... 1790 1927  522]
+saving at 25028 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 25088
+speed: 0.432s / iter
+data_gen timer: 0.101s / iter
+performing summary at iteration: 25344
+performing summary at iteration: 25600
+speed: 0.432s / iter
+data_gen timer: 0.100s / iter
+performing summary at iteration: 25856
+performing summary at iteration: 26112
+speed: 0.432s / iter
+data_gen timer: 0.099s / iter
+performing summary at iteration: 26368
+performing summary at iteration: 26624
+speed: 0.432s / iter
+data_gen timer: 0.098s / iter
+performing summary at iteration: 26880
+performing summary at iteration: 27136
+speed: 0.432s / iter
+data_gen timer: 0.097s / iter
+performing summary at iteration: 27392
+performing summary at iteration: 27648
+speed: 0.432s / iter
+data_gen timer: 0.097s / iter
+performing summary at iteration: 27904
+performing summary at iteration: 28160
+speed: 0.432s / iter
+data_gen timer: 0.096s / iter
+performing summary at iteration: 28416
+performing summary at iteration: 28672
+speed: 0.432s / iter
+data_gen timer: 0.096s / iter
+performing summary at iteration: 28928
+performing summary at iteration: 29184
+speed: 0.432s / iter
+data_gen timer: 0.095s / iter
+performing summary at iteration: 29440
+performing summary at iteration: 29696
+speed: 0.432s / iter
+data_gen timer: 0.095s / iter
+performing summary at iteration: 29952
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30000_0076070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30001_0037055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30002_0151165.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30003_0088185.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30004_0067095.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30005_0113185.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30006_0138125.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30007_0165195.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30008_0153175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30009_0135175.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30010_0166025.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30011_0143135.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30012_0093100.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30013_0049070.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30014_0002155.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30015_0167165.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30016_0149150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30017_0076000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30018_0170065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30019_0022105.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30020_0195080.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30021_0188080.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30022_0001065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30023_0016190.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30024_0115065.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30025_0120110.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30026_0160000.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30027_0139150.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30028_0161085.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30029_0152120.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30030_0046055.png
+Saving BEV map file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/trainval_drawn/iter_30031_0163095.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_rpn_only_train_all_40/lidar_res101_faster_rcnn_iter_30000.pth
+saving at 192 [1967 5600 1434 ... 1790 1927  522]
+saving at 30035 [73183 58044 61944 ... 59011 67224 71530]
+performing summary at iteration: 30208
+speed: 0.434s / iter
+data_gen timer: 0.094s / iter
+performing summary at iteration: 30464
+performing summary at iteration: 30720
+speed: 0.434s / iter
+data_gen timer: 0.093s / iter
+performing summary at iteration: 30976
+performing summary at iteration: 31232
+speed: 0.433s / iter
+data_gen timer: 0.093s / iter
+performing summary at iteration: 31488
+performing summary at iteration: 31744

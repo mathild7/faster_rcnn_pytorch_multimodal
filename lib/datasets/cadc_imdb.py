@@ -190,6 +190,7 @@ class cadc_imdb(db):
             pts = int(label_arr[15])
             drive = re.sub('[^0-9]','', label_arr[16])
             scene = label_arr[17]
+            dist = np.sqrt(np.power(x_c,2) + np.power(y_c,2) + np.power(z_c,2))
             scene_idx = int(drive)*100 + int(scene)
             scene_desc = self._get_scene_desc(scene_idx)
             if(scene_desc not in self._tod_filter_list):
@@ -197,7 +198,7 @@ class cadc_imdb(db):
             diff = 0
             if(BBGT_height < 10):
                 label_arr[0] = 'dontcare'
-            if(x_c > 60):
+            if(dist > 60):
                 continue
             if(pts < 10):
                 continue
@@ -222,7 +223,7 @@ class cadc_imdb(db):
                 gt_occ[ix]   = occ
                 gt_alpha[ix] = alpha
                 gt_pts[ix] = pts
-                gt_dist[ix] = x_c
+                gt_dist[ix] = dist
                 gt_ids[ix]   = int(index) + ix
                 gt_diff[ix]  = diff
                 #overlaps is (NxM) where N = number of GT entires and M = number of classes

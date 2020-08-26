@@ -43,7 +43,7 @@ __C.UC.EN_BBOX_EPISTEMIC_INV_TRANSFORM = False
 __C.UC.EN_CLS_EPISTEMIC      = False
 __C.UC.A_NUM_CE_SAMPLE       = 200
 __C.UC.A_NUM_BBOX_SAMPLE     = 200
-__C.UC.E_NUM_SAMPLE          = 100
+__C.UC.E_NUM_SAMPLE          = 10
 __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
@@ -231,7 +231,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS_THRESH = 0.3
+__C.TEST.NMS_THRESH = 0.1
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).

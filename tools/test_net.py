@@ -154,16 +154,16 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'cadc'
+        args.db_name       = 'waymo'
         args.net_type      = 'lidar'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/lidar_train_all_20/lidar_res101_faster_rcnn_iter_130000.pth'
-        args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/lidar_train_all_10/lidar_res101_faster_rcnn_iter_105000.pth'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_a_e_uc/lidar_res101_faster_rcnn_iter_50000.pth'
+        args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/lidar_train_all_23/lidar_res101_faster_rcnn_iter_70000.pth'
+        #args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/lidar_train_all_10/lidar_res101_faster_rcnn_iter_105000.pth'
+        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_3ch/lidar_res101_faster_rcnn_iter_125000.pth'
         args.iter          = 0
         args.num_frames    = 500
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
         #args.en_epistemic = 1
         #args.en_aleatoric = 1
         #args.uc_sort_type = 'a_bbox_var'
