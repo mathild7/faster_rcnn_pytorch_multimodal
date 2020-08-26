@@ -121,7 +121,7 @@ class kitti_imdb(db):
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._get_cache_dir(), self._name + '_' + mode + '_image_gt_roidb2.pkl')
+        cache_file = os.path.join(self._get_cache_dir(), self._name + '_' + mode + '_image_gt_roidb.pkl')
         image_index = self._get_index_for_mode(mode)
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
