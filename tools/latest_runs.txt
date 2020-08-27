@@ -41,6 +41,9 @@ sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/h
 sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type image --db kitti --iter 32 --scale 1.0 --fixed_blocks 1 --preload 1 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/kitti --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/ --weights_file res101_coco_1190k.pth
 sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type image --db cadc --iter 32 --scale 1.0 --fixed_blocks 1 --preload 1 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cadc --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/ --weights_file res101_coco_1190k.pth
 
+sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type image --db kitti --iter 36 --scale 1.0 --fixed_blocks 1 --preload 1 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/kitti --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/ --weights_file res101_coco_1190k.pth
+sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type image --db cadc --iter 36 --scale 1.0 --fixed_blocks 1 --preload 1 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cadc --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/ --weights_file res101_coco_1190k.pth
+
 
 
 
@@ -49,3 +52,25 @@ sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/h
 ###
 
 python3.6 /home/mat/faster_rcnn_pytorch_multimodal/tools/trainval_net.py --iters 400000 --net res101 --db cadc --net_type image --iter 50 --scale 1.0 --preload 1 --en_full_net 1 --en_fpn 0 --fixed_blocks 1 --data_dir /home/mat/data --weights_file /home/mat/weights/res101_coco_1190k.pth
+
+
+
+##################
+AUG 26 FINAL RUNS
+##################
+
+LIDAR_CADC_NO_AUG
+LIDAR_CADC_AUG
+LIDAR_CADC_AUG_A_E_UC
+
+LIDAR_CADC_NO_AUG : lidar_full_42_cc
+sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type lidar --db cadc --iter 42 --scale 1.0 --fixed_blocks -1 --preload 2 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cadc --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/aug26/ --weights_file lidar_waymo_full_90k.pth
+
+LIDAR_CADC_AUG : lidar_full_39_cc/lidar_full_41_cc
+sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type lidar --db cadc --iter 41 --scale 1.0 --fixed_blocks -1 --preload 2 --en_full_net 1 --en_fpn 0 --en_aleatoric 0 --en_epistemic 0 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cadc --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/aug26/ --weights_file lidar_waymo_full_90k.pth
+LIDAR_CADC_AUG_A_E_UC : lidar_full_41_a_e_uc
+sbatch ./singularity_run.sh --sing_img /home/hildeb47/projects/def-swasland-ab/hildeb47/mat_pytorch_5.sif --iters 400000 --net_type lidar --db cadc --iter 41 --scale 1.0 --fixed_blocks -1 --preload 2 --en_full_net 1 --en_fpn 0 --en_aleatoric 1 --en_epistemic 1 --uc_sort_type a_bbox_var --data_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cadc --cache_dir /home/hildeb47/projects/def-swasland-ab/hildeb47/cache --weights_dir /home/hildeb47/weights/aug26/ --weights_file lidar_cadc_full_90k.pth
+
+LIDAR_WAYMO_NO_AUG
+LIDAR_WAYMO_AUG  
+LIDAR_WAYMO_AUG_A_E_UC

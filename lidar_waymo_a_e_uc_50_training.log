@@ -1,0 +1,698 @@
+Called with args:
+Namespace(cache_dir=None, cfg_file=None, data_dir='/home/mat/thesis/data2', db_name='waymo', dbval_name='voc_2007_test', en_aleatoric=1, en_epistemic=1, en_fpn=0, en_full_net=1, fixed_blocks=-1, iter=50, max_iters=400000, net='res101', net_type='lidar', preload=2, scale=1.0, set_cfgs=None, tag=None, train_batch_size=None, trainval_batch_size=None, uc_sort_type='a_bbox_var', weights_file='/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/lidar/waymo/base+aug_3ch_2/lidar_res101_faster_rcnn_iter_85000.pth')
+Using config:
+{'ANCHOR_RATIOS': [0.5, 0.75, 1, 1.25, 2],
+ 'ANCHOR_SCALES': [2, 4, 8, 16, 32],
+ 'CACHE_DIR': '',
+ 'CADC': {'IMG_SIZE': [624, 1280], 'LIDAR_MAX_RANGE': 200, 'MAX_FRAME': 10000},
+ 'DATA_DIR': '/home/mat/thesis/data2',
+ 'DB_NAME': 'waymo',
+ 'DEBUG': {'DRAW_ANCHORS': False,
+           'DRAW_ANCHOR_T': False,
+           'DRAW_MINIBATCH': False,
+           'DRAW_PROPOSAL_T': False,
+           'EN': False,
+           'EN_TEST_MSG': True,
+           'FREEZE_DB': False,
+           'FREEZE_DB_INDS': 3,
+           'PRINT_SCENE_RESULT': False,
+           'TEST_FRAME_PRINT': False},
+ 'ENABLE_CUSTOM_TAIL': False,
+ 'ENABLE_FULL_NET': True,
+ 'EXP_DIR': 'res101',
+ 'GRAD_MAX_CLIP': 20,
+ 'IMAGE': {'NUM_BBOX_ELEM': 4},
+ 'KITTI': {'IMG_SIZE': [375, 1242], 'LIDAR_MAX_RANGE': 120, 'MAX_FRAME': 10000},
+ 'LIDAR': {'ANCHORS': array([[4.73, 2.08, 1.77]]),
+           'ANCHOR_ANGLES': array([0.        , 1.57079633]),
+           'ANCHOR_SCALES': array([[1]]),
+           'EN_AUG_DROPOUT': True,
+           'EN_AUG_FLIPS': True,
+           'EN_AUG_GAUSS_DISTORT': True,
+           'EN_AUG_ROTATE': False,
+           'EN_AUG_SWAP_X_Y': True,
+           'EN_RY_SIN': True,
+           'EVAL_TYPE': 'bev',
+           'MAX_NUM_VOXEL': 25000,
+           'MAX_PTS_PER_VOXEL': 32,
+           'NUM_BBOX_ELEM': 7,
+           'NUM_CHANNEL': 15,
+           'NUM_META_CHANNEL': 3,
+           'NUM_SLICES': 12,
+           'REG_LOSS_WEIGHT': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+           'SHUFFLE_PC': False,
+           'VOXEL_HEIGHT': 0.5,
+           'VOXEL_LEN': 0.1,
+           'X_RANGE': [0, 70],
+           'Y_RANGE': [-40, 40],
+           'Z_RANGE': [-3, 3]},
+ 'MATLAB': 'matlab',
+ 'MAX_IMG_PER_SCENE': 1000,
+ 'MOBILENET': {'DEPTH_MULTIPLIER': 1.0,
+               'FIXED_LAYERS': 5,
+               'REGU_DEPTH': False,
+               'WEIGHT_DECAY': 4e-05},
+ 'NET_TYPE': 'lidar',
+ 'NUM_SCENES': 210,
+ 'PIXEL_ARRANGE': [0, 1, 2],
+ 'PIXEL_ARRANGE_BGR': [2, 1, 0],
+ 'PIXEL_MEANS': array([[[96.866, 98.76 , 93.85 ]]]),
+ 'PIXEL_STDDEVS': array([[[1, 1, 1]]]),
+ 'POOLING_MODE': 'align',
+ 'POOLING_SIZE': 7,
+ 'PRELOAD': False,
+ 'PRELOAD_FULL': True,
+ 'RESNET': {'FIXED_BLOCKS': -1, 'MAX_POOL': False},
+ 'RNG_SEED': 3,
+ 'ROOT_DIR': '/home/mat/thesis/faster_rcnn_pytorch_multimodal',
+ 'RPN_CHANNELS': 512,
+ 'SCALE_LOC': 6,
+ 'TEST': {'AUGMENT_EN': False,
+          'BBOX_REG': True,
+          'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+          'DROPOUT_EN': False,
+          'EN_AUX_FEATURES': False,
+          'HAS_RPN': True,
+          'IGNORE_DC': False,
+          'ITER': 1,
+          'MODE': 'nms',
+          'NMS_THRESH': 0.1,
+          'PROPOSAL_METHOD': 'gt',
+          'RAIN_RATE': 15,
+          'RAIN_SIM_EN': False,
+          'RPN_NMS_THRESH': 0.7,
+          'RPN_POST_NMS_TOP_N': 300,
+          'RPN_PRE_NMS_TOP_N': 6000,
+          'RPN_TOP_N': 5000,
+          'SCALES': [1.0],
+          'SVM': False,
+          'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk']},
+ 'TRAIN': {'AUGMENT_EN': True,
+           'BATCH_SIZE': 16,
+           'BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'BBOX_NORMALIZE_TARGETS': True,
+           'BBOX_NORMALIZE_TARGETS_PRECOMPUTED': True,
+           'BBOX_REG': True,
+           'BG_THRESH_HI': 0.5,
+           'BG_THRESH_LO': 0.0,
+           'BIAS_DECAY': False,
+           'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+           'DC_THRESH': 0.5,
+           'DISPLAY': 512,
+           'DOUBLE_BIAS': False,
+           'DRAW_ROIDB_GEN': False,
+           'DRAW_VAL_DETECTIONS': True,
+           'FG_FRACTION': 0.25,
+           'FG_THRESH': 0.6,
+           'FRAMES_PER_BATCH': 1,
+           'GAMMA': 0.1,
+           'HAS_RPN': True,
+           'IGNORE_DC': False,
+           'IMAGE': {'BBOX_NORMALIZE_MEANS': [0.0, 0.0, 0.0, 0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1, 0.1, 0.2, 0.2]},
+           'ITER': 50,
+           'LEARNING_RATE': 0.02,
+           'LIDAR': {'BBOX_NORMALIZE_MEANS': [0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1,
+                                             0.1,
+                                             0.1,
+                                             0.2,
+                                             0.2,
+                                             0.2,
+                                             1.0]},
+           'MOMENTUM': 0.5,
+           'PROPOSAL_METHOD': 'gt',
+           'ROI_BATCH_SIZE': 256,
+           'RPN_BATCHSIZE': 256,
+           'RPN_BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'RPN_CLOBBER_POSITIVES': False,
+           'RPN_FG_FRACTION': 0.5,
+           'RPN_NEGATIVE_OVERLAP': 0.3,
+           'RPN_NMS_THRESH': 0.7,
+           'RPN_POSITIVE_OVERLAP': 0.7,
+           'RPN_POSITIVE_WEIGHT': -1.0,
+           'RPN_POST_NMS_TOP_N': 2000,
+           'RPN_PRE_NMS_TOP_N': 12000,
+           'SCALES': [1.0],
+           'SNAPSHOT_ITERS': 5000,
+           'SNAPSHOT_KEPT': 30,
+           'SNAPSHOT_PREFIX': 'res101_faster_rcnn',
+           'STEPSIZE': [70000, 140000, 210000],
+           'SUMMARY_INTERVAL': 15,
+           'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk'],
+           'TRUNCATED': False,
+           'USE_ALL_GT': False,
+           'USE_FLIPPED': True,
+           'USE_GT': False,
+           'VAL_AUGMENT_EN': False,
+           'VAL_BATCH_SIZE': 32,
+           'WEIGHT_DECAY': 0.0001},
+ 'UC': {'A_NUM_BBOX_SAMPLE': 200,
+        'A_NUM_CE_SAMPLE': 200,
+        'EN_BBOX_ALEATORIC': True,
+        'EN_BBOX_EPISTEMIC': True,
+        'EN_BBOX_EPISTEMIC_INV_TRANSFORM': False,
+        'EN_CLS_ALEATORIC': True,
+        'EN_CLS_EPISTEMIC': True,
+        'EN_RPN_BBOX_ALEATORIC': False,
+        'EN_RPN_BBOX_EPISTEMIC': False,
+        'EN_RPN_CLS_ALEATORIC': False,
+        'EN_RPN_CLS_EPISTEMIC': False,
+        'E_NUM_SAMPLE': 10,
+        'SORT_TYPE': 'a_bbox_var'},
+ 'USE_FPN': False,
+ 'USE_GPU_NMS': True,
+ 'USE_LIDAR_FPN': False,
+ 'WAYMO': {'LIDAR_MAX_RANGE': 200}}
+db mode: train
+Loaded dataset `waymo` for training
+Set proposal method: gt
+getting ROIDB Ready for mode train
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_train_lidar_gt_roidb.pkl
+getting ROIDB Ready for mode val
+removing pc 0007150 with no GT boxes specified
+removing pc 0007155 with no GT boxes specified
+removing pc 0007160 with no GT boxes specified
+removing pc 0007165 with no GT boxes specified
+removing pc 0007170 with no GT boxes specified
+removing pc 0007175 with no GT boxes specified
+removing pc 0007180 with no GT boxes specified
+removing pc 0007185 with no GT boxes specified
+removing pc 0007190 with no GT boxes specified
+removing pc 0007195 with no GT boxes specified
+removing pc 0008000 with no GT boxes specified
+removing pc 0008005 with no GT boxes specified
+removing pc 0008010 with no GT boxes specified
+removing pc 0008015 with no GT boxes specified
+removing pc 0008020 with no GT boxes specified
+removing pc 0008025 with no GT boxes specified
+removing pc 0008185 with no GT boxes specified
+removing pc 0008190 with no GT boxes specified
+removing pc 0008195 with no GT boxes specified
+removing pc 0009000 with no GT boxes specified
+removing pc 0009005 with no GT boxes specified
+removing pc 0009010 with no GT boxes specified
+removing pc 0009030 with no GT boxes specified
+removing pc 0009035 with no GT boxes specified
+removing pc 0009040 with no GT boxes specified
+removing pc 0009175 with no GT boxes specified
+removing pc 0009180 with no GT boxes specified
+removing pc 0009185 with no GT boxes specified
+removing pc 0019000 with no GT boxes specified
+removing pc 0019005 with no GT boxes specified
+removing pc 0038010 with no GT boxes specified
+removing pc 0038015 with no GT boxes specified
+removing pc 0038020 with no GT boxes specified
+removing pc 0038025 with no GT boxes specified
+removing pc 0038030 with no GT boxes specified
+removing pc 0038035 with no GT boxes specified
+removing pc 0038040 with no GT boxes specified
+removing pc 0038045 with no GT boxes specified
+removing pc 0038050 with no GT boxes specified
+removing pc 0040060 with no GT boxes specified
+removing pc 0040065 with no GT boxes specified
+removing pc 0040070 with no GT boxes specified
+removing pc 0040075 with no GT boxes specified
+removing pc 0046170 with no GT boxes specified
+removing pc 0047000 with no GT boxes specified
+removing pc 0062000 with no GT boxes specified
+removing pc 0062005 with no GT boxes specified
+removing pc 0062010 with no GT boxes specified
+removing pc 0062015 with no GT boxes specified
+removing pc 0062020 with no GT boxes specified
+removing pc 0062025 with no GT boxes specified
+removing pc 0062030 with no GT boxes specified
+removing pc 0062035 with no GT boxes specified
+removing pc 0062040 with no GT boxes specified
+removing pc 0062045 with no GT boxes specified
+removing pc 0062050 with no GT boxes specified
+removing pc 0062055 with no GT boxes specified
+removing pc 0062060 with no GT boxes specified
+removing pc 0062065 with no GT boxes specified
+removing pc 0062070 with no GT boxes specified
+removing pc 0062075 with no GT boxes specified
+removing pc 0063115 with no GT boxes specified
+removing pc 0063120 with no GT boxes specified
+removing pc 0063125 with no GT boxes specified
+removing pc 0063130 with no GT boxes specified
+removing pc 0063135 with no GT boxes specified
+removing pc 0063140 with no GT boxes specified
+removing pc 0063145 with no GT boxes specified
+removing pc 0063150 with no GT boxes specified
+removing pc 0063155 with no GT boxes specified
+removing pc 0063165 with no GT boxes specified
+removing pc 0063170 with no GT boxes specified
+removing pc 0063175 with no GT boxes specified
+removing pc 0063180 with no GT boxes specified
+removing pc 0068160 with no GT boxes specified
+removing pc 0068165 with no GT boxes specified
+removing pc 0068170 with no GT boxes specified
+removing pc 0068175 with no GT boxes specified
+removing pc 0068180 with no GT boxes specified
+removing pc 0068185 with no GT boxes specified
+removing pc 0070000 with no GT boxes specified
+removing pc 0070005 with no GT boxes specified
+removing pc 0070010 with no GT boxes specified
+removing pc 0070015 with no GT boxes specified
+removing pc 0070055 with no GT boxes specified
+removing pc 0070075 with no GT boxes specified
+removing pc 0070080 with no GT boxes specified
+removing pc 0070085 with no GT boxes specified
+removing pc 0070090 with no GT boxes specified
+removing pc 0070115 with no GT boxes specified
+removing pc 0071015 with no GT boxes specified
+removing pc 0071020 with no GT boxes specified
+removing pc 0071025 with no GT boxes specified
+removing pc 0071030 with no GT boxes specified
+removing pc 0071035 with no GT boxes specified
+removing pc 0071040 with no GT boxes specified
+removing pc 0071045 with no GT boxes specified
+removing pc 0071050 with no GT boxes specified
+removing pc 0071055 with no GT boxes specified
+removing pc 0071060 with no GT boxes specified
+removing pc 0071065 with no GT boxes specified
+removing pc 0071070 with no GT boxes specified
+removing pc 0071075 with no GT boxes specified
+removing pc 0071080 with no GT boxes specified
+removing pc 0071085 with no GT boxes specified
+removing pc 0071090 with no GT boxes specified
+removing pc 0071095 with no GT boxes specified
+removing pc 0071100 with no GT boxes specified
+removing pc 0071105 with no GT boxes specified
+removing pc 0071110 with no GT boxes specified
+removing pc 0071115 with no GT boxes specified
+removing pc 0072000 with no GT boxes specified
+removing pc 0072005 with no GT boxes specified
+removing pc 0072010 with no GT boxes specified
+removing pc 0072015 with no GT boxes specified
+removing pc 0072070 with no GT boxes specified
+removing pc 0072075 with no GT boxes specified
+removing pc 0072080 with no GT boxes specified
+removing pc 0072085 with no GT boxes specified
+removing pc 0072090 with no GT boxes specified
+removing pc 0072095 with no GT boxes specified
+removing pc 0072100 with no GT boxes specified
+removing pc 0072105 with no GT boxes specified
+removing pc 0072110 with no GT boxes specified
+removing pc 0072115 with no GT boxes specified
+removing pc 0074070 with no GT boxes specified
+removing pc 0074075 with no GT boxes specified
+removing pc 0074080 with no GT boxes specified
+removing pc 0074085 with no GT boxes specified
+removing pc 0074090 with no GT boxes specified
+removing pc 0074095 with no GT boxes specified
+removing pc 0074100 with no GT boxes specified
+removing pc 0074105 with no GT boxes specified
+removing pc 0074110 with no GT boxes specified
+removing pc 0074115 with no GT boxes specified
+removing pc 0074120 with no GT boxes specified
+removing pc 0074125 with no GT boxes specified
+removing pc 0074130 with no GT boxes specified
+removing pc 0074135 with no GT boxes specified
+removing pc 0074140 with no GT boxes specified
+removing pc 0074145 with no GT boxes specified
+removing pc 0074150 with no GT boxes specified
+removing pc 0074155 with no GT boxes specified
+removing pc 0074160 with no GT boxes specified
+removing pc 0074165 with no GT boxes specified
+removing pc 0074195 with no GT boxes specified
+removing pc 0081165 with no GT boxes specified
+removing pc 0081185 with no GT boxes specified
+removing pc 0081190 with no GT boxes specified
+removing pc 0081195 with no GT boxes specified
+removing pc 0084000 with no GT boxes specified
+removing pc 0084005 with no GT boxes specified
+removing pc 0084010 with no GT boxes specified
+removing pc 0084015 with no GT boxes specified
+removing pc 0084020 with no GT boxes specified
+removing pc 0084025 with no GT boxes specified
+removing pc 0084030 with no GT boxes specified
+removing pc 0084035 with no GT boxes specified
+removing pc 0084040 with no GT boxes specified
+removing pc 0084045 with no GT boxes specified
+removing pc 0084050 with no GT boxes specified
+removing pc 0084055 with no GT boxes specified
+removing pc 0084060 with no GT boxes specified
+removing pc 0084065 with no GT boxes specified
+removing pc 0094025 with no GT boxes specified
+removing pc 0094030 with no GT boxes specified
+removing pc 0094035 with no GT boxes specified
+removing pc 0094040 with no GT boxes specified
+removing pc 0094045 with no GT boxes specified
+removing pc 0094050 with no GT boxes specified
+removing pc 0094055 with no GT boxes specified
+removing pc 0094060 with no GT boxes specified
+removing pc 0094065 with no GT boxes specified
+removing pc 0094070 with no GT boxes specified
+removing pc 0094075 with no GT boxes specified
+removing pc 0094080 with no GT boxes specified
+removing pc 0094085 with no GT boxes specified
+removing pc 0094090 with no GT boxes specified
+removing pc 0094095 with no GT boxes specified
+removing pc 0094100 with no GT boxes specified
+removing pc 0094105 with no GT boxes specified
+removing pc 0094110 with no GT boxes specified
+removing pc 0094115 with no GT boxes specified
+removing pc 0094120 with no GT boxes specified
+removing pc 0094125 with no GT boxes specified
+removing pc 0094130 with no GT boxes specified
+removing pc 0094135 with no GT boxes specified
+removing pc 0094140 with no GT boxes specified
+removing pc 0094145 with no GT boxes specified
+removing pc 0094150 with no GT boxes specified
+removing pc 0094155 with no GT boxes specified
+removing pc 0094160 with no GT boxes specified
+removing pc 0094165 with no GT boxes specified
+removing pc 0094170 with no GT boxes specified
+removing pc 0094175 with no GT boxes specified
+removing pc 0094180 with no GT boxes specified
+removing pc 0094185 with no GT boxes specified
+removing pc 0094190 with no GT boxes specified
+removing pc 0094195 with no GT boxes specified
+removing pc 0097000 with no GT boxes specified
+removing pc 0097100 with no GT boxes specified
+removing pc 0097105 with no GT boxes specified
+removing pc 0101025 with no GT boxes specified
+removing pc 0101030 with no GT boxes specified
+removing pc 0101035 with no GT boxes specified
+removing pc 0101040 with no GT boxes specified
+removing pc 0101045 with no GT boxes specified
+removing pc 0101050 with no GT boxes specified
+removing pc 0101055 with no GT boxes specified
+removing pc 0101060 with no GT boxes specified
+removing pc 0101065 with no GT boxes specified
+removing pc 0101070 with no GT boxes specified
+removing pc 0101075 with no GT boxes specified
+removing pc 0101080 with no GT boxes specified
+removing pc 0101100 with no GT boxes specified
+removing pc 0101120 with no GT boxes specified
+removing pc 0101125 with no GT boxes specified
+removing pc 0101130 with no GT boxes specified
+removing pc 0101135 with no GT boxes specified
+removing pc 0101140 with no GT boxes specified
+removing pc 0103000 with no GT boxes specified
+removing pc 0103005 with no GT boxes specified
+removing pc 0103010 with no GT boxes specified
+removing pc 0103015 with no GT boxes specified
+removing pc 0103020 with no GT boxes specified
+removing pc 0103025 with no GT boxes specified
+removing pc 0103030 with no GT boxes specified
+removing pc 0103035 with no GT boxes specified
+removing pc 0103060 with no GT boxes specified
+removing pc 0103065 with no GT boxes specified
+removing pc 0103070 with no GT boxes specified
+removing pc 0103075 with no GT boxes specified
+removing pc 0103080 with no GT boxes specified
+removing pc 0103085 with no GT boxes specified
+removing pc 0103090 with no GT boxes specified
+removing pc 0103095 with no GT boxes specified
+removing pc 0103100 with no GT boxes specified
+removing pc 0103105 with no GT boxes specified
+removing pc 0103110 with no GT boxes specified
+removing pc 0103115 with no GT boxes specified
+removing pc 0103120 with no GT boxes specified
+removing pc 0103125 with no GT boxes specified
+removing pc 0103130 with no GT boxes specified
+removing pc 0103185 with no GT boxes specified
+removing pc 0103190 with no GT boxes specified
+removing pc 0103195 with no GT boxes specified
+removing pc 0105005 with no GT boxes specified
+removing pc 0105010 with no GT boxes specified
+removing pc 0105015 with no GT boxes specified
+removing pc 0109190 with no GT boxes specified
+removing pc 0109195 with no GT boxes specified
+removing pc 0110020 with no GT boxes specified
+removing pc 0110025 with no GT boxes specified
+removing pc 0110030 with no GT boxes specified
+removing pc 0110035 with no GT boxes specified
+removing pc 0110040 with no GT boxes specified
+removing pc 0110045 with no GT boxes specified
+removing pc 0110050 with no GT boxes specified
+removing pc 0112155 with no GT boxes specified
+removing pc 0112160 with no GT boxes specified
+removing pc 0112165 with no GT boxes specified
+removing pc 0112170 with no GT boxes specified
+removing pc 0117095 with no GT boxes specified
+removing pc 0117150 with no GT boxes specified
+removing pc 0117155 with no GT boxes specified
+removing pc 0117160 with no GT boxes specified
+removing pc 0117165 with no GT boxes specified
+removing pc 0117170 with no GT boxes specified
+removing pc 0117175 with no GT boxes specified
+removing pc 0117180 with no GT boxes specified
+removing pc 0117185 with no GT boxes specified
+removing pc 0117190 with no GT boxes specified
+removing pc 0117195 with no GT boxes specified
+removing pc 0118045 with no GT boxes specified
+removing pc 0118050 with no GT boxes specified
+removing pc 0118105 with no GT boxes specified
+removing pc 0118110 with no GT boxes specified
+removing pc 0118115 with no GT boxes specified
+removing pc 0118120 with no GT boxes specified
+removing pc 0118125 with no GT boxes specified
+removing pc 0118130 with no GT boxes specified
+removing pc 0118135 with no GT boxes specified
+removing pc 0118140 with no GT boxes specified
+removing pc 0118145 with no GT boxes specified
+removing pc 0118150 with no GT boxes specified
+removing pc 0118155 with no GT boxes specified
+removing pc 0119045 with no GT boxes specified
+removing pc 0119080 with no GT boxes specified
+removing pc 0119085 with no GT boxes specified
+removing pc 0119090 with no GT boxes specified
+removing pc 0119095 with no GT boxes specified
+removing pc 0119100 with no GT boxes specified
+removing pc 0119105 with no GT boxes specified
+removing pc 0119110 with no GT boxes specified
+removing pc 0119115 with no GT boxes specified
+removing pc 0119120 with no GT boxes specified
+removing pc 0119125 with no GT boxes specified
+removing pc 0119130 with no GT boxes specified
+removing pc 0119135 with no GT boxes specified
+removing pc 0119140 with no GT boxes specified
+removing pc 0119195 with no GT boxes specified
+removing pc 0122000 with no GT boxes specified
+removing pc 0122005 with no GT boxes specified
+removing pc 0122010 with no GT boxes specified
+removing pc 0122015 with no GT boxes specified
+removing pc 0122020 with no GT boxes specified
+removing pc 0122025 with no GT boxes specified
+removing pc 0125005 with no GT boxes specified
+removing pc 0125010 with no GT boxes specified
+removing pc 0125185 with no GT boxes specified
+removing pc 0125190 with no GT boxes specified
+removing pc 0125195 with no GT boxes specified
+removing pc 0129000 with no GT boxes specified
+removing pc 0129005 with no GT boxes specified
+removing pc 0129010 with no GT boxes specified
+removing pc 0129015 with no GT boxes specified
+removing pc 0129020 with no GT boxes specified
+removing pc 0129025 with no GT boxes specified
+removing pc 0129030 with no GT boxes specified
+removing pc 0129035 with no GT boxes specified
+removing pc 0129040 with no GT boxes specified
+removing pc 0129045 with no GT boxes specified
+removing pc 0129050 with no GT boxes specified
+removing pc 0129055 with no GT boxes specified
+removing pc 0129060 with no GT boxes specified
+removing pc 0129065 with no GT boxes specified
+removing pc 0129095 with no GT boxes specified
+removing pc 0129100 with no GT boxes specified
+removing pc 0129130 with no GT boxes specified
+removing pc 0129135 with no GT boxes specified
+removing pc 0129140 with no GT boxes specified
+removing pc 0129145 with no GT boxes specified
+removing pc 0129175 with no GT boxes specified
+removing pc 0129180 with no GT boxes specified
+removing pc 0129185 with no GT boxes specified
+removing pc 0129190 with no GT boxes specified
+removing pc 0129195 with no GT boxes specified
+removing pc 0133165 with no GT boxes specified
+removing pc 0133170 with no GT boxes specified
+removing pc 0133175 with no GT boxes specified
+removing pc 0135000 with no GT boxes specified
+removing pc 0139000 with no GT boxes specified
+removing pc 0139005 with no GT boxes specified
+removing pc 0139010 with no GT boxes specified
+removing pc 0139015 with no GT boxes specified
+removing pc 0139020 with no GT boxes specified
+removing pc 0139025 with no GT boxes specified
+removing pc 0139030 with no GT boxes specified
+removing pc 0139035 with no GT boxes specified
+removing pc 0139040 with no GT boxes specified
+removing pc 0145090 with no GT boxes specified
+removing pc 0145095 with no GT boxes specified
+removing pc 0145100 with no GT boxes specified
+removing pc 0145105 with no GT boxes specified
+removing pc 0145110 with no GT boxes specified
+removing pc 0145115 with no GT boxes specified
+removing pc 0145120 with no GT boxes specified
+removing pc 0145125 with no GT boxes specified
+removing pc 0145130 with no GT boxes specified
+removing pc 0145135 with no GT boxes specified
+removing pc 0145140 with no GT boxes specified
+removing pc 0145145 with no GT boxes specified
+removing pc 0145150 with no GT boxes specified
+removing pc 0145155 with no GT boxes specified
+removing pc 0145160 with no GT boxes specified
+removing pc 0145165 with no GT boxes specified
+removing pc 0145170 with no GT boxes specified
+removing pc 0145175 with no GT boxes specified
+removing pc 0145180 with no GT boxes specified
+removing pc 0145185 with no GT boxes specified
+removing pc 0145190 with no GT boxes specified
+removing pc 0145195 with no GT boxes specified
+removing pc 0151065 with no GT boxes specified
+removing pc 0151070 with no GT boxes specified
+removing pc 0151075 with no GT boxes specified
+removing pc 0151080 with no GT boxes specified
+removing pc 0151090 with no GT boxes specified
+removing pc 0151095 with no GT boxes specified
+removing pc 0151100 with no GT boxes specified
+removing pc 0151135 with no GT boxes specified
+removing pc 0151140 with no GT boxes specified
+removing pc 0151145 with no GT boxes specified
+removing pc 0151180 with no GT boxes specified
+removing pc 0151185 with no GT boxes specified
+removing pc 0151190 with no GT boxes specified
+removing pc 0151195 with no GT boxes specified
+removing pc 0159085 with no GT boxes specified
+removing pc 0159090 with no GT boxes specified
+removing pc 0159095 with no GT boxes specified
+removing pc 0159100 with no GT boxes specified
+removing pc 0159105 with no GT boxes specified
+removing pc 0168020 with no GT boxes specified
+removing pc 0168025 with no GT boxes specified
+removing pc 0168030 with no GT boxes specified
+removing pc 0168155 with no GT boxes specified
+removing pc 0168160 with no GT boxes specified
+removing pc 0168165 with no GT boxes specified
+removing pc 0168170 with no GT boxes specified
+removing pc 0168175 with no GT boxes specified
+removing pc 0168180 with no GT boxes specified
+removing pc 0172000 with no GT boxes specified
+removing pc 0172005 with no GT boxes specified
+removing pc 0180190 with no GT boxes specified
+removing pc 0180195 with no GT boxes specified
+removing pc 0185055 with no GT boxes specified
+removing pc 0185060 with no GT boxes specified
+removing pc 0185065 with no GT boxes specified
+removing pc 0185105 with no GT boxes specified
+removing pc 0185155 with no GT boxes specified
+removing pc 0185160 with no GT boxes specified
+removing pc 0185165 with no GT boxes specified
+removing pc 0185170 with no GT boxes specified
+removing pc 0185175 with no GT boxes specified
+removing pc 0185180 with no GT boxes specified
+removing pc 0185185 with no GT boxes specified
+removing pc 0185190 with no GT boxes specified
+removing pc 0185195 with no GT boxes specified
+removing pc 0191000 with no GT boxes specified
+removing pc 0191005 with no GT boxes specified
+removing pc 0191010 with no GT boxes specified
+removing pc 0191015 with no GT boxes specified
+removing pc 0191020 with no GT boxes specified
+removing pc 0191025 with no GT boxes specified
+removing pc 0191030 with no GT boxes specified
+removing pc 0191035 with no GT boxes specified
+removing pc 0191040 with no GT boxes specified
+removing pc 0191045 with no GT boxes specified
+removing pc 0191050 with no GT boxes specified
+removing pc 0191055 with no GT boxes specified
+removing pc 0191060 with no GT boxes specified
+removing pc 0191065 with no GT boxes specified
+removing pc 0191070 with no GT boxes specified
+removing pc 0191075 with no GT boxes specified
+removing pc 0191080 with no GT boxes specified
+removing pc 0191085 with no GT boxes specified
+removing pc 0191135 with no GT boxes specified
+removing pc 0191140 with no GT boxes specified
+removing pc 0191145 with no GT boxes specified
+removing pc 0193045 with no GT boxes specified
+removing pc 0193050 with no GT boxes specified
+removing pc 0193055 with no GT boxes specified
+removing pc 0193060 with no GT boxes specified
+removing pc 0193065 with no GT boxes specified
+removing pc 0193070 with no GT boxes specified
+removing pc 0193075 with no GT boxes specified
+removing pc 0193080 with no GT boxes specified
+removing pc 0193130 with no GT boxes specified
+removing pc 0193135 with no GT boxes specified
+removing pc 0193140 with no GT boxes specified
+removing pc 0193180 with no GT boxes specified
+removing pc 0193185 with no GT boxes specified
+removing pc 0193190 with no GT boxes specified
+removing pc 0193195 with no GT boxes specified
+removing pc 0196000 with no GT boxes specified
+removing pc 0196005 with no GT boxes specified
+removing pc 0196010 with no GT boxes specified
+removing pc 0196015 with no GT boxes specified
+removing pc 0196020 with no GT boxes specified
+removing pc 0198000 with no GT boxes specified
+removing pc 0198005 with no GT boxes specified
+removing pc 0198010 with no GT boxes specified
+removing pc 0198015 with no GT boxes specified
+removing pc 0198020 with no GT boxes specified
+removing pc 0198025 with no GT boxes specified
+removing pc 0198030 with no GT boxes specified
+removing pc 0198035 with no GT boxes specified
+removing pc 0198040 with no GT boxes specified
+removing pc 0198045 with no GT boxes specified
+removing pc 0198050 with no GT boxes specified
+removing pc 0198055 with no GT boxes specified
+removing pc 0198060 with no GT boxes specified
+removing pc 0198065 with no GT boxes specified
+removing pc 0198070 with no GT boxes specified
+removing pc 0198075 with no GT boxes specified
+removing pc 0198080 with no GT boxes specified
+removing pc 0198085 with no GT boxes specified
+removing pc 0198090 with no GT boxes specified
+removing pc 0198095 with no GT boxes specified
+removing pc 0198100 with no GT boxes specified
+removing pc 0198105 with no GT boxes specified
+removing pc 0198110 with no GT boxes specified
+removing pc 0198115 with no GT boxes specified
+removing pc 0198120 with no GT boxes specified
+removing pc 0198125 with no GT boxes specified
+removing pc 0198130 with no GT boxes specified
+removing pc 0198135 with no GT boxes specified
+removing pc 0198140 with no GT boxes specified
+removing pc 0198145 with no GT boxes specified
+removing pc 0198150 with no GT boxes specified
+removing pc 0198155 with no GT boxes specified
+removing pc 0198160 with no GT boxes specified
+removing pc 0198165 with no GT boxes specified
+removing pc 0198170 with no GT boxes specified
+removing pc 0198175 with no GT boxes specified
+removing pc 0198180 with no GT boxes specified
+removing pc 0198185 with no GT boxes specified
+removing pc 0198190 with no GT boxes specified
+removing pc 0198195 with no GT boxes specified
+removing pc 0201000 with no GT boxes specified
+removing pc 0201005 with no GT boxes specified
+removing pc 0201010 with no GT boxes specified
+removing pc 0201015 with no GT boxes specified
+removing pc 0201020 with no GT boxes specified
+removing pc 0201025 with no GT boxes specified
+removing pc 0201030 with no GT boxes specified
+removing pc 0201075 with no GT boxes specified
+removing pc 0201080 with no GT boxes specified
+removing pc 0201145 with no GT boxes specified
+removing pc 0201150 with no GT boxes specified
+wrote gt roidb to /home/mat/thesis/data2/waymo/cache/waymo_val_lidar_gt_roidb.pkl
+75654 roidb entries
+7560 val roidb entries
+Output will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/lidar_a_bbox_a_cls_e_bbox_e_cls_train_all_50`
+TensorFlow summaries will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/tensorboard/res101/waymo/lidar_a_bbox_a_cls_e_bbox_e_cls_train_all_50`
+db: waymo
+Solving...
+Loading initial full model weights /home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/lidar/waymo/base+aug_3ch_2/lidar_res101_faster_rcnn_iter_85000.pth
+Loaded.
+data generator starting up
+data generator starting up
