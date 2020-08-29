@@ -43,7 +43,7 @@ __C.UC.EN_BBOX_EPISTEMIC_INV_TRANSFORM = False
 __C.UC.EN_CLS_EPISTEMIC      = False
 __C.UC.A_NUM_CE_SAMPLE       = 200
 __C.UC.A_NUM_BBOX_SAMPLE     = 200
-__C.UC.E_NUM_SAMPLE          = 10
+__C.UC.E_NUM_SAMPLE          = 100
 __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
@@ -247,7 +247,7 @@ __C.TEST.HAS_RPN = True
 __C.TEST.PROPOSAL_METHOD = 'gt'
 
 ## NMS threshold used on RPN proposals
-__C.TEST.RPN_NMS_THRESH = 0.7
+__C.TEST.RPN_NMS_THRESH = 0.1
 
 # Number of top scoring boxes to keep before apply NMS to RPN proposals
 __C.TEST.RPN_PRE_NMS_TOP_N = 6000
@@ -368,14 +368,14 @@ __C.POOLING_SIZE = 7
 
 # Anchor scales for RPN
 #KITTI
-__C.ANCHOR_SCALES = [8,16,32] # 32x32, 64x64, 256x256
+#__C.ANCHOR_SCALES = [8,16,32]  # 32x32, 64x64, 256x256
 #WAYMO
-#__C.ANCHOR_SCALES  = [2,4,8,16,32]
+__C.ANCHOR_SCALES  = [2,4,8,16,32]
 # Anchor ratios for RPN
 #KITTI
-__C.ANCHOR_RATIOS = [0.5,1,2]
+#__C.ANCHOR_RATIOS = [0.5,1,2]
 #WAYMO
-#__C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
+__C.ANCHOR_RATIOS = [0.5,0.75,1,1.25,2]
 
 # Number of filters for the RPN layer
 __C.RPN_CHANNELS = 512
@@ -385,9 +385,10 @@ __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 210
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
+#__C.TRAIN.TOD_FILTER_LIST    = ['Day']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
-
+#__C.TEST.TOD_FILTER_LIST     = ['Day']
 __C.TRAIN.CADC_FILTER_LIST    = ['none', 'light', 'medium', 'heavy', 'extreme']
 __C.TEST.CADC_FILTER_LIST     = ['none', 'light', 'medium', 'heavy', 'extreme']
 #Lidar Config
@@ -410,7 +411,7 @@ __C.LIDAR.EN_AUG_DROPOUT       = True
 __C.LIDAR.EN_AUG_ROTATE        = False
 __C.LIDAR.EN_AUG_SWAP_X_Y      = True
 
-__C.LIDAR.EVAL_TYPE        = 'bev'
+__C.LIDAR.EVAL_TYPE        = '3d'
 #height -> R, Intensity -> G, Elongation/Density -> B
 #TODO: Broken, dont use..
 #__C.LIDAR.MEANS         = np.array([[[102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 102.9801, 115.9465, 122.7717]]])

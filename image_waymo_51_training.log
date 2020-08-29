@@ -1,0 +1,721 @@
+Called with args:
+Namespace(cache_dir=None, cfg_file=None, data_dir='/home/mat/thesis/data2', db_name='waymo', dbval_name='voc_2007_test', en_aleatoric=0, en_epistemic=0, en_fpn=0, en_full_net=1, fixed_blocks=1, iter=51, max_iters=400000, net='res101', net_type='image', preload=1, scale=1.0, set_cfgs=None, tag=None, train_batch_size=None, trainval_batch_size=None, uc_sort_type=None, weights_file='/home/mat/thesis/data2/stock_weights/res101_coco_1190k.pth')
+Using config:
+{'ANCHOR_RATIOS': [0.5, 0.75, 1, 1.25, 2],
+ 'ANCHOR_SCALES': [2, 4, 8, 16, 32],
+ 'CACHE_DIR': '',
+ 'CADC': {'IMG_SIZE': [624, 1280], 'LIDAR_MAX_RANGE': 200, 'MAX_FRAME': 10000},
+ 'DATA_DIR': '/home/mat/thesis/data2',
+ 'DB_NAME': 'waymo',
+ 'DEBUG': {'DRAW_ANCHORS': False,
+           'DRAW_ANCHOR_T': False,
+           'DRAW_MINIBATCH': False,
+           'DRAW_PROPOSAL_T': False,
+           'EN': False,
+           'EN_TEST_MSG': True,
+           'FREEZE_DB': False,
+           'FREEZE_DB_INDS': 3,
+           'PRINT_SCENE_RESULT': False,
+           'TEST_FRAME_PRINT': False},
+ 'ENABLE_CUSTOM_TAIL': False,
+ 'ENABLE_FULL_NET': True,
+ 'EXP_DIR': 'res101',
+ 'GRAD_MAX_CLIP': 20,
+ 'IMAGE': {'NUM_BBOX_ELEM': 4},
+ 'KITTI': {'IMG_SIZE': [375, 1242], 'LIDAR_MAX_RANGE': 120, 'MAX_FRAME': 10000},
+ 'LIDAR': {'ANCHORS': array([[4.73, 2.08, 1.77]]),
+           'ANCHOR_ANGLES': array([0.        , 1.57079633]),
+           'ANCHOR_SCALES': array([[1]]),
+           'EN_AUG_DROPOUT': True,
+           'EN_AUG_FLIPS': True,
+           'EN_AUG_GAUSS_DISTORT': True,
+           'EN_AUG_ROTATE': False,
+           'EN_AUG_SWAP_X_Y': True,
+           'EN_RY_SIN': True,
+           'EVAL_TYPE': 'bev',
+           'MAX_NUM_VOXEL': 25000,
+           'MAX_PTS_PER_VOXEL': 32,
+           'NUM_BBOX_ELEM': 7,
+           'NUM_CHANNEL': 15,
+           'NUM_META_CHANNEL': 3,
+           'NUM_SLICES': 12,
+           'REG_LOSS_WEIGHT': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+           'SHUFFLE_PC': False,
+           'VOXEL_HEIGHT': 0.5,
+           'VOXEL_LEN': 0.1,
+           'X_RANGE': [0, 70],
+           'Y_RANGE': [-40, 40],
+           'Z_RANGE': [-3, 3]},
+ 'MATLAB': 'matlab',
+ 'MAX_IMG_PER_SCENE': 1000,
+ 'MOBILENET': {'DEPTH_MULTIPLIER': 1.0,
+               'FIXED_LAYERS': 5,
+               'REGU_DEPTH': False,
+               'WEIGHT_DECAY': 4e-05},
+ 'NET_TYPE': 'image',
+ 'NUM_SCENES': 210,
+ 'PIXEL_ARRANGE': [0, 1, 2],
+ 'PIXEL_ARRANGE_BGR': [2, 1, 0],
+ 'PIXEL_MEANS': array([[[96.866, 98.76 , 93.85 ]]]),
+ 'PIXEL_STDDEVS': array([[[1, 1, 1]]]),
+ 'POOLING_MODE': 'align',
+ 'POOLING_SIZE': 7,
+ 'PRELOAD': True,
+ 'PRELOAD_FULL': False,
+ 'RESNET': {'FIXED_BLOCKS': 1, 'MAX_POOL': False},
+ 'RNG_SEED': 3,
+ 'ROOT_DIR': '/home/mat/thesis/faster_rcnn_pytorch_multimodal',
+ 'RPN_CHANNELS': 512,
+ 'SCALE_LOC': 6,
+ 'TEST': {'AUGMENT_EN': False,
+          'BBOX_REG': True,
+          'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+          'DROPOUT_EN': False,
+          'EN_AUX_FEATURES': False,
+          'HAS_RPN': True,
+          'IGNORE_DC': False,
+          'ITER': 1,
+          'MODE': 'nms',
+          'NMS_THRESH': 0.4,
+          'PROPOSAL_METHOD': 'gt',
+          'RAIN_RATE': 15,
+          'RAIN_SIM_EN': False,
+          'RPN_NMS_THRESH': 0.7,
+          'RPN_POST_NMS_TOP_N': 300,
+          'RPN_PRE_NMS_TOP_N': 6000,
+          'RPN_TOP_N': 5000,
+          'SCALES': [1.0],
+          'SVM': False,
+          'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk']},
+ 'TRAIN': {'AUGMENT_EN': False,
+           'BATCH_SIZE': 16,
+           'BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'BBOX_NORMALIZE_TARGETS': True,
+           'BBOX_NORMALIZE_TARGETS_PRECOMPUTED': True,
+           'BBOX_REG': True,
+           'BG_THRESH_HI': 0.5,
+           'BG_THRESH_LO': 0.0,
+           'BIAS_DECAY': False,
+           'CADC_FILTER_LIST': ['none', 'light', 'medium', 'heavy', 'extreme'],
+           'DC_THRESH': 0.5,
+           'DISPLAY': 512,
+           'DOUBLE_BIAS': False,
+           'DRAW_ROIDB_GEN': False,
+           'DRAW_VAL_DETECTIONS': True,
+           'FG_FRACTION': 0.25,
+           'FG_THRESH': 0.6,
+           'FRAMES_PER_BATCH': 1,
+           'GAMMA': 0.1,
+           'HAS_RPN': True,
+           'IGNORE_DC': False,
+           'IMAGE': {'BBOX_NORMALIZE_MEANS': [0.0, 0.0, 0.0, 0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1, 0.1, 0.2, 0.2]},
+           'ITER': 51,
+           'LEARNING_RATE': 0.02,
+           'LIDAR': {'BBOX_NORMALIZE_MEANS': [0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0,
+                                              0.0],
+                     'BBOX_NORMALIZE_STDS': [0.1,
+                                             0.1,
+                                             0.1,
+                                             0.2,
+                                             0.2,
+                                             0.2,
+                                             1.0]},
+           'MOMENTUM': 0.5,
+           'PROPOSAL_METHOD': 'gt',
+           'ROI_BATCH_SIZE': 256,
+           'RPN_BATCHSIZE': 256,
+           'RPN_BBOX_INSIDE_WEIGHTS': [1.0, 1.0, 1.0, 1.0],
+           'RPN_CLOBBER_POSITIVES': False,
+           'RPN_FG_FRACTION': 0.5,
+           'RPN_NEGATIVE_OVERLAP': 0.3,
+           'RPN_NMS_THRESH': 0.7,
+           'RPN_POSITIVE_OVERLAP': 0.7,
+           'RPN_POSITIVE_WEIGHT': -1.0,
+           'RPN_POST_NMS_TOP_N': 2000,
+           'RPN_PRE_NMS_TOP_N': 12000,
+           'SCALES': [1.0],
+           'SNAPSHOT_ITERS': 5000,
+           'SNAPSHOT_KEPT': 30,
+           'SNAPSHOT_PREFIX': 'res101_faster_rcnn',
+           'STEPSIZE': [70000, 140000, 210000],
+           'SUMMARY_INTERVAL': 15,
+           'TOD_FILTER_LIST': ['Day', 'Night', 'Dawn/Dusk'],
+           'TRUNCATED': False,
+           'USE_ALL_GT': False,
+           'USE_FLIPPED': True,
+           'USE_GT': False,
+           'VAL_AUGMENT_EN': False,
+           'VAL_BATCH_SIZE': 32,
+           'WEIGHT_DECAY': 0.0001},
+ 'UC': {'A_NUM_BBOX_SAMPLE': 200,
+        'A_NUM_CE_SAMPLE': 200,
+        'EN_BBOX_ALEATORIC': False,
+        'EN_BBOX_EPISTEMIC': False,
+        'EN_BBOX_EPISTEMIC_INV_TRANSFORM': False,
+        'EN_CLS_ALEATORIC': False,
+        'EN_CLS_EPISTEMIC': False,
+        'EN_RPN_BBOX_ALEATORIC': False,
+        'EN_RPN_BBOX_EPISTEMIC': False,
+        'EN_RPN_CLS_ALEATORIC': False,
+        'EN_RPN_CLS_EPISTEMIC': False,
+        'E_NUM_SAMPLE': 10,
+        'SORT_TYPE': ''},
+ 'USE_FPN': False,
+ 'USE_GPU_NMS': True,
+ 'USE_LIDAR_FPN': False,
+ 'WAYMO': {'LIDAR_MAX_RANGE': 200}}
+db mode: train
+shuffling image indices
+Loaded dataset `waymo` for training
+Set proposal method: gt
+getting ROIDB Ready for mode train
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_train_image_gt_roidb.pkl
+getting ROIDB Ready for mode val
+waymo gt roidb loaded from /home/mat/thesis/data2/waymo/cache/waymo_val_image_gt_roidb.pkl
+76551 roidb entries
+7782 val roidb entries
+Output will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51`
+TensorFlow summaries will be saved to `/home/mat/thesis/faster_rcnn_pytorch_multimodal/tensorboard/res101/waymo/image_train_all_51`
+db: waymo
+Solving...
+Loading initial model weights from /home/mat/thesis/data2/stock_weights/res101_coco_1190k.pth
+Loaded.
+data generator starting up
+data generator starting up
+performing summary at iteration: 256
+performing summary at iteration: 512
+speed: 1.020s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 768
+performing summary at iteration: 1024
+speed: 1.046s / iter
+data_gen timer: 0.030s / iter
+performing summary at iteration: 1280
+performing summary at iteration: 1536
+speed: 1.040s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 1792
+performing summary at iteration: 2048
+speed: 1.048s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 2304
+performing summary at iteration: 2560
+speed: 1.052s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 2816
+performing summary at iteration: 3072
+speed: 1.054s / iter
+data_gen timer: 0.032s / iter
+performing summary at iteration: 3328
+performing summary at iteration: 3584
+speed: 1.055s / iter
+data_gen timer: 0.032s / iter
+performing summary at iteration: 3840
+performing summary at iteration: 4096
+speed: 1.057s / iter
+data_gen timer: 0.032s / iter
+performing summary at iteration: 4352
+performing summary at iteration: 4608
+speed: 1.054s / iter
+data_gen timer: 0.032s / iter
+performing summary at iteration: 4864
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5000_0037155.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5001_0178155.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5002_0077145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5003_0095005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5004_0032080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5005_0064040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5006_0123140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5007_0083115.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5008_0141145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5009_0134030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5010_0142070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5011_0143150.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5012_0029190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5013_0135080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5014_0086030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5015_0101165.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5016_0139070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5017_0086140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5018_0141085.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5019_0159020.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5020_0083090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5021_0180000.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5022_0071075.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5023_0196170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5024_0003100.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5025_0040145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5026_0046145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5027_0088040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5028_0042155.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5029_0012030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5030_0005035.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_5031_0033055.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_5000.pth
+saving at 32 [5325  150 3989 ... 1451 5123 6523]
+saving at 5000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 5120
+speed: 1.069s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 5376
+performing summary at iteration: 5632
+speed: 1.064s / iter
+data_gen timer: 0.031s / iter
+performing summary at iteration: 5888
+performing summary at iteration: 6144
+speed: 1.061s / iter
+data_gen timer: 0.030s / iter
+performing summary at iteration: 6400
+performing summary at iteration: 6656
+speed: 1.061s / iter
+data_gen timer: 0.029s / iter
+performing summary at iteration: 6912
+performing summary at iteration: 7168
+speed: 1.061s / iter
+data_gen timer: 0.029s / iter
+performing summary at iteration: 7424
+performing summary at iteration: 7680
+speed: 1.061s / iter
+data_gen timer: 0.029s / iter
+performing summary at iteration: 7936
+performing summary at iteration: 8192
+speed: 1.061s / iter
+data_gen timer: 0.028s / iter
+performing summary at iteration: 8448
+performing summary at iteration: 8704
+speed: 1.061s / iter
+data_gen timer: 0.028s / iter
+performing summary at iteration: 8960
+performing summary at iteration: 9216
+speed: 1.061s / iter
+data_gen timer: 0.028s / iter
+performing summary at iteration: 9472
+performing summary at iteration: 9728
+speed: 1.059s / iter
+data_gen timer: 0.027s / iter
+performing summary at iteration: 9984
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10000_0184140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10001_0011145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10002_0174055.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10003_0109040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10004_0178105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10005_0070175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10006_0068145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10007_0199135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10008_0044145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10009_0086135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10010_0016005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10011_0193030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10012_0156065.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10013_0102005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10014_0195165.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10015_0182140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10016_0135100.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10017_0146020.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10018_0083070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10019_0053090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10020_0004125.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10021_0024040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10022_0019020.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10023_0067145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10024_0025045.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10025_0127110.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10026_0003000.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10027_0056010.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10028_0079070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10029_0099140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10030_0070190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_10031_0070050.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_10000.pth
+saving at 64 [5325  150 3989 ... 1451 5123 6523]
+saving at 10000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 10240
+speed: 1.063s / iter
+data_gen timer: 0.027s / iter
+performing summary at iteration: 10496
+performing summary at iteration: 10752
+speed: 1.061s / iter
+data_gen timer: 0.027s / iter
+performing summary at iteration: 11008
+performing summary at iteration: 11264
+speed: 1.061s / iter
+data_gen timer: 0.027s / iter
+performing summary at iteration: 11520
+performing summary at iteration: 11776
+speed: 1.060s / iter
+data_gen timer: 0.027s / iter
+performing summary at iteration: 12032
+performing summary at iteration: 12288
+speed: 1.061s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 12544
+performing summary at iteration: 12800
+speed: 1.061s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 13056
+performing summary at iteration: 13312
+speed: 1.060s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 13568
+performing summary at iteration: 13824
+speed: 1.060s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 14080
+performing summary at iteration: 14336
+speed: 1.061s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 14592
+performing summary at iteration: 14848
+speed: 1.058s / iter
+data_gen timer: 0.026s / iter
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15000_0111060.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15001_0188175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15002_0199145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15003_0150025.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15004_0094190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15005_0144135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15006_0070095.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15007_0016170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15008_0093050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15009_0095105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15010_0153180.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15011_0077170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15012_0069120.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15013_0191040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15014_0027155.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15015_0148130.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15016_0025115.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15017_0067105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15018_0053040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15019_0042085.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15020_0117045.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15021_0069090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15022_0055135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15023_0011190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15024_0060095.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15025_0192170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15026_0168010.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15027_0023075.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15028_0164105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15029_0027140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15030_0138160.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_15031_0079135.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_15000.pth
+saving at 96 [5325  150 3989 ... 1451 5123 6523]
+saving at 15000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 15104
+performing summary at iteration: 15360
+speed: 1.061s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 15616
+performing summary at iteration: 15872
+speed: 1.061s / iter
+data_gen timer: 0.026s / iter
+performing summary at iteration: 16128
+performing summary at iteration: 16384
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 16640
+performing summary at iteration: 16896
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 17152
+performing summary at iteration: 17408
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 17664
+performing summary at iteration: 17920
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 18176
+performing summary at iteration: 18432
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 18688
+performing summary at iteration: 18944
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 19200
+performing summary at iteration: 19456
+speed: 1.060s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 19712
+performing summary at iteration: 19968
+speed: 1.059s / iter
+data_gen timer: 0.025s / iter
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20000_0008105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20001_0079025.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20002_0050105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20003_0089180.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20004_0066175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20005_0168050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20006_0149065.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20007_0068050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20008_0124045.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20009_0045045.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20010_0131065.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20011_0042145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20012_0199175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20013_0129085.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20014_0141140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20015_0018140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20016_0052110.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20017_0113080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20018_0047070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20019_0042005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20020_0187135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20021_0122070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20022_0123050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20023_0121160.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20024_0058015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20025_0147035.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20026_0042050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20027_0179175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20028_0164100.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20029_0044190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20030_0112010.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_20031_0041075.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_20000.pth
+saving at 128 [5325  150 3989 ... 1451 5123 6523]
+saving at 20000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 20224
+performing summary at iteration: 20480
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 20736
+performing summary at iteration: 20992
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 21248
+performing summary at iteration: 21504
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 21760
+performing summary at iteration: 22016
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 22272
+performing summary at iteration: 22528
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 22784
+performing summary at iteration: 23040
+speed: 1.061s / iter
+data_gen timer: 0.025s / iter
+performing summary at iteration: 23296
+performing summary at iteration: 23552
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 23808
+performing summary at iteration: 24064
+speed: 1.060s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 24320
+performing summary at iteration: 24576
+speed: 1.060s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 24832
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25000_0020105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25001_0173150.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25002_0145140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25003_0072090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25004_0152030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25005_0170165.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25006_0009195.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25007_0074005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25008_0172115.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25009_0121125.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25010_0173080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25011_0044060.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25012_0062070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25013_0165040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25014_0102150.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25015_0060130.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25016_0130145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25017_0084040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25018_0178125.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25019_0000180.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25020_0070030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25021_0166015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25022_0195010.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25023_0108090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25024_0080175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25025_0113015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25026_0092055.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25027_0190175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25028_0106090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25029_0016135.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25030_0008000.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_25031_0157190.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_25000.pth
+saving at 160 [5325  150 3989 ... 1451 5123 6523]
+saving at 25000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 25088
+speed: 1.062s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 25344
+performing summary at iteration: 25600
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 25856
+performing summary at iteration: 26112
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 26368
+performing summary at iteration: 26624
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 26880
+performing summary at iteration: 27136
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 27392
+performing summary at iteration: 27648
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 27904
+performing summary at iteration: 28160
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 28416
+performing summary at iteration: 28672
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 28928
+performing summary at iteration: 29184
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 29440
+performing summary at iteration: 29696
+speed: 1.060s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 29952
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30000_0171190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30001_0143060.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30002_0037090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30003_0001150.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30004_0016015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30005_0013140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30006_0130065.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30007_0076015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30008_0006180.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30009_0107030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30010_0173125.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30011_0006170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30012_0026175.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30013_0072115.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30014_0189075.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30015_0020035.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30016_0152105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30017_0155145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30018_0120025.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30019_0030100.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30020_0000130.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30021_0038125.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30022_0098070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30023_0187010.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30024_0183145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30025_0135145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30026_0013150.png
+no detections for image over threshold 0.4
+draw and save: No detections for image /home/mat/thesis/data2/waymo/val/images/0119085.png, class: 1
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30027_0119085.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30028_0104050.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30029_0037140.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30030_0171085.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_30031_0165155.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_30000.pth
+saving at 192 [5325  150 3989 ... 1451 5123 6523]
+saving at 30000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 30208
+speed: 1.063s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 30464
+performing summary at iteration: 30720
+speed: 1.062s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 30976
+performing summary at iteration: 31232
+speed: 1.062s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 31488
+performing summary at iteration: 31744
+speed: 1.062s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 32000
+performing summary at iteration: 32256
+speed: 1.062s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 32512
+performing summary at iteration: 32768
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 33024
+performing summary at iteration: 33280
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 33536
+performing summary at iteration: 33792
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 34048
+performing summary at iteration: 34304
+speed: 1.061s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 34560
+performing summary at iteration: 34816
+speed: 1.060s / iter
+data_gen timer: 0.024s / iter
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35000_0161150.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35001_0200170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35002_0154130.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35003_0100070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35004_0160185.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35005_0140055.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35006_0163105.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35007_0054170.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35008_0112090.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35009_0125160.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35010_0026015.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35011_0118145.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35012_0035065.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35013_0097190.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35014_0172110.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35015_0154115.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35016_0131180.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35017_0005030.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35018_0181020.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35019_0189080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35020_0148095.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35021_0085070.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35022_0037020.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35023_0144165.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35024_0111005.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35025_0126035.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35026_0018130.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35027_0122080.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35028_0041040.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35029_0143000.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35030_0069195.png
+Saving file at location /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/trainval_drawn/iter_35031_0098185.png
+Wrote snapshot to: /home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/waymo/image_train_all_51/image_res101_faster_rcnn_iter_35000.pth
+saving at 224 [5325  150 3989 ... 1451 5123 6523]
+saving at 35000 [69453 46404 62788 ... 59011 67224 71530]
+performing summary at iteration: 35072
+performing summary at iteration: 35328
+speed: 1.063s / iter
+data_gen timer: 0.024s / iter
+performing summary at iteration: 35584
+caught sigint/sigterm
+killing data generators
+killing data generator
+killing data generator
+Is queue empty?: True
+Is queue empty?: True
+Killing program

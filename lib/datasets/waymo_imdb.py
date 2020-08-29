@@ -85,6 +85,8 @@ class waymo_imdb(db):
                 self._train_index = self._train_index[:limiter]
             if(limiter < len(self._test_index)):
                 self._test_index = self._test_index[:limiter]
+        if(18000 < len(self._val_index)):
+            self._val_index   = self._val_index[:18000]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
 

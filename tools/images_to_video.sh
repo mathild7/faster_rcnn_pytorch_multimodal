@@ -1,1 +1,1 @@
-ffmpeg -framerate 10 -pattern_type glob -i '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/cadc/image_test_all_0/test_drawn/*.png' -c:v libx264 -pix_fmt yuv420p '/home/mat/thesis/cadc_img.mp4'
+ffmpeg -framerate 10 -pattern_type glob -i '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/cadc/image_a_bbox_a_cls_e_bbox_e_cls_test_all_99/test_drawn/*.png' -c:v libx264 -pix_fmt yuv420p '/home/mat/thesis/cadc_img_5.mp4'

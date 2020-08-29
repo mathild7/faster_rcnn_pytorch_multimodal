@@ -185,7 +185,7 @@ def waymo_eval(detpath,
                             tp[idx,0] += 1
                         tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax,det_fp=False))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2):
@@ -193,14 +193,14 @@ def waymo_eval(detpath,
                         if(R['difficulty'][jmax] <= 1):
                             fp[idx,0] += 1
                         fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,det_confidence,ovmax,bb,var))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,det_fp=True))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
                 fp[idx,0] += 1
                 fp[idx,1] += 1
                 fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,det_confidence,ovmax,bb,var))
+                det_results.append(write_det(R,det_confidence,ovmax,bb,var,det_fp=True))
             idx = idx + 1
     else:
         print('waymo eval, no GT boxes detected')
@@ -323,7 +323,7 @@ def load_rec(labels,frame_path,frame_idx,frame_file,db,mode='test'):
             break
     return tmp_rec
 
-def write_det(R,confidence,ovmax,bb,var,jmax=None):
+def write_det(R,confidence,ovmax,bb,var,jmax=None,det_fp=False):
     scene    = R['scene_idx']
     frame    = R['frame_idx']
     avg_intensity  = -1
@@ -340,6 +340,7 @@ def write_det(R,confidence,ovmax,bb,var,jmax=None):
     out_str  = ''
     out_str += 'scene_idx: {} frame_idx: {} '.format(scene,frame)
     out_str += 'confidence: {} '.format(confidence)
+    out_str += 'fp: {} '.format(int(det_fp))
     if(len(bb) > cfg.IMAGE.NUM_BBOX_ELEM):
         out_str += 'bbdet3d: '
     else:

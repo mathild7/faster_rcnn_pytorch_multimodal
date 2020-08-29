@@ -182,7 +182,7 @@ def cadc_eval(detpath,
                             tp[idx,0] += 1
                         #tp_frame[int(R['idx'])] += 1
                         R['hit'][jmax] = True
-                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,jmax,det_fp=False))
                     else:
                         #If it already exists, cant double classify on same spot.
                         if(R['difficulty'][jmax] <= 2 and fp.shape[1] >= 3):
@@ -192,7 +192,7 @@ def cadc_eval(detpath,
                         if(R['difficulty'][jmax] <= 0):
                             fp[idx,0] += 1
                         #fp_frame[int(R['idx'])] += 1
-                        det_results.append(write_det(R,det_confidence,ovmax,bb,var))
+                        det_results.append(write_det(R,det_confidence,ovmax,bb,var,det_fp=True))
             #If your IoU is less than required, its simply a false positive.
             elif(BBGT.size > 0 and ovmax_dc < ovthresh_dc):
                 #elif(BBGT.size > 0)
@@ -202,7 +202,7 @@ def cadc_eval(detpath,
                 if(fp.shape[1] >= 3):
                     fp[idx,2] += 1
                 #fp_frame[int(R['idx'])] += 1
-                det_results.append(write_det(R,det_confidence,ovmax,bb,var))
+                det_results.append(write_det(R,det_confidence,ovmax,bb,var,det_fp=True))
             idx = idx + 1
     else:
         print('cadc eval, no GT boxes detected')
@@ -308,7 +308,7 @@ def load_recs(frameset, frame_path, db, mode, classname):
                 i + 1, len(frameset)))
     return class_recs
 
-def write_det(R,confidence,ovmax,bb,var,jmax=None):
+def write_det(R,confidence,ovmax,bb,var,jmax=None,det_fp=False):
     frame    = R['idx']
     truncation     = -1
     occlusion      = -1
@@ -322,6 +322,7 @@ def write_det(R,confidence,ovmax,bb,var,jmax=None):
     out_str  = ''
     out_str += 'frame_idx: {} '.format(frame)
     out_str += 'confidence: {} '.format(confidence)
+    out_str += 'fp: {} '.format(int(det_fp))
     if(len(bb) > cfg.IMAGE.NUM_BBOX_ELEM):
         out_str += 'bbdet3d: '
     else:
