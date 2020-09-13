@@ -1,4 +1,29 @@
 Faster-RCNN Image/LiDAR nets by Mat Hildebrand
+This repository is based on the work performed by Ruotian Luo:
+https://github.com/ruotianluo/pytorch-faster-rcnn
+This is a golden reference guide to how this repository operates:
+https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
+
+This repo supports
+- 3D LiDAR detection
+- 2D Image detection
+- Uncertainty Estimation
+- baseline Faster-RCNN or FPN
+- pseudo batching
+- end-to-end pytorch implementation
+- Many visualization options including:
+     - Minibatch drawing (for augmentation and GT verification)
+     - Anchor overlay draw (for anchor verification)
+     - RPN output draw (for first stage verification)
+     - Train time output detection draw (this is normally enabled for validation cycles in training)
+     - Test time output draw (optional, used for drawing output scenes)
+-Limitations include
+    - FPN for LiDAR detector does not change anchor sizes for each stage
+    - No real HW batching enabled
+    - Heavy on GPU memory usage, especially when uncertainty is enabled
+
+
+
 Example run commands:
 -----------------------------------------------------------------------------------
 Lidar
