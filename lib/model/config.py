@@ -43,7 +43,7 @@ __C.UC.EN_BBOX_EPISTEMIC_INV_TRANSFORM = False
 __C.UC.EN_CLS_EPISTEMIC      = False
 __C.UC.A_NUM_CE_SAMPLE       = 200
 __C.UC.A_NUM_BBOX_SAMPLE     = 200
-__C.UC.E_NUM_SAMPLE          = 100
+__C.UC.E_NUM_SAMPLE          = 10
 __C.UC.SORT_TYPE             = ''
 #ONE OF
 __C.PRELOAD                  = False
@@ -66,7 +66,7 @@ __C.TRAIN = edict()
 #WAYMO
 #__C.TRAIN.LEARNING_RATE = 0.02
 #Kitti
-__C.TRAIN.LEARNING_RATE = 0.02
+__C.TRAIN.LEARNING_RATE = 0.001
 # Momentum
 #WAYMO
 # __C.TRAIN.MOMENTUM = 0.5
@@ -231,7 +231,7 @@ __C.TEST.SCALES  = (1.0,)
 # Max pixel size of the longest side of a scaled input image
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
-__C.TEST.NMS_THRESH = 0.1
+__C.TEST.NMS_THRESH = 0.6
 
 # Experimental: treat the (K+1) units in the cls_score layer as linear
 # predictors (trained, eg, with one-vs-rest SVMs).
@@ -247,7 +247,7 @@ __C.TEST.HAS_RPN = True
 __C.TEST.PROPOSAL_METHOD = 'gt'
 
 ## NMS threshold used on RPN proposals
-__C.TEST.RPN_NMS_THRESH = 0.1
+__C.TEST.RPN_NMS_THRESH = 0.7
 
 # Number of top scoring boxes to keep before apply NMS to RPN proposals
 __C.TEST.RPN_PRE_NMS_TOP_N = 6000
@@ -385,10 +385,11 @@ __C.ENABLE_CUSTOM_TAIL       = False
 __C.NUM_SCENES               = 210
 __C.MAX_IMG_PER_SCENE        = 1000
 __C.TRAIN.TOD_FILTER_LIST    = ['Day','Night','Dawn/Dusk']
-#__C.TRAIN.TOD_FILTER_LIST    = ['Day']
+#__C.TRAIN.SUN_RAIN_FILTER_L  = ['sunny','rain']
+#__C.TRAIN.TOD_FILTER_LIST    = ['Night']
 __C.TRAIN.DRAW_ROIDB_GEN     = False
 __C.TEST.TOD_FILTER_LIST     = ['Day','Night','Dawn/Dusk']
-#__C.TEST.TOD_FILTER_LIST     = ['Day']
+#__C.TEST.TOD_FILTER_LIST     = ['Night']
 __C.TRAIN.CADC_FILTER_LIST    = ['none', 'light', 'medium', 'heavy', 'extreme']
 __C.TEST.CADC_FILTER_LIST     = ['none', 'light', 'medium', 'heavy', 'extreme']
 #Lidar Config
@@ -449,7 +450,7 @@ __C.CADC.LIDAR_MAX_RANGE = 200  #m
 #Used for LiDAR rain simulation
 __C.TEST.RAIN_SIM_EN = False
 __C.TEST.DROPOUT_EN  = False
-__C.TEST.RAIN_RATE = 15  #mm/h
+__C.TEST.RAIN_RATE = 1  #mm/h
 def get_output_dir(db, mode='train', weights_filename=None):
   """Return the directory where experimental artifacts are placed.
   If the directory does not exist, it is created.

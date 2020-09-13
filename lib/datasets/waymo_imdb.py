@@ -85,10 +85,16 @@ class waymo_imdb(db):
                 self._train_index = self._train_index[:limiter]
             if(limiter < len(self._test_index)):
                 self._test_index = self._test_index[:limiter]
-        if(18000 < len(self._val_index)):
-            self._val_index   = self._val_index[:18000]
+        #if(18000 < len(self._val_index)):
+        #    self._val_index   = self._val_index[:18000]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
+
+    def filter_indexes_tod(self,mode):
+        for roi in self.gt_roidb(mode):
+            tod = roi['tod']
+            if(tod in self._tod_filter_list):
+                assoc_frame = roi['assoc_frame']
 
     def path_from_index(self, mode, index):
         """
@@ -220,8 +226,8 @@ class waymo_imdb(db):
                         det = class_dets[idx]
                         draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,int(det[4]*255),uc_gradient),width=2)
                         det_string = '{:02} '.format(i)
-                        if(i < limiter):
-                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
+                        #if(i < limiter):
+                        #    draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[4]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
                                 if(i == 0):
@@ -232,9 +238,9 @@ class waymo_imdb(db):
                                     avg_det_string += '{}: {:6.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:6.3f} '.format(key,np.mean(val[idx]))
                         det_string += 'confidence: {:5.4f} '.format(det[4])
-                        if(i < limiter):
-                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
-                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
+                        #if(i < limiter):
+                        #    draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
+                    #draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
                 elif(cfg.DEBUG.EN_TEST_MSG):
                     print('draw and save: No detections for image {}, class: {}'.format(filename,j))
         for det,label in zip(roi_dets,roi_det_labels):

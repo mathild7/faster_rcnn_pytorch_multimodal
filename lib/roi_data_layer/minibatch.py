@@ -648,9 +648,11 @@ def _get_image_blob(roidb, im_scale, augment_en=False, mode='train'):
         elif(augment_en and mode == 'test'):
             seq = iaa.Sequential(
                 [
-                    iaa.weather.Rain(speed=(0.15,0.25))
-                    #iaa.Dropout((0.2))
-                    #iaa.GaussianBlur(sigma=(3.0,3.5))
+                    #iaa.weather.Rain(speed=(0.15,0.25))
+                    #iaa.Fog()
+                    iaa.imgcorruptlike.Spatter(severity=5)
+                    #iaa.Dropout((0.6))
+                    #iaa.GaussianBlur(sigma=(4.0,4.0))
                 ], random_order=False)
             images_aug = seq(images=[img_arr])
             img_arr = images_aug[0]

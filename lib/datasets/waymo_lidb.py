@@ -90,8 +90,8 @@ class waymo_lidb(db):
                 self._train_index = self._train_index[:limiter]
             if(limiter < len(self._test_index)):
                 self._test_index = self._test_index[:limiter]
-        if(18000 < len(self._val_index)):
-            self._val_index   = self._val_index[:18000]
+        #if(18000 < len(self._val_index)):
+        #    self._val_index   = self._val_index[:18000]
         assert os.path.exists(self._devkit_path), 'waymo dataset path does not exist: {}'.format(self._devkit_path)
 
     def _load_pc(self,filename):
@@ -101,6 +101,7 @@ class waymo_lidb(db):
         """
     Construct an pc path from the pc's "index" identifier.
     """
+        #index = '0032014.npy'
         pc_path = os.path.join(self._devkit_path, mode, 'point_clouds', index)
         assert os.path.exists(pc_path), \
             'Path does not exist: {}'.format(pc_path)
@@ -238,17 +239,30 @@ class waymo_lidb(db):
         else:
             voxel_grid = frame_arr[0]
             voxel_grid_rgb = np.zeros((voxel_grid.shape[0],voxel_grid.shape[1],3))
+            for i in range(0,cfg.LIDAR.NUM_SLICES):
+                mask = np.where(np.abs(voxel_grid[:,:,i]) > 0.00001, 1, 0)
+                voxel_grid[:,:,i] += mask*i*0.5
             voxel_grid_rgb[:,:,0] = np.max(voxel_grid[:,:,0:cfg.LIDAR.NUM_SLICES],axis=2)
-            max_height = np.max(voxel_grid_rgb[:,:,0])
-            min_height = np.min(voxel_grid_rgb[:,:,0])
-            voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
-            voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
-            voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
+            mask = np.where(np.abs(voxel_grid_rgb[:,:,0]) > 0.00001, 1, 0)
+            max_height = np.max(mask*voxel_grid_rgb[:,:,0])*1.5
+            min_height = np.min(mask*voxel_grid_rgb[:,:,0])
+            #Density drawing
+            
+            max_d = np.max(mask)
+            voxel_grid_rgb[:,:,0] = mask*np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+            #voxel_grid_rgb[:,:,0] = (255 - voxel_grid_rgb[:,:,1])*mask
+            #voxel_grid_rgb[:,:,1] = np.clip(voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+2]*2*255,0,255)
+            #voxel_grid_rgb[:,:,0] = (255 - voxel_grid_rgb[:,:,1])*mask
+
+            #Normal Drawing
+            #voxel_grid_rgb[:,:,0] = np.clip(voxel_grid_rgb[:,:,0]*(255/(max_height - min_height)),0,255)
+            voxel_grid_rgb[:,:,1] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES]*(6*255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES].max())
+            voxel_grid_rgb[:,:,2] = voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1]*(2*255/voxel_grid[:,:,cfg.LIDAR.NUM_SLICES+1].max())
             voxel_grid_rgb        = voxel_grid_rgb.astype(dtype='uint8')
             draw_file = Image.fromarray(voxel_grid_rgb,'RGB')
             draw = ImageDraw.Draw(draw_file)
         #TODO: Magic numbers
-        limiter = 10
+        limiter = 15
         y_start = self._draw_height - 10*(limiter+2)
         #TODO: Swap axes of dets
         if(len(roi_dets) > 0):
@@ -265,7 +279,7 @@ class waymo_lidb(db):
                         colors = [127,127,127]
                     else:
                         colors = [255,255,255]
-                    bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
+                    #bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
 
         for j,class_dets in enumerate(dets):
             #Set of detections, one for each class
@@ -284,15 +298,15 @@ class waymo_lidb(db):
                         det = class_dets[idx]
                         #print(det)
                         if(det.shape[0] > 5):
-                            colors = [0,int(det[7]*255),0]
-                            bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
+                            colors = [0,int(det[4]*255),uc_gradient]                            
+                            #bbox_utils.draw_bev_bbox(draw,det,[self._draw_width, self._draw_height, cfg.LIDAR.Z_RANGE[1]-cfg.LIDAR.Z_RANGE[0]],transform=False, colors=colors)
                         else:
                             color_g = int(det[4]*255)
                             color_b = int(1-det[4])*255
                             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,color_g,color_b))
                         det_string = '{:02} '.format(i)
-                        if(i < limiter):
-                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
+                        #if(i < limiter):
+                        #    draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
                                 key = key.replace('cls','c').replace('bbox','b').replace('mutual_info','m_i')
@@ -305,9 +319,9 @@ class waymo_lidb(db):
                                     avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
                         det_string += 'con: {:5.3f} '.format(det[-1])
-                        if(i < limiter):
-                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
-                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
+                        #if(i < limiter):
+                        #    draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
+                    #draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
                 elif(cfg.DEBUG.EN_TEST_MSG):
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
         print('Saving BEV map file at location {}'.format(out_file))
@@ -341,6 +355,8 @@ class waymo_lidb(db):
         #TODO: Magic number
         scene_idx  = int(int(pc_labels['assoc_frame']) / cfg.MAX_IMG_PER_SCENE)
         pc_idx     = int(int(pc_labels['assoc_frame']) % cfg.MAX_IMG_PER_SCENE)
+        if('rain' in weather.lower()):
+            print('scene_idx {}'.format(scene_idx))
         #Removing night-time/day-time ROI's
         if(tod not in tod_filter_list):
             print('TOD {} not in specified filter list'.format(tod))

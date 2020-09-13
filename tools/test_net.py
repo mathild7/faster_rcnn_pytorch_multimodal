@@ -154,22 +154,22 @@ if __name__ == '__main__':
     args = parse_args(manual_mode)
     if(manual_mode):
         args.net           = 'res101'
-        args.db_name       = 'cadc'
-        args.net_type      = 'lidar'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/'+args.net_type+'_train_all_50/'+args.net_type+'_res101_faster_rcnn_iter_75000.pth'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/lidar_a_bbox_a_cls_e_bbox_e_cls_train_all_33/lidar_res101_faster_rcnn_iter_120000.pth'
-        args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/'+args.net_type+'_train_all_42/'+args.net_type+'_res101_faster_rcnn_iter_130000.pth'
-        #args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/'+args.net_type+'_a_bbox_a_cls_e_bbox_e_cls_train_all_35/'+args.net_type+'_res101_faster_rcnn_iter_100000.pth'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_a_e_uc_2/lidar_res101_faster_rcnn_iter_70000.pth'
-        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/a_e_uc_aug_16/image_res101_faster_rcnn_iter_70000.pth'
+        args.db_name       = 'waymo'
+        args.net_type      = 'image'
+        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/'+args.net_type+'_train_all_80/'+args.net_type+'_res101_faster_rcnn_iter_80000.pth'
+        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/output/res101/'+args.db_name+'/image_a_bbox_a_cls_e_bbox_e_cls_train_all_97/image_res101_faster_rcnn_iter_105000.pth'
+        #args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/'+args.net_type+'_train_all_90/'+args.net_type+'_res101_faster_rcnn_iter_110000.pth'
+        #args.weights_file  = '/home/mat/cc_out/output/res101/'+args.db_name+'/'+args.net_type+'_a_bbox_a_cls_e_bbox_e_cls_train_all_51/'+args.net_type+'_res101_faster_rcnn_iter_145000.pth'
+        #args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_3ch_2/'+args.net_type+'_res101_faster_rcnn_iter_105000.pth'
+        args.weights_file  = '/home/mat/thesis/faster_rcnn_pytorch_multimodal/final_releases/'+args.net_type+'/'+args.db_name+'/base+aug_a_e_uc/'+args.net_type+'_res101_faster_rcnn_iter_90000.pth'
         args.iter          = 99
-        args.num_frames    = 300
+        args.num_frames    = 0
         args.scale         = 1.0
         args.en_fpn        = 0
-        args.data_dir      = os.path.join('/home/mat','thesis', 'data')
-        #args.en_epistemic = 1
-        #args.en_aleatoric = 1
-        #args.uc_sort_type = 'a_bbox_var'
+        args.data_dir      = os.path.join('/home/mat','thesis', 'data2')
+        args.en_epistemic = 1
+        args.en_aleatoric = 1
+        args.uc_sort_type = 'a_bbox_var'
         #args.out_dir      = 'output/'
         #args.db_root_dir  = '/home/mat/thesis/data2/{}/'.format(args.db_name)
     print('Called with args:')
@@ -287,4 +287,4 @@ if __name__ == '__main__':
         net._device = 'cpu'
     net.to(net._device)
     #TODO: Fix stupid output directory bullshit
-    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.01,draw_det=False,eval_det=True)
+    test_net(net, db, args.out_dir, max_dets=args.max_num_dets, mode='val',thresh=0.5,draw_det=True,eval_det=True)

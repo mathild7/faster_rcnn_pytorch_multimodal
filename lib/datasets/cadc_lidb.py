@@ -414,8 +414,8 @@ class cadc_lidb(db):
                             color_b = int(1-det[4])*255
                             draw.rectangle([(det[0],det[1]),(det[2],det[3])],outline=(0,color_g,color_b))
                         det_string = '{:02} '.format(i)
-                        if(i < limiter):
-                            draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
+                        #if(i < limiter):
+                        #    draw.text((det[0]+4,det[1]+4),det_string,fill=(0,int(det[-1]*255),uc_gradient,255))
                         for key,val in cls_uncertainties.items():
                             if('cls' in key):
                                 key = key.replace('cls','c').replace('bbox','b').replace('mutual_info','m_i')
@@ -427,9 +427,9 @@ class cadc_lidb(db):
                                     avg_det_string += '{}: {:5.3f} '.format(key,np.mean(np.mean(val)))
                                 det_string += '{}: {:5.3f} '.format(key,np.mean(val[idx]))
                         det_string += 'con: {:5.3f} '.format(det[-1])
-                        if(i < limiter):
-                            draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
-                    draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
+                        #if(i < limiter):
+                        #    draw.text((0,y_start+i*10),det_string, fill=(0,int(det[4]*255),uc_gradient,255))
+                    #draw.text((0,self._draw_height-10),avg_det_string, fill=(255,255,255,255))
                 elif(cfg.DEBUG.EN_TEST_MSG):
                     print('draw and save: No detections for pc {}, class: {}'.format(filename,j))
         print('Saving BEV map file at location {}'.format(out_file))
