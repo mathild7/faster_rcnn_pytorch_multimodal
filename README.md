@@ -1,6 +1,15 @@
+The repository is now extremely deprecated and I would highly recommend using:
+PCDet: https://github.com/open-mmlab/OpenPCDet
+Detectron2: https://github.com/facebookresearch/detectron2
+
+I will not be providing further support for this repo, use AS-IS.
+--------------------------------------------------------------------
+
+
 Faster-RCNN Image/LiDAR nets by Mat Hildebrand
 This repository is based on the work performed by Ruotian Luo:
 https://github.com/ruotianluo/pytorch-faster-rcnn
+
 This is a golden reference guide to how this repository operates:
 https://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns/
 
